@@ -1,6 +1,6 @@
 import './styles.css';
 import { SharedWorldView, SAB_BYTE_LENGTH, MAX_SPECIES, TELEMETRY } from './engine/memoryLayout';
-import { getSpecies, SPECIES } from './data/speciesRegistry';
+import { getSpecies, SPECIES, MAX_DEFINED_SPECIES } from './data/speciesRegistry';
 import { renderBiomeTreePanel } from './ui/BiomeTreePanel';
 import { renderToolAndInventoryPanel, type ToolAndInventoryState } from './ui/ToolAndInventoryPanel';
 import {
@@ -42,7 +42,17 @@ const state = {
   vessels: [] as VesselMeta[],
   selected: 0,
   activeTab: 'REACTIONS' as WorkbenchTab,
-  ever: { ash: false, lye: false, fat: false, soap: false, barSoap: false },
+  ever: {
+    ash: false,
+    lye: false,
+    fat: false,
+    soap: false,
+    barSoap: false,
+    backpack: false,
+    bronzeFork: false,
+    medicine: false,
+    voltaicPile: false,
+  },
   log: [] as string[],
   paused: false,
   player: {
@@ -159,7 +169,7 @@ app.innerHTML = `
 
         <div class="workbench-foot">
           <div class="quest-box">
-            <h3>The Soap Trail</h3>
+            <h3>Master Tech Progression</h3>
             <ul class="quest" id="quest"></ul>
           </div>
           <div class="event-box">
@@ -293,7 +303,7 @@ function renderWorkbench(snapshot: Snapshot): void {
   rVolume.textContent = `${volume.toFixed(2)} L`;
 
   const rows: string[] = [];
-  for (let speciesIdx = 0; speciesIdx < 32; speciesIdx += 1) {
+  for (let speciesIdx = 0; speciesIdx < MAX_DEFINED_SPECIES; speciesIdx += 1) {
     let species;
     try {
       species = getSpecies(speciesIdx);
@@ -325,13 +335,17 @@ function renderQuest(snapshot: Snapshot): void {
   if (any(SPECIES.TRISTEARIN) > 0.01) state.ever.fat = true;
   if (any(SPECIES.K_STEARATE) > 0.01) state.ever.soap = true;
   if (any(SPECIES.NA_STEARATE) > 0.01) state.ever.barSoap = true;
+  if (state.inventory.backpackUnlocked) state.ever.backpack = true;
+  if (state.inventory.tools.EATING_UTENSIL?.name?.includes('Bronze Fork') || any(SPECIES.BRONZE) > 0) state.ever.bronzeFork = true;
+  if (any(SPECIES.SALICYLIC_ACID) > 0 || any(SPECIES.PENICILLIN) > 0 || any(SPECIES.ETHANOL) > 0.1) state.ever.medicine = true;
+  if (any(SPECIES.POTASSIUM_METAL) > 0 || any(SPECIES.SODIUM_METAL) > 0 || any(SPECIES.H2SO4) > 0.1) state.ever.voltaicPile = true;
 
   const steps = [
-    { done: state.ever.ash, text: 'Collect hardwood ash (K₂CO₃ + CaO)' },
-    { done: state.ever.lye, text: 'Leach strong lye (KOH, pH > 13)' },
-    { done: state.ever.fat, text: 'Acquire rendered fat (Tristearin)' },
-    { done: state.ever.soap, text: 'Saponify fat + lye → potash liquid soap' },
-    { done: state.ever.barSoap, text: 'Salt out hard bar soap with NaCl' },
+    { done: state.ever.backpack, text: 'Tier 1: Stitch Leather Backpack (Tanning & Sinew)' },
+    { done: state.ever.barSoap, text: 'Tier 2: Potash & Hard Bar Soap (Ash → Lye → Saponification)' },
+    { done: state.ever.bronzeFork, text: 'Tier 3: Bronze Fork & Metallurgy (Reduction & Alloying)' },
+    { done: state.ever.medicine, text: 'Tier 4: Medicines (Salicylic Acid, Penicillin & Antiseptic)' },
+    { done: state.ever.voltaicPile, text: 'Tier 5: Voltaic Pile & Pure Elements (Faraday Electrolysis)' },
   ];
   questList.innerHTML = steps
     .map(
@@ -588,7 +602,17 @@ function bindActions(): void {
     state.view = null;
     state.vessels = [];
     state.log = [];
-    state.ever = { ash: false, lye: false, fat: false, soap: false, barSoap: false };
+    state.ever = {
+      ash: false,
+      lye: false,
+      fat: false,
+      soap: false,
+      barSoap: false,
+      backpack: false,
+      bronzeFork: false,
+      medicine: false,
+      voltaicPile: false,
+    };
     startWorld();
   });
 }
