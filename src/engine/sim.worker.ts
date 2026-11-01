@@ -104,6 +104,7 @@ function postPlayerAndInventory(): void {
       hydrationPct: Math.round(player.hydrationPct),
       coreTempC: ((player.coreTempK - 273.15)).toFixed(1),
       clothingIclo: player.clothingIclo,
+      conditions: player.conditions,
     },
     inventory: {
       backpackUnlocked: inventory.backpack.unlocked,

@@ -15,6 +15,12 @@
  *   Hyperthermia threshold: > 39.5 C (heat stroke)
  */
 
+export interface PlayerConditions {
+  fever: boolean;                  // elevates coreTemp above nominal (+1.8 to +2.5 K)
+  systemicInfection: boolean;      // metabolic drain (+60 kcal/hr) & systemic deterioration
+  woundContamination: boolean;     // infection risk; can escalate to systemic infection
+}
+
 export interface PlayerMetabolismState {
   glucoseKcal: number;       // 0 .. 2000 kcal
   adiposeKcal: number;       // starting 15,000 kcal
@@ -22,6 +28,7 @@ export interface PlayerMetabolismState {
   coreTempK: number;         // 310.15 K nominal (37.0 C)
   clothingIclo: number;      // 0.05 nude baseline, 1.15 leather backpack/tunic
   isSleeping: boolean;
+  conditions: PlayerConditions;
 }
 
 export const METABOLIC_CONSTANTS = {
@@ -45,6 +52,11 @@ export function createPlayerMetabolism(initialIclo = 0.05): PlayerMetabolismStat
     coreTempK: METABOLIC_CONSTANTS.NOMINAL_CORE_TEMP_K,
     clothingIclo: initialIclo,
     isSleeping: false,
+    conditions: {
+      fever: false,
+      systemicInfection: false,
+      woundContamination: false,
+    },
   };
 }
 
@@ -77,9 +89,10 @@ export function stepPlayerMetabolism(
   // 1. Mechanical work cost in kcal
   const workKcal = mechanicalWorkJoules / (METABOLIC_CONSTANTS.HUMAN_MECHANICAL_EFFICIENCY * METABOLIC_CONSTANTS.JOULES_PER_KCAL);
 
-  // 2. Basal metabolic rate
+  // 2. Basal metabolic rate & pathological metabolic drain
   const bmrMultiplier = player.isSleeping ? 0.85 : 1.0;
-  const bmrKcal = METABOLIC_CONSTANTS.BMR_KCAL_PER_HOUR * dtHours * bmrMultiplier;
+  const infectionDrainKcal = player.conditions.systemicInfection ? 60.0 * dtHours : 0;
+  const bmrKcal = (METABOLIC_CONSTANTS.BMR_KCAL_PER_HOUR * dtHours * bmrMultiplier) + infectionDrainKcal;
 
   // 3. Environmental thermal dissipation (in Watts -> converted to kcal)
   // Heat loss = (T_core - T_ambient) / (0.155 * I_clo) in W/m2.
@@ -92,10 +105,14 @@ export function stepPlayerMetabolism(
   const thermalLossJoules = totalHeatLossWatts * options.dtSeconds;
   const thermalDissipationKcal = Math.max(0, thermalLossJoules / METABOLIC_CONSTANTS.JOULES_PER_KCAL);
 
-  // 4. Shivering thermogenesis if cold
+  // 4. Shivering thermogenesis if cold (or fever chills driving temp toward pyrogenic setpoint)
   let shiveringKcal = 0;
   let shivering = false;
-  if (player.coreTempK < METABOLIC_CONSTANTS.NOMINAL_CORE_TEMP_K - 0.5) {
+  const nominalSetpoint = player.conditions.fever
+    ? METABOLIC_CONSTANTS.NOMINAL_CORE_TEMP_K + 2.0 // Fever elevates hypothalamic setpoint to ~39.0 C
+    : METABOLIC_CONSTANTS.NOMINAL_CORE_TEMP_K;
+
+  if (player.coreTempK < nominalSetpoint - 0.5) {
     shivering = true;
     shiveringKcal = 50.0 * dtHours; // up to 50 kcal/hr shivering heat production
   }
@@ -121,10 +138,11 @@ export function stepPlayerMetabolism(
   const netHeatWatts = metabolicHeatWatts - totalHeatLossWatts;
 
   const totalHeatCapacity = METABOLIC_CONSTANTS.BODY_MASS_KG * METABOLIC_CONSTANTS.BODY_SPECIFIC_HEAT_J_PER_KG_K;
-  // Body actively maintains homeostatic setpoint 310.15 K when difference is small
+  // Body actively maintains homeostatic setpoint (nominal or pyrogenic fever) when difference is small
   const deltaTempK = (netHeatWatts * options.dtSeconds) / totalHeatCapacity;
   const homeostaticDamping = 0.02;
-  player.coreTempK = Math.max(300.0, Math.min(316.0, player.coreTempK + deltaTempK * homeostaticDamping));
+  const pyrogenicFeverShift = player.conditions.fever ? 0.001 * options.dtSeconds : 0;
+  player.coreTempK = Math.max(300.0, Math.min(316.0, player.coreTempK + deltaTempK * homeostaticDamping + pyrogenicFeverShift));
 
   // 7. Hydration loss: 0.05% per hour base + sweating under high work or heat
   const sweatFactor = deltaT < 0 ? 2.5 : 1.0;
@@ -189,5 +207,44 @@ export function consumeFood(
     absorbedKcal: effectiveKcal,
     bonusKcal,
     pathogenRiskEliminated: hasCleanUtensil,
+  };
+}
+
+/**
+ * Apply Salicylic Acid febrifuge tincture:
+ * Reduces fever and hyperthermia by -1.8 °C (-1.8 K).
+ * Resolves fever condition.
+ */
+export function applySalicylicAcid(player: PlayerMetabolismState): { tempDropC: number; feverCured: boolean } {
+  const tempDropC = 1.8;
+  player.coreTempK = Math.max(METABOLIC_CONSTANTS.NOMINAL_CORE_TEMP_K, player.coreTempK - tempDropC);
+  player.conditions.fever = false;
+  return {
+    tempDropC,
+    feverCured: true,
+  };
+}
+
+/**
+ * Apply Penicillin dose:
+ * Cures systemic bacterial infection and halts pathological metabolic drain.
+ */
+export function applyPenicillin(player: PlayerMetabolismState): { infectionCured: boolean } {
+  const wasInfected = player.conditions.systemicInfection;
+  player.conditions.systemicInfection = false;
+  return {
+    infectionCured: wasInfected,
+  };
+}
+
+/**
+ * Apply Ethanol disinfectant:
+ * Eliminates wound contamination and prevents systemic infection.
+ */
+export function applyEthanolDisinfectant(player: PlayerMetabolismState): { contaminationCleared: boolean } {
+  const wasContaminated = player.conditions.woundContamination;
+  player.conditions.woundContamination = false;
+  return {
+    contaminationCleared: wasContaminated,
   };
 }

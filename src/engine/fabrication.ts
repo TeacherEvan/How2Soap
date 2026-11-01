@@ -259,7 +259,141 @@ export const FABRICATION_RECIPES: ReadonlyArray<FabricationRecipe> = [
     workTicks: 4,
     description: 'Cast heavy bronze celt/axe head and mount onto wood haft for high mechanical advantage chopping.',
   },
+  {
+    id: 'FERMENT_GRAIN_MASH',
+    name: 'Ferment Grain Mash',
+    inputs: [
+      { itemId: 'GRAIN_MASH', count: 1, label: 'Maple Sap / Cooked Grain' },
+      { itemId: 'WATER_VESSEL', count: 1, label: 'Water' },
+    ],
+    outputs: [
+      { itemId: 'ETHANOL_BROTH', count: 1, label: 'Ethanol Broth' },
+    ],
+    energyCostKcal: 20.0,
+    workTicks: 24,
+    description: 'Ferment maple sap / cooked grain into Ethanol broth.',
+  },
+  {
+    id: 'EXTRACT_SALICYLIC_ACID',
+    name: 'Extract Salicylic Acid',
+    inputs: [
+      { itemId: 'WILLOW_BARK', count: 2, label: 'Willow Bark (Salicin)' },
+      { itemId: 'WATER_VESSEL', count: 1, label: 'Dilute Acid Solution' },
+    ],
+    outputs: [
+      { itemId: 'SALICYLIC_ACID_TINCTURE', count: 1, label: 'Salicylic Acid Tincture' },
+    ],
+    requiredToolSlot: 'CUTTING_SKINNING',
+    energyCostKcal: 35.0,
+    workTicks: 4,
+    description: 'Acid hydrolysis of willow bark into Salicylic Acid tincture.',
+  },
+  {
+    id: 'CULTIVATE_PENICILLIN',
+    name: 'Cultivate Penicillin',
+    inputs: [
+      { itemId: 'PENICILLIUM_MOLD_CULTURE', count: 1, label: 'Penicillium Culture' },
+      { itemId: 'GRAIN_MASH', count: 1, label: 'Submerged Grain Substrate' },
+      { itemId: 'WATER_VESSEL', count: 1, label: 'Buffered Medium (pH 6.8)' },
+    ],
+    outputs: [
+      { itemId: 'PENICILLIN_BROTH', count: 1, label: 'Penicillin Broth' },
+    ],
+    energyCostKcal: 40.0,
+    workTicks: 48,
+    description: 'Submerged grain fermentation of Penicillium culture into Penicillin broth (pH 6.8 extraction).',
+  },
+  {
+    id: 'DISTILL_ANTISEPTIC_ETHANOL',
+    name: 'Distill Antiseptic Ethanol',
+    inputs: [
+      { itemId: 'ETHANOL_BROTH', count: 2, label: 'Ethanol Broth' },
+    ],
+    outputs: [
+      { itemId: 'ETHANOL_DISINFECTANT', count: 1, label: '95% Pure Ethanol' },
+    ],
+    requiredToolSlot: 'THERMAL_HANDLING',
+    energyCostKcal: 60.0,
+    workTicks: 3,
+    description: 'Fractional distillation of ethanol broth (condenser boiling point 351.5 K) -> 95% Pure Ethanol.',
+  },
+  {
+    id: 'CRAFT_SALICYLIC_ACID_TINCTURE',
+    name: 'Craft Salicylic Acid Tincture',
+    inputs: [
+      { itemId: 'SALICYLIC_ACID', count: 1, label: 'Salicylic Acid' },
+      { itemId: 'ETHANOL_DISINFECTANT', count: 1, label: 'Ethanol Disinfectant' },
+    ],
+    outputs: [
+      { itemId: 'SALICYLIC_ACID_TINCTURE', count: 1, label: 'Salicylic Acid Tincture' },
+    ],
+    requiredToolSlot: 'STITCHING_MEDICAL',
+    energyCostKcal: 15.0,
+    workTicks: 1,
+    description: 'Craft medical consumable: Salicylic Acid Tincture antipyretic febrifuge.',
+  },
+  {
+    id: 'CRAFT_PENICILLIN_DOSE',
+    name: 'Craft Penicillin Dose',
+    inputs: [
+      { itemId: 'PENICILLIN_BROTH', count: 1, label: 'Penicillin Broth' },
+      { itemId: 'ETHANOL_DISINFECTANT', count: 1, label: 'Ethanol Disinfectant' },
+    ],
+    outputs: [
+      { itemId: 'PENICILLIN_DOSE', count: 1, label: 'Penicillin Dose' },
+    ],
+    requiredToolSlot: 'STITCHING_MEDICAL',
+    energyCostKcal: 30.0,
+    workTicks: 2,
+    description: 'Craft medical consumable: Penicillin Dose sepsis antibiotic cure.',
+  },
+  {
+    id: 'CRAFT_ETHANOL_DISINFECTANT',
+    name: 'Craft Ethanol Disinfectant',
+    inputs: [
+      { itemId: 'ETHANOL_BROTH', count: 1, label: 'Distilled Ethanol Broth' },
+    ],
+    outputs: [
+      { itemId: 'ETHANOL_DISINFECTANT', count: 1, label: 'Ethanol Disinfectant' },
+    ],
+    requiredToolSlot: 'THERMAL_HANDLING',
+    energyCostKcal: 20.0,
+    workTicks: 1,
+    description: 'Craft medical consumable: Ethanol Disinfectant topical antiseptic.',
+  },
 ];
+
+export interface MedicalConsumableItem {
+  readonly id: string;
+  readonly name: string;
+  readonly category: 'ANTIPYRETIC' | 'ANTIBIOTIC' | 'ANTISEPTIC';
+  readonly description: string;
+  readonly massKg: number;
+}
+
+export const MEDICAL_CONSUMABLES: Record<'SALICYLIC_ACID_TINCTURE' | 'PENICILLIN_DOSE' | 'ETHANOL_DISINFECTANT', MedicalConsumableItem> = {
+  SALICYLIC_ACID_TINCTURE: {
+    id: 'SALICYLIC_ACID_TINCTURE',
+    name: 'Salicylic Acid Tincture',
+    category: 'ANTIPYRETIC',
+    description: 'Antipyretic febrifuge. Reduces fever / hyperthermia by -1.8 °C.',
+    massKg: 0.1,
+  },
+  PENICILLIN_DOSE: {
+    id: 'PENICILLIN_DOSE',
+    name: 'Penicillin Dose',
+    category: 'ANTIBIOTIC',
+    description: 'Sepsis antibiotic cure. Cures systemic bacterial infection.',
+    massKg: 0.05,
+  },
+  ETHANOL_DISINFECTANT: {
+    id: 'ETHANOL_DISINFECTANT',
+    name: 'Ethanol Disinfectant',
+    category: 'ANTISEPTIC',
+    description: 'Topical antiseptic. Eliminates wound contamination.',
+    massKg: 0.25,
+  },
+};
 
 export const INITIAL_PRIMITIVE_TOOLS: Record<ToolSlotKey, ToolItem | null> = {
   CUTTING_SKINNING: null,

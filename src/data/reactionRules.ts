@@ -141,6 +141,35 @@ export const REACTIONS: ReadonlyArray<ReactionRule> = [
     enthalpyJPerMol: -10000,
     minTempK: 1250,
   },
+  {
+    id: 'ethanol_fermentation',
+    label: 'C6H12O6 -> 2 C2H5OH + 2 CO2',
+    reactants: [{ speciesIdx: SPECIES.GLUCOSE, stoich: 1 }],
+    products: [
+      { speciesIdx: SPECIES.ETHANOL, stoich: 2 },
+      { speciesIdx: SPECIES.CO2, stoich: 2 },
+    ],
+    activationEnergyJ: 60000,
+    preExponentialA: 5.0e6,
+    enthalpyJPerMol: -70000,
+    minTempK: 290,
+  },
+  {
+    id: 'salicin_hydrolysis_oxidation',
+    label: 'C13H18O7 + O2 -> C7H6O3 + C6H12O6',
+    reactants: [
+      { speciesIdx: SPECIES.SALICIN, stoich: 1 },
+      { speciesIdx: SPECIES.O2, stoich: 1 },
+    ],
+    products: [
+      { speciesIdx: SPECIES.SALICYLIC_ACID, stoich: 1 },
+      { speciesIdx: SPECIES.GLUCOSE, stoich: 1 },
+    ],
+    activationEnergyJ: 45000,
+    preExponentialA: 1.0e6,
+    enthalpyJPerMol: -15000,
+    minTempK: 320,
+  },
 ];
 
 export const ELECTROLYSIS_RULES: ReadonlyArray<ElectrolysisRule> = [
