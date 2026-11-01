@@ -1,0 +1,128 @@
+# How2Soap — Emergent Chemistry & Survival Engine
+
+[![CI](https://github.com/TeacherEvan/How2Soap/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/TeacherEvan/How2Soap)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![TypeScript: 5.4+](https://img.shields.io/badge/TypeScript-5.4+-blue.svg)](https://www.typescriptlang.org/)
+[![Vitest: 100% Pass](https://img.shields.io/badge/Vitest-53%2F53%20Passed-brightgreen.svg)](https://vitest.dev/)
+[![Bundle: 77.8 KB](https://img.shields.io/badge/Bundle-77.8%20KB%20%2F%20200%20KB-success.svg)](https://webpack.js.org/)
+
+An emergent thermodynamics, physical chemistry, and primitive survival simulation engine built with zero external runtime dependencies. Features zero-copy Web Worker multithreading using atomic `SeqLock` shared memory, Arrhenius kinetics, calorimetry, latent heat phase transitions, electroneutrality pH calculations, Faraday electrolysis, and a full 5-tier technological progression from primitive fire to molten salt electrolysis.
+
+---
+
+## 🔬 Core Physical & Chemical Simulations
+
+1. **Zero-Copy Concurrency & Atomic SeqLock**:
+   - Flat 67,648-byte `SharedArrayBuffer` memory layout.
+   - Atomic Sequence Lock (`syncFlags[0]`) prevents torn reads between the 10 Hz deterministic Web Worker and the 60 FPS UI thread.
+   - Vercel COOP/COEP isolation headers (`same-origin`, `require-corp`).
+
+2. **Thermodynamics & Phase Transition**:
+   - Calorimetry solver: $\Delta T = \Delta Q / C_p$.
+   - Phase-clamping boiling solver: prevents liquid overheating beyond boiling point ($T_{b,i}$) and transfers latent enthalpy into vapor moles $\Delta n_{\text{vap},i} = \Delta Q_{\text{excess}} / \Delta H_{\text{vap},i}$.
+   - Condenser mechanics for fractional distillation (Ethanol, Water).
+
+3. **Dynamic Electroneutrality pH Solver**:
+   - Calculates strong ion difference $[\text{SID}] = \sum z_i [\text{Base}_i^+] - \sum z_j [\text{Acid}_j^-]$.
+   - Solves $[\text{H}^+]$ against water auto-ionization $K_w = 1.0 \times 10^{-14}$ at $298.15\text{ K}$:
+     $$[\text{H}^+] = \frac{[\text{SID}] + \sqrt{[\text{SID}]^2 + 4 K_w}}{2}, \quad \text{pH} = -\log_{10}\left([\text{H}^+]\right)$$
+
+4. **Faraday Electrolysis Solver**:
+   - Models aqueous brine splitting and high-temperature molten salt decomposition ($\text{KOH}$ and $\text{NaOH}$).
+   - Decomposition threshold potentials and temperature gates.
+
+---
+
+## 🛠️ Complete 5-Tier Tech Progression
+
+- **Tier 1: Survival & Mechanical Fabrication**
+  - Two-compartment human metabolic model (Blood Glucose 0–2000 kcal, Adipose Reserves 15,000 kcal, BMR 70 kcal/h).
+  - Environmental heat loss via clothing insulation ($I_{\text{clo}}$) and core body temperature tracking ($37.0^\circ\text{C}$).
+  - Conchoidal flint knapping, softwood log carving (5L Bucket & 10L Trough), hide dehairing in alkaline ash water ($\text{pH } 11.2$), vegetable oak tannin cross-linking ($48\text{ ticks}$), and sinew awl stitching into the **24-slot Leather Backpack** (40 kg capacity).
+- **Tier 2: Potash & Hard Bar Soap**
+  - Wood drying via Fickian diffusion $\rightarrow$ High-temperature combustion ($1050\text{ K}$) $\rightarrow$ Hardwood Ash ($\text{K}_2\text{CO}_3 + \text{CaO}$).
+  - Causticization: $\text{CaO} + \text{H}_2\text{O} \rightarrow \text{Ca(OH)}_2$; $\text{K}_2\text{CO}_3 + \text{Ca(OH)}_2 \rightarrow 2\text{KOH} + \text{CaCO}_3\downarrow$.
+  - Decanting clear lye ($\text{pH} = 13.71$).
+  - Arrhenius alkaline ester saponification with Tristearin fat at $345\text{ K}$:
+    $$\text{C}_{57}\text{H}_{110}\text{O}_6 + 3\text{KOH} \longrightarrow 3\text{C}_{18}\text{H}_{35}\text{KO}_2 + \text{C}_3\text{H}_8\text{O}_3\text{ (Glycerol)}$$
+  - Halite ($\text{NaCl}$) common-ion salting-out $\rightarrow$ **Sodium Stearate bar soap** ($154.4\text{ g}$).
+- **Tier 3: High-Temperature Metallurgy**
+  - Malachite ($\text{Cu}_2\text{CO}_3(\text{OH})_2$) and Cassiterite ($\text{SnO}_2$) carbothermic charcoal reduction at $1360\text{ K}$.
+  - Alloying kinetics in carved soapstone molds ($88\text{ wt\% }\text{Cu} : 12\text{ wt\% }\text{Sn}$).
+  - Casting the **Bronze Fork** (`EATING_UTENSIL` slot: $+15\%$ net caloric digestion efficiency, eliminates pathogen risk), Bronze Spear, and Bronze Axe.
+- **Tier 4: Pharmaceuticals & Medicine**
+  - Yeast fermentation of grain mash and fractional distillation at $351.5\text{ K}$ into $95\%$ antiseptic ethanol.
+  - Acid hydrolysis and oxidation of White Willow bark Salicin $\rightarrow$ **Salicylic Acid** (febrifuge, $-1.8^\circ\text{C}$ fever reduction).
+  - Submerged cultivation of *Penicillium chrysogenum* mold culture $\rightarrow$ **Penicillin** (cures lethal sepsis).
+- **Tier 5: Voltaic Pile & Pure Elemental Isolation**
+  - Sphalerite ($\text{ZnS}$) roasting $\rightarrow \text{ZnO} + \text{SO}_2$ ($1100\text{ K}$).
+  - Niter bed Saltpeter ($\text{KNO}_3$) lead chamber oxidation $\rightarrow \text{H}_2\text{SO}_4$ ($2.5\text{ M}$).
+  - 12-pair $\text{Cu}/\text{Zn}$ discs with acid-soaked leather $\rightarrow$ **Voltaic Pile Battery** ($13.2\text{ V DC}$, $1.10\text{ V/cell}$).
+  - High-temperature molten salt electrolysis isolating **pure metallic Potassium ($\text{K}^0$)** and **Sodium ($\text{Na}^0$)**.
+
+---
+
+## 📦 Project Structure
+
+```
+chemistry-survival/
+├── docs/plans/             # Master specification & architectural designs
+├── public/                 # HTML5 template & static assets
+├── src/
+│   ├── data/
+│   │   ├── speciesRegistry.ts  # 38 registered chemical species & thermodynamic properties
+│   │   ├── reactionRules.ts    # Arrhenius kinetics, precipitation, and electrolysis rules
+│   │   └── biomeNodes.ts       # 3-level hierarchical Biome DAG (Trees, Rocks, Fungi, Animals)
+│   ├── engine/
+│   │   ├── memoryLayout.ts     # Flat 67,648-byte SharedArrayBuffer view & Atomic SeqLock
+│   │   ├── chemistry.ts        # Calorimetry, phase changes, pH, and Faraday solver
+│   │   ├── metabolism.ts       # Dual-compartment bio-energetics & clinical treatments
+│   │   ├── fabrication.ts      # Mohs scaling, mechanical recipes & tool system
+│   │   ├── husbandry.ts        # Live animal paddocks & renewable yields
+│   │   ├── persistence.ts      # IndexedDB storage with Gzip Base64 compression
+│   │   └── sim.worker.ts       # 10 Hz deterministic Web Worker simulation loop
+│   ├── ui/
+│   │   ├── BiomeTreePanel.ts       # Collapsible DAG explorer
+│   │   ├── WorkbenchCanvas.ts      # Multi-tab reaction, fabrication & paddock workbench
+│   │   ├── ToolAndInventoryPanel.ts# 6-slot Tool Menu & dynamic inventory containers
+│   │   └── MenuController.ts       # WCAG 2.1 AAA settings & 256-species compendium modal
+│   ├── main.ts             # 60 FPS render pipeline, COOP/COEP isolation detection
+│   └── styles.css          # Responsive dark-theme 4-panel viewport styling
+├── tests/                  # 11 Vitest test suites (53 tests passing 100%)
+├── vercel.json             # Vercel deployment COOP/COEP isolation headers
+└── webpack.config.js       # Webpack 5 production build with strict chunk budgets
+```
+
+---
+
+## 🚀 Getting Started
+
+### Prerequisites
+- Node.js 20 LTS+
+- npm 10+
+
+### Installation & Development
+```bash
+git clone https://github.com/TeacherEvan/How2Soap.git
+cd How2Soap
+npm install
+npm start
+```
+Dev server will start at `http://localhost:8080/` with Cross-Origin Isolation headers enabled.
+
+### Testing & Verification
+```bash
+# Run Vitest test suite (53 tests)
+npm test
+
+# Run TypeScript strict typecheck
+npx tsc --noEmit
+
+# Production Webpack build
+npm run build
+```
+
+---
+
+## 📄 License
+MIT License. Free to use, adapt, and build upon.
