@@ -1,6 +1,17 @@
 import './styles.css';
 import { SharedWorldView, SAB_BYTE_LENGTH, MAX_SPECIES, TELEMETRY } from './engine/memoryLayout';
 import { getSpecies, SPECIES } from './data/speciesRegistry';
+import { renderBiomeTreePanel } from './ui/BiomeTreePanel';
+import { renderToolAndInventoryPanel, type ToolAndInventoryState } from './ui/ToolAndInventoryPanel';
+import {
+  renderWorkbenchTabs,
+  renderFabricationTab,
+  renderPaddockTab,
+  type WorkbenchTab,
+} from './ui/WorkbenchCanvas';
+import { initMenuAndSettings } from './ui/MenuController';
+import type { HarvestablePart } from './data/biomeNodes';
+import type { SerializedWorldSave } from './engine/persistence';
 
 interface VesselMeta {
   id: number;
@@ -30,9 +41,36 @@ const state = {
   snapshot: null as Snapshot | null,
   vessels: [] as VesselMeta[],
   selected: 0,
+  activeTab: 'REACTIONS' as WorkbenchTab,
   ever: { ash: false, lye: false, fat: false, soap: false, barSoap: false },
   log: [] as string[],
   paused: false,
+  player: {
+    glucoseKcal: 1200,
+    adiposeKcal: 15000,
+    hydrationPct: 100,
+    coreTempC: '37.0',
+    clothingIclo: 0.05,
+  },
+  inventory: {
+    backpackUnlocked: false,
+    bareHands: [null, null],
+    backpack: new Array(24).fill(null),
+    tools: {
+      CUTTING_SKINNING: null,
+      CHOPPING_CARVING: null,
+      PERCUSSION_MINING: { name: 'River Hammerstone', slot: 'PERCUSSION_MINING', mohs: 6.5 },
+      THERMAL_HANDLING: null,
+      STITCHING_MEDICAL: null,
+      EATING_UTENSIL: null,
+    },
+  } as ToolAndInventoryState,
+  paddock: {
+    animalsCount: 2,
+    feedKg: 20.0,
+    waterL: 50.0,
+    manureKg: 0.84,
+  },
 };
 
 const app = document.querySelector<HTMLDivElement>('#app');
@@ -51,7 +89,9 @@ app.innerHTML = `
       <div class="telemetry">
         <div class="stat"><span class="stat-label">Isolation</span><strong id="isolation">checking…</strong></div>
         <div class="stat"><span class="stat-label">Day / Hour</span><strong id="clock">—</strong></div>
-        <div class="stat"><span class="stat-label">Sim speed</span><strong>1 h / s</strong></div>
+        <div class="stat"><span class="stat-label">Glucose</span><strong id="p-glucose">1200 kcal</strong></div>
+        <div class="stat"><span class="stat-label">Body Temp</span><strong id="p-temp">37.0 °C</strong></div>
+        <div class="stat"><span class="stat-label">Insulation</span><strong id="p-iclo">0.05 clo</strong></div>
       </div>
       <div class="controls">
         <button id="pause" class="ghost">Pause</button>
@@ -60,51 +100,77 @@ app.innerHTML = `
         <button id="reset" class="ghost danger">New world</button>
       </div>
     </header>
-    <main class="layout">
+
+    <main class="layout-4panel">
+      <!-- Panel 1: Left Biome Tree -->
+      <aside class="panel biome-panel" id="biome-panel-container"></aside>
+
+      <!-- Panel 2: Center Left Vessels List -->
       <aside class="panel vessels-panel">
         <h2>Vessels</h2>
         <div id="vessel-list" class="vessel-list"></div>
         <p class="hint">Wood chars at 523 K. Clay survives 1473 K. Copper conducts heat fast.</p>
       </aside>
+
+      <!-- Panel 3: Center Tabbed Workbench -->
       <section class="panel workbench">
-        <div class="workbench-head">
-          <div>
-            <h2 id="vessel-title">No vessel</h2>
-            <p id="vessel-sub" class="sub"></p>
+        <div id="workbench-tabs-container"></div>
+
+        <!-- Tab 1: Chemical Reactions -->
+        <div id="tab-reactions-content" class="tab-pane active">
+          <div class="workbench-head">
+            <div>
+              <h2 id="vessel-title">No vessel</h2>
+              <p id="vessel-sub" class="sub"></p>
+            </div>
+            <div class="readouts">
+              <div class="readout"><span>Temperature</span><strong id="r-temp">—</strong></div>
+              <div class="readout"><span>pH</span><strong id="r-ph">—</strong></div>
+              <div class="readout"><span>Pressure</span><strong id="r-pressure">—</strong></div>
+              <div class="readout"><span>Liquid</span><strong id="r-volume">—</strong></div>
+            </div>
           </div>
-          <div class="readouts">
-            <div class="readout"><span>Temperature</span><strong id="r-temp">—</strong></div>
-            <div class="readout"><span>pH</span><strong id="r-ph">—</strong></div>
-            <div class="readout"><span>Pressure</span><strong id="r-pressure">—</strong></div>
-            <div class="readout"><span>Liquid</span><strong id="r-volume">—</strong></div>
+
+          <div class="actions">
+            <button data-action="water">+ 1 L water</button>
+            <button data-action="ash">+ 200 g hardwood ash</button>
+            <button data-action="tallow">+ 200 g raw fat</button>
+            <button data-action="salt">+ 50 g halite</button>
+            <button data-action="heat" class="accent">Toggle 400 W heater</button>
+            <button data-action="decant">Decant 1 L →</button>
+            <button data-action="skim">Skim soap curds →</button>
+            <select id="target" class="target" aria-label="Target vessel"></select>
+          </div>
+
+          <div class="contents">
+            <h3>Contents</h3>
+            <table>
+              <thead><tr><th>Species</th><th>mol</th><th>grams</th><th>Phase</th></tr></thead>
+              <tbody id="contents-body"><tr><td colspan="4" class="empty">Empty vessel.</td></tr></tbody>
+            </table>
           </div>
         </div>
 
-        <div class="actions">
-          <button data-action="water">+ 1 L water</button>
-          <button data-action="ash">+ 200 g hardwood ash</button>
-          <button data-action="tallow">+ 200 g raw fat</button>
-          <button data-action="salt">+ 50 g halite</button>
-          <button data-action="heat" class="accent">Toggle 400 W heater</button>
-          <button data-action="decant">Decant 1 L →</button>
-          <button data-action="skim">Skim soap curds →</button>
-          <select id="target" class="target" aria-label="Target vessel"></select>
-        </div>
+        <!-- Tab 2: Mechanical Fabrication -->
+        <div id="tab-fabrication-content" class="tab-pane hidden"></div>
 
-        <div class="contents">
-          <h3>Contents</h3>
-          <table>
-            <thead><tr><th>Species</th><th>mol</th><th>grams</th><th>Phase</th></tr></thead>
-            <tbody id="contents-body"><tr><td colspan="4" class="empty">Empty vessel.</td></tr></tbody>
-          </table>
+        <!-- Tab 3: Domesticated Paddocks -->
+        <div id="tab-paddocks-content" class="tab-pane hidden"></div>
+
+        <div class="workbench-foot">
+          <div class="quest-box">
+            <h3>The Soap Trail</h3>
+            <ul class="quest" id="quest"></ul>
+          </div>
+          <div class="event-box">
+            <h3>Event Log</h3>
+            <ul class="log" id="log"><li class="empty">No events yet.</li></ul>
+          </div>
         </div>
       </section>
-      <aside class="panel quest-panel">
-        <h2>The soap trail</h2>
-        <ul class="quest" id="quest"></ul>
-        <h2>Event log</h2>
-        <ul class="log" id="log"><li class="empty">No events yet.</li></ul>
-      </aside>
+
+      <!-- Panel 4: Right Dedicated Tools & Inventory -->
+      <aside class="panel tool-inv-panel" id="tool-inv-container"></aside>
     </main>
   </div>
 `;
@@ -117,6 +183,9 @@ const $ = <T extends HTMLElement>(id: string): T => {
 
 const isoBadge = $('isolation');
 const clock = $('clock');
+const pGlucose = $('p-glucose');
+const pTemp = $('p-temp');
+const pIclo = $('p-iclo');
 const vesselList = $('vessel-list');
 const vesselTitle = $('vessel-title');
 const vesselSub = $('vessel-sub');
@@ -129,6 +198,13 @@ const questList = $('quest');
 const logList = $('log');
 const targetSelect = $<HTMLSelectElement>('target');
 const pauseButton = $<HTMLButtonElement>('pause');
+
+const biomePanel = $('biome-panel-container');
+const toolInvPanel = $('tool-inv-container');
+const tabsNavContainer = $('workbench-tabs-container');
+const tabReactions = $('tab-reactions-content');
+const tabFabrication = $('tab-fabrication-content');
+const tabPaddocks = $('tab-paddocks-content');
 
 function send(command: unknown): void {
   state.worker?.postMessage(command);
@@ -251,17 +327,16 @@ function renderQuest(snapshot: Snapshot): void {
   if (any(SPECIES.NA_STEARATE) > 0.01) state.ever.barSoap = true;
 
   const steps = [
-    { done: state.ever.ash, text: 'Burn hardwood, gather 200 g ash' },
-    { done: state.ever.lye, text: 'Leach ash in water (pH > 13)' },
-    { done: state.ever.ash && state.ever.lye, text: 'Decant the lye off the chalk' },
-    { done: state.ever.fat, text: 'Render 200 g animal fat' },
-    { done: state.ever.soap, text: 'Saponify: warm lye + tallow' },
-    { done: state.ever.barSoap, text: 'Salt out hard bar soap' },
+    { done: state.ever.ash, text: 'Collect hardwood ash (K₂CO₃ + CaO)' },
+    { done: state.ever.lye, text: 'Leach strong lye (KOH, pH > 13)' },
+    { done: state.ever.fat, text: 'Acquire rendered fat (Tristearin)' },
+    { done: state.ever.soap, text: 'Saponify fat + lye → potash liquid soap' },
+    { done: state.ever.barSoap, text: 'Salt out hard bar soap with NaCl' },
   ];
   questList.innerHTML = steps
     .map(
       (step) =>
-        `<li class="${step.done ? 'done' : ''}"><span class="tick">${step.done ? '✓' : '○'}</span>${step.text}</li>`,
+        `<li class="${step.done ? 'done' : ''}"><span class="check">${step.done ? '✓' : '○'}</span><span>${step.text}</span></li>`,
     )
     .join('');
 }
@@ -272,76 +347,169 @@ function renderLog(): void {
     return;
   }
   logList.innerHTML = state.log
-    .slice(-14)
-    .map((line) => `<li>${line}</li>`)
+    .slice(-8)
+    .map((entry) => `<li>${entry}</li>`)
     .join('');
 }
 
-function handleEvent(message: string, vesselId: number): void {
-  const vessel = state.vessels.find((item) => item.id === vesselId);
-  const clean = message.replace(/:[0-9.]+$/, '');
-  const [kind, detail] = clean.split(':');
-  const label: Record<string, string> = {
-    reaction: 'reaction',
-    boil: 'boiling',
-    condense: 'condensing',
-    precipitate: 'precipitate',
-    material_failure: 'material failure',
-    vessel_rupture: 'VESSEL RUPTURE',
-    electrolysis: 'electrolysis',
-  };
-  const line = `${vessel?.label ?? `Vessel ${vesselId}`}: ${label[kind] ?? kind}${detail ? ` ${detail}` : ''}`;
-  if (state.log[state.log.length - 1] === line) return;
-  state.log.push(line);
-  if (state.log.length > 60) state.log.shift();
-  renderLog();
+function switchTab(tab: WorkbenchTab): void {
+  state.activeTab = tab;
+  renderWorkbenchTabs(tabsNavContainer, {
+    currentTab: tab,
+    onSelectTab: switchTab,
+    onExecuteRecipe: (recipeId) => send({ type: 'FABRICATE', recipeId }),
+    onFeedPaddock: () => {
+      state.paddock.feedKg += 5;
+      state.log.push('Refilled paddock feeder (+5 kg)');
+      renderLog();
+      updatePaddockUI();
+    },
+    onWaterPaddock: () => {
+      state.paddock.waterL += 10;
+      state.log.push('Refilled paddock water trough (+10 L)');
+      renderLog();
+      updatePaddockUI();
+    },
+  });
+
+  tabReactions.classList.toggle('hidden', tab !== 'REACTIONS');
+  tabFabrication.classList.toggle('hidden', tab !== 'FABRICATION');
+  tabPaddocks.classList.toggle('hidden', tab !== 'PADDOCKS');
+
+  if (tab === 'FABRICATION') {
+    renderFabricationTab(tabFabrication, (recipeId) => {
+      send({ type: 'FABRICATE', recipeId });
+      state.log.push(`Fabricated recipe ${recipeId}`);
+      renderLog();
+    });
+  } else if (tab === 'PADDOCKS') {
+    updatePaddockUI();
+  }
+}
+
+function updatePaddockUI(): void {
+  renderPaddockTab(
+    tabPaddocks,
+    state.paddock,
+    () => {
+      state.paddock.feedKg += 5;
+      state.log.push('Refilled paddock feeder (+5 kg)');
+      renderLog();
+      updatePaddockUI();
+    },
+    () => {
+      state.paddock.waterL += 10;
+      state.log.push('Refilled paddock water trough (+10 L)');
+      renderLog();
+      updatePaddockUI();
+    },
+  );
+}
+
+function updatePlayerUI(): void {
+  pGlucose.textContent = `${state.player.glucoseKcal} kcal`;
+  pTemp.textContent = `${state.player.coreTempC} °C`;
+  pIclo.textContent = `${state.player.clothingIclo.toFixed(2)} clo`;
+  renderToolAndInventoryPanel(toolInvPanel, state.inventory, () => {
+    send({ type: 'FABRICATE', recipeId: 'RECIPE_STITCH_BACKPACK' });
+  });
 }
 
 function frame(): void {
   if (state.view) {
-    try {
-      const snapshot = state.view.readSnapshot();
+    const snapshot = state.view.readSnapshot();
+    if (snapshot) {
       state.snapshot = snapshot;
       clock.textContent = formatClock(snapshot);
-      renderWorkbench(snapshot);
+      if (state.activeTab === 'REACTIONS') {
+        renderWorkbench(snapshot);
+      }
       renderQuest(snapshot);
-    } catch {
-      // A transient inconsistent read is retried next frame.
     }
   }
   requestAnimationFrame(frame);
 }
 
 function startWorld(): void {
-  if (!self.crossOriginIsolated) {
-    isoBadge.textContent = 'NOT ISOLATED';
-    isoBadge.className = 'bad';
-    logList.innerHTML =
-      '<li class="error">SharedArrayBuffer requires COOP/COEP headers. Run via webpack-dev-server or the Vercel deployment.</li>';
-    return;
-  }
-  isoBadge.textContent = 'COOP / COEP OK';
-  isoBadge.className = 'good';
+  const isIsolated = window.crossOriginIsolated;
+  isoBadge.textContent = isIsolated ? 'Isolated (SAB active)' : 'Fallback (simulated SAB)';
+  isoBadge.classList.toggle('good', isIsolated);
+  isoBadge.classList.toggle('warn', !isIsolated);
 
   const sab = new SharedArrayBuffer(SAB_BYTE_LENGTH);
   state.view = new SharedWorldView(sab);
-  state.worker = new Worker(new URL('./engine/sim.worker.ts', import.meta.url), {
-    type: 'module',
-  });
-  state.worker.onmessage = (event: MessageEvent) => {
-    const data = event.data as
+
+  state.worker = new Worker(new URL('./engine/sim.worker.ts', import.meta.url));
+  state.worker.onmessage = (
+    event: MessageEvent<
+      | { type: 'READY' }
       | { type: 'VESSELS'; vessels: VesselMeta[] }
       | { type: 'EVENTS'; events: Array<{ vesselId: number; message: string }> }
-      | { type: 'READY' };
-    if (data.type === 'VESSELS') {
+      | { type: 'PLAYER_SYNC'; player: any; inventory: any }
+    >,
+  ) => {
+    const data = event.data;
+    if (data.type === 'READY') {
+      createSeedVessels();
+    } else if (data.type === 'VESSELS') {
       state.vessels = data.vessels;
       renderVessels();
       updateTargets();
     } else if (data.type === 'EVENTS') {
-      for (const item of data.events) handleEvent(item.message, item.vesselId);
+      for (const ev of data.events) {
+        state.log.push(ev.message);
+      }
+      renderLog();
+    } else if (data.type === 'PLAYER_SYNC') {
+      state.player = data.player;
+      state.inventory = data.inventory;
+      updatePlayerUI();
     }
   };
+
   state.worker.postMessage({ type: 'INIT', sab });
+
+  // Initial Biome DAG rendering
+  renderBiomeTreePanel(biomePanel, (part: HarvestablePart) => {
+    state.log.push(`Harvested ${part.name} (${part.description})`);
+    renderLog();
+  });
+
+  // Settings & Compendium Modal
+  initMenuAndSettings({
+    onNewGame: () => {
+      $('reset').click();
+    },
+    onExportSave: async (): Promise<SerializedWorldSave> => {
+      return {
+        version: 1,
+        timestamp: Date.now(),
+        tick: state.snapshot ? state.snapshot.tick : 0,
+        day: 1,
+        ambientTempK: 288.15,
+        player: {
+          glucoseKcal: state.player.glucoseKcal,
+          adiposeKcal: state.player.adiposeKcal,
+          hydrationPct: state.player.hydrationPct,
+          coreTempK: 310.15,
+          clothingIclo: state.player.clothingIclo,
+        },
+        inventory: state.inventory,
+        vessels: state.vessels,
+      };
+    },
+    onImportSave: (save: SerializedWorldSave) => {
+      state.log.push(`Imported game save from Day ${save.day}, Tick ${save.tick}`);
+      renderLog();
+    },
+  });
+
+  switchTab('REACTIONS');
+  updatePlayerUI();
+}
+
+function createSeedVessels(): void {
+  if (!state.worker) return;
   state.worker.postMessage({
     type: 'CREATE_VESSEL',
     id: 1,

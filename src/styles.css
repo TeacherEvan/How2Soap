@@ -416,3 +416,559 @@ td {
     gap: 1rem;
   }
 }
+/* Appended 4-Panel Layout & UI Component Styles */
+
+.layout-4panel {
+  display: grid;
+  grid-template-columns: 310px 210px minmax(0, 1fr) 340px;
+  gap: 1rem;
+  padding: 1rem 1.4rem;
+  height: calc(100vh - 56px);
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.biome-panel {
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.badge {
+  font-size: 0.68rem;
+  padding: 0.2rem 0.4rem;
+  border-radius: 4px;
+  background: var(--surface-light, #232d38);
+  color: var(--muted);
+}
+
+.panel-hint {
+  font-size: 0.72rem;
+  color: var(--muted);
+  margin-bottom: 0.8rem;
+}
+
+.category-block {
+  margin-bottom: 1rem;
+  background: rgba(18, 24, 30, 0.6);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 0.6rem;
+}
+
+.category-title {
+  font-size: 0.82rem;
+  font-weight: 600;
+  margin-bottom: 0.4rem;
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.species-item {
+  margin-top: 0.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  padding-top: 0.4rem;
+}
+
+.species-name {
+  font-size: 0.76rem;
+  font-weight: 500;
+  margin-bottom: 0.3rem;
+}
+
+.parts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.part-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(30, 39, 48, 0.4);
+  padding: 0.4rem;
+  border-radius: 4px;
+}
+
+.part-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.part-name {
+  font-size: 0.72rem;
+  font-weight: 500;
+}
+
+.part-desc {
+  font-size: 0.62rem;
+  color: var(--muted);
+}
+
+.btn-harvest {
+  font-size: 0.65rem;
+  padding: 0.2rem 0.5rem;
+  background: #2a3a48;
+  border: 1px solid #3c5266;
+  border-radius: 4px;
+  color: #fff;
+  cursor: pointer;
+}
+
+.btn-harvest:hover {
+  background: #394f63;
+}
+
+/* Right Tool and Inventory Panel */
+.tool-inv-panel {
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.tool-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+.tool-slot-card {
+  background: rgba(18, 24, 30, 0.6);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.tool-slot-card.equipped {
+  border-color: #3b82f6;
+}
+
+.slot-title {
+  font-size: 0.62rem;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.item-name {
+  font-size: 0.72rem;
+}
+
+.mohs-badge {
+  font-size: 0.6rem;
+  color: #60a5fa;
+}
+
+.container-block {
+  margin-top: 0.8rem;
+  background: rgba(18, 24, 30, 0.6);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 0.6rem;
+}
+
+.container-title {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.capacity-tag {
+  font-size: 0.65rem;
+  color: var(--muted);
+}
+
+.slot-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.inv-slot {
+  flex: 1;
+  height: 48px;
+  background: rgba(28, 38, 48, 0.4);
+  border: 1px dashed var(--line);
+  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  font-size: 0.65rem;
+}
+
+.inv-slot.filled {
+  border-style: solid;
+  border-color: #4ade80;
+  background: rgba(74, 222, 128, 0.05);
+}
+
+.slot-idx {
+  font-size: 0.55rem;
+  color: var(--muted);
+}
+
+.lock-banner {
+  padding: 0.6rem;
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 4px;
+  font-size: 0.68rem;
+  color: #f87171;
+  text-align: center;
+}
+
+.btn-craft-pack {
+  margin-top: 0.5rem;
+  padding: 0.4rem 0.8rem;
+  background: #10b981;
+  border: none;
+  border-radius: 4px;
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-craft-pack:hover {
+  background: #059669;
+}
+
+.backpack-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 0.3rem;
+}
+
+.inv-slot.mini {
+  height: 36px;
+  font-size: 0.55rem;
+}
+
+.workbench-foot {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+/* Workbench Tabs & Modal Styles */
+
+.workbench-tabs-nav {
+  display: flex;
+  gap: 0.5rem;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 0.6rem;
+  margin-bottom: 1rem;
+}
+
+.tab-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 500;
+  padding: 0.4rem 0.8rem;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.tab-btn.active {
+  background: var(--surface-light, #232d38);
+  border-color: var(--line);
+  color: var(--text, #fff);
+}
+
+.tab-pane.hidden {
+  display: none;
+}
+
+/* Fabrication Bench View */
+.fabrication-view, .paddock-view {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  overflow-y: auto;
+  max-height: calc(100vh - 360px);
+}
+
+.recipes-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 0.8rem;
+}
+
+.recipe-card {
+  background: rgba(18, 24, 30, 0.6);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 0.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.recipe-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.recipe-cost {
+  font-size: 0.65rem;
+  color: #60a5fa;
+}
+
+.recipe-desc {
+  font-size: 0.68rem;
+  color: var(--muted);
+}
+
+.recipe-mats {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin: 0.4rem 0;
+}
+
+.mats-label {
+  font-size: 0.6rem;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.mat-badge {
+  font-size: 0.62rem;
+  padding: 0.15rem 0.4rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.mat-badge.yield {
+  border-color: rgba(74, 222, 128, 0.4);
+  color: #4ade80;
+}
+
+.btn-execute-recipe {
+  padding: 0.4rem;
+  background: #2563eb;
+  border: none;
+  border-radius: 4px;
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.btn-execute-recipe:hover {
+  background: #1d4ed8;
+}
+
+/* Paddock View */
+.paddock-stats-card {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.6rem;
+  background: rgba(18, 24, 30, 0.6);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 0.8rem;
+}
+
+.p-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-size: 0.7rem;
+}
+
+.p-stat strong {
+  font-size: 0.9rem;
+  color: #4ade80;
+}
+
+.paddock-actions {
+  display: flex;
+  gap: 0.6rem;
+}
+
+.paddock-roster {
+  margin-top: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.animal-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0.8rem;
+  background: rgba(25, 34, 44, 0.4);
+  border-radius: 4px;
+  font-size: 0.75rem;
+}
+
+.yield-tag {
+  font-size: 0.68rem;
+  color: #fbbf24;
+}
+
+/* Settings & Compendium Modal */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 999;
+}
+
+.modal-overlay.hidden {
+  display: none;
+}
+
+.modal-card {
+  width: 780px;
+  max-width: 90vw;
+  max-height: 85vh;
+  background: #151c24;
+  border: 1px solid #374756;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.4rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.modal-close-btn {
+  background: none;
+  border: none;
+  font-size: 1.4rem;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.modal-tabs {
+  display: flex;
+  background: rgba(0, 0, 0, 0.2);
+  border-bottom: 1px solid var(--line);
+}
+
+.m-tab-btn {
+  flex: 1;
+  padding: 0.7rem;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.m-tab-btn.active {
+  color: #fff;
+  border-bottom-color: #3b82f6;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.modal-body {
+  padding: 1.2rem 1.4rem;
+  overflow-y: auto;
+}
+
+.m-tab-content {
+  display: none;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.m-tab-content.active {
+  display: flex;
+}
+
+.setting-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  background: rgba(255, 255, 255, 0.02);
+  padding: 0.8rem;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.setting-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.78rem;
+}
+
+.setting-row.checkbox {
+  justify-content: flex-start;
+  gap: 0.6rem;
+}
+
+.compendium-table-wrapper {
+  max-height: 400px;
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+
+.compendium-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.72rem;
+}
+
+.compendium-table th, .compendium-table td {
+  padding: 0.5rem 0.7rem;
+  text-align: left;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.phase-tag {
+  font-size: 0.6rem;
+  padding: 0.1rem 0.3rem;
+  border-radius: 3px;
+  background: #2a3a48;
+}
+
+.save-actions {
+  display: flex;
+  gap: 0.8rem;
+}
+
+.save-output-box textarea {
+  width: 100%;
+  box-sizing: border-box;
+  background: #0d1217;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  color: #a0aec0;
+  font-family: monospace;
+  font-size: 0.7rem;
+  padding: 0.5rem;
+}

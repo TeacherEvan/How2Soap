@@ -11,10 +11,31 @@ import {
   type WorldEvent,
   type WorldState,
 } from './world';
+import {
+  createPlayerMetabolism,
+  stepPlayerMetabolism,
+  type PlayerMetabolismState,
+} from './metabolism';
+import {
+  createInventoryState,
+  unlockBackpack,
+  type InventoryState,
+} from './inventory';
+import {
+  createPaddock,
+  type Paddock,
+} from './husbandry';
 
 /** One simulation step = 6 simulated minutes; 10 steps = 1 game hour. */
 const SIM_STEP_SECONDS = 360;
 const WORKER_HZ = 10;
+
+export interface FullSimState {
+  world: WorldState;
+  player: PlayerMetabolismState;
+  inventory: InventoryState;
+  paddock: Paddock;
+}
 
 type Command =
   | { type: 'INIT'; sab: SharedArrayBuffer }
@@ -35,7 +56,10 @@ type Command =
   | { type: 'DECANT'; fromId: number; toId: number; litres: number }
   | { type: 'SKIM'; fromId: number; toId: number; speciesIdx: number }
   | { type: 'ADVANCE'; hours: number }
-  | { type: 'SET_PAUSED'; paused: boolean };
+  | { type: 'SET_PAUSED'; paused: boolean }
+  | { type: 'HARVEST_PART'; partId: string; carriedMassKg: number; toolSlot: string; distanceMeters: number }
+  | { type: 'FABRICATE'; recipeId: string }
+  | { type: 'EQUIP_TOOL'; slot: string; toolItem: any };
 
 interface WorkerCtx {
   postMessage(message: unknown): void;
@@ -45,6 +69,9 @@ interface WorkerCtx {
 const ctx = self as unknown as WorkerCtx;
 
 let world: WorldState | null = null;
+let player: PlayerMetabolismState | null = null;
+let inventory: InventoryState | null = null;
+let paddock: Paddock | null = null;
 let view: SharedWorldView | null = null;
 let paused = false;
 let timer: ReturnType<typeof setInterval> | null = null;
@@ -64,26 +91,53 @@ function postVessels(): void {
   });
 }
 
+function postPlayerAndInventory(): void {
+  if (!player || !inventory) return;
+  if (paddock && paddock.animals.length > 0) {
+    // paddock tracking
+  }
+  ctx.postMessage({
+    type: 'PLAYER_SYNC',
+    player: {
+      glucoseKcal: Math.round(player.glucoseKcal),
+      adiposeKcal: Math.round(player.adiposeKcal),
+      hydrationPct: Math.round(player.hydrationPct),
+      coreTempC: ((player.coreTempK - 273.15)).toFixed(1),
+      clothingIclo: player.clothingIclo,
+    },
+    inventory: {
+      backpackUnlocked: inventory.backpack.unlocked,
+      bareHands: inventory.bareHands.slots,
+      backpack: inventory.backpack.slots,
+      tools: inventory.tools,
+    },
+  });
+}
+
 function advance(hours: number): WorldEvent[] {
-  if (!world) return [];
+  if (!world || !player) return [];
   const steps = Math.max(1, Math.round(hours * WORKER_HZ));
   const events: WorldEvent[] = [];
   for (let step = 0; step < steps; step += 1) {
     events.push(...stepWorld(world, SIM_STEP_SECONDS));
+    stepPlayerMetabolism(player, {
+      dtSeconds: SIM_STEP_SECONDS,
+      ambientTempK: world.ambientTempK,
+    });
   }
   return events;
 }
 
 function tick(): void {
-  if (!world || !view || paused) return;
+  if (!world || !view || !player || paused) return;
   const events = stepWorld(world, SIM_STEP_SECONDS);
+  stepPlayerMetabolism(player, {
+    dtSeconds: SIM_STEP_SECONDS,
+    ambientTempK: world.ambientTempK,
+  });
   syncWorldToShared(world, view);
   if (events.length > 0) ctx.postMessage({ type: 'EVENTS', events });
-}
-
-function describeEvents(events: WorldEvent[]): void {
-  if (events.length === 0) return;
-  ctx.postMessage({ type: 'EVENTS', events });
+  postPlayerAndInventory();
 }
 
 ctx.onmessage = (event: MessageEvent<Command>) => {
@@ -95,9 +149,14 @@ ctx.onmessage = (event: MessageEvent<Command>) => {
       }
       view = new SharedWorldView(command.sab);
       world = createWorld();
+      player = createPlayerMetabolism(0.05);
+      inventory = createInventoryState();
+      paddock = createPaddock();
+
       syncWorldToShared(world, view);
       if (timer === null) timer = setInterval(tick, 1000 / WORKER_HZ);
       ctx.postMessage({ type: 'READY' });
+      postPlayerAndInventory();
       break;
     }
     case 'CREATE_VESSEL': {
@@ -159,12 +218,27 @@ ctx.onmessage = (event: MessageEvent<Command>) => {
     }
     case 'ADVANCE': {
       if (!world || !view) return;
-      describeEvents(advance(command.hours));
+      const events = advance(command.hours);
+      if (events.length > 0) ctx.postMessage({ type: 'EVENTS', events });
       syncWorldToShared(world, view);
+      postPlayerAndInventory();
       break;
     }
     case 'SET_PAUSED': {
       paused = command.paused;
+      break;
+    }
+    case 'FABRICATE': {
+      if (!inventory) return;
+      if (command.recipeId === 'RECIPE_STITCH_BACKPACK') {
+        unlockBackpack(inventory);
+        if (player) player.clothingIclo = 1.15; // Equipping backpack tunic raises insulation
+        ctx.postMessage({
+          type: 'EVENTS',
+          events: [{ vesselId: -1, message: '🎉 Crafted Vegetable-Tanned Leather Backpack! 24-slot inventory unlocked (I_clo = 1.15).' }],
+        });
+      }
+      postPlayerAndInventory();
       break;
     }
     default:
