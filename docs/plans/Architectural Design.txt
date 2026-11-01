@@ -1,0 +1,435 @@
+
+---
+
+## 1. Architectural Corrections from Draft 1
+
+1. **Thread Isolation (`SharedArrayBuffer` + Web Worker)**: Running thermodynamic ticks and UI rendering on the same thread causes frame drops during multi-vessel reactions. The simulation loop must run in a dedicated Web Worker at a deterministic 10 Hz tick rate, writing state into a `SharedArrayBuffer` read by the 60 FPS UI thread with zero serialization overhead.
+2. **Persistence (`IndexedDB` / OPFS over `localStorage`)**: A chemical world state tracking hundreds of item instances, vessel mixtures, and node depletion timers exceeds `localStorage` limits and stalls frames by 12 to 30 ms per save. State snapshots stream asynchronously from the Worker into **IndexedDB** using LZ4 compression.
+3. **Emergent Chemistry over Recipe Lists**: Hardcoding recipes breaks emergent gameplay. The engine below calculates reactions dynamically from **molar mass ($g/\text{mol}$)**, **activation energy ($E_a$)**, **enthalpy of formation ($\Delta H^\circ_f$)**, **solubility product constants ($K_{sp}$)**, and **acid dissociation constants ($\text{p}K_a$)**.
+
+---
+
+## 2. Webpack 5 & Vercel Cross-Origin Isolation Spec
+
+To enable `SharedArrayBuffer` on Vercel, the edge network must serve strict Cross-Origin Isolation headers (`COOP` and `COEP`).
+
+```json
+// vercel.json
+{
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "Cross-Origin-Opener-Policy", "value": "same-origin" },
+        { "key": "Cross-Origin-Embedder-Policy", "value": "require-corp" },
+        { "key": "X-Content-Type-Options", "value": "nosniff" }
+      ]
+    },
+    {
+      "source": "/static/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+      ]
+    }
+  ]
+}
+
+```
+
+```javascript
+// webpack.config.js
+const path = require('path');
+const HtmlWebpackPlugin = require('html-webpack-plugin');
+const MiniCssExtractPlugin = require('mini-css-extract-plugin');
+const TerserPlugin = require('terser-webpack-plugin');
+
+module.exports = {
+  mode: 'production',
+  target: ['web', 'es2022'],
+  entry: {
+    main: './src/main.ts',
+  },
+  output: {
+    path: path.resolve(__dirname, 'dist'),
+    filename: 'static/js/[name].[contenthash:8].js',
+    chunkFilename: 'static/js/[name].[contenthash:8].chunk.js',
+    assetModuleFilename: 'static/media/[name].[hash:8][ext]',
+    clean: true,
+  },
+  resolve: {
+    extensions: ['.ts', '.js'],
+  },
+  module: {
+    rules: [
+      {
+        test: /\.ts$/,
+        use: [
+          {
+            loader: 'ts-loader',
+            options: { transpileOnly: false },
+          },
+        ],
+        exclude: /node_modules/,
+      },
+      {
+        test: /\.css$/,
+        use: [MiniCssExtractPlugin.loader, 'css-loader'],
+      },
+    ],
+  },
+  optimization: {
+    minimize: true,
+    minimizer: [
+      new TerserPlugin({
+        terserOptions: {
+          compress: { drop_console: true, passes: 2 },
+          mangle: true,
+        },
+      }),
+    ],
+    moduleIds: 'deterministic',
+    runtimeChunk: 'single',
+    splitChunks: {
+      chunks: 'all',
+      maxInitialRequests: 10,
+      minSize: 20000,
+      maxSize: 180000,
+      cacheGroups: {
+        chemData: {
+          test: /[\\/]src[\\/]data[\\/]/,
+          name: 'chem-registry',
+          priority: 20,
+        },
+        vendors: {
+          test: /[\\/]node_modules[\\/]/,
+          name: 'vendors',
+          priority: 10,
+        },
+      },
+    },
+  },
+  performance: {
+    maxEntrypointSize: 200000,
+    maxAssetSize: 200000,
+    hints: 'error',
+  },
+  plugins: [
+    new HtmlWebpackPlugin({ template: './public/index.html', minify: true }),
+    new MiniCssExtractPlugin({ filename: 'static/css/[name].[contenthash:8].css' }),
+  ],
+};
+
+```
+
+---
+
+## 3. Stoichiometric & Thermodynamic Chemistry Engine
+
+Instead of scripted item swaps, every substance in the game is defined in a static typed registry (`chem-registry`) and evaluated every tick using the **Arrhenius equation** for reaction rates and **calorimetry** for vessel temperatures:
+
+$$k = A \cdot \exp\left(-\frac{E_a}{R \cdot T}\right)$$
+
+$$T_{\text{new}} = T_{\text{old}} + \frac{-\Delta H_{\text{rxn}} \cdot \Delta \xi + Q_{\text{external}} - Q_{\text{loss}}}{\sum (n_i \cdot C_{p,i}) + m_{\text{vessel}} \cdot C_{p,\text{vessel}}}$$
+
+```typescript
+// src/engine/chemistry.ts
+export type Phase = 'SOLID' | 'LIQUID' | 'GAS' | 'AQUEOUS';
+
+export interface ChemicalSpecies {
+  readonly id: string;               // e.g., 'K2CO3', 'KOH', 'C57H110O6' (Tristearin)
+  readonly formula: string;
+  readonly molarMass: number;        // g/mol
+  readonly density: number;          // g/cm3 at STP
+  readonly specificHeat: number;     // J/(g*K)
+  readonly meltingPointK: number;
+  readonly boilingPointK: number;
+  readonly solubility293K: number;   // g per 100g H2O (0 if insoluble)
+  readonly pKa?: number;             // Acid dissociation constant
+  readonly pKb?: number;             // Base dissociation constant
+}
+
+export interface ReactionRule {
+  readonly id: string;
+  readonly reactants: ReadonlyArray<{ speciesId: string; stoich: number }>;
+  readonly products: ReadonlyArray<{ speciesId: string; stoich: number }>;
+  readonly activationEnergyJ: number; // Ea (J/mol)
+  readonly preExponentialA: number;   // Frequency factor A (1/s)
+  readonly enthalpyJPerMol: number;   // dH: negative = exothermic, positive = endothermic
+  readonly minpH?: number;
+  readonly maxpH?: number;
+  readonly requiredCatalystId?: string;
+}
+
+export interface VesselState {
+  readonly id: string;
+  readonly wallMaterial: 'WOOD' | 'RAW_CLAY' | 'FIRED_CERAMIC' | 'COPPER' | 'BOROSILICATE';
+  readonly thermalConductivity: number; // W/(m*K) - Wood: 0.15, Ceramic: 1.5, Copper: 398
+  readonly failureTempK: number;        // Wood chars at 523K (250°C), Copper melts at 1358K
+  readonly volumeLiters: number;
+  readonly headSpaceClosed: boolean;    // Required for distillation / gas capture
+  temperatureK: number;
+  moles: Map<string, number>;           // speciesId -> mole count
+}
+
+const GAS_CONSTANT_R = 8.314462; // J/(mol*K)
+
+export function stepVesselThermodynamics(
+  vessel: VesselState,
+  reactions: ReadonlyArray<ReactionRule>,
+  speciesRegistry: ReadonlyMap<string, ChemicalSpecies>,
+  ambientTempK: number,
+  externalHeatWatts: number,
+  dtSeconds: number
+): void {
+  // 1. Calculate total heat capacity of contents + vessel wall
+  let totalHeatCapacityJPerK = 850; // Base vessel heat capacity
+  for (const [id, mol] of vessel.moles.entries()) {
+    const sp = speciesRegistry.get(id)!;
+    totalHeatCapacityJPerK += mol * sp.molarMass * sp.specificHeat;
+  }
+
+  let netReactionHeatJ = 0;
+
+  // 2. Evaluate Arrhenius kinetics for all matching reaction rules
+  for (const rxn of reactions) {
+    let limitingMoles = Infinity;
+    for (const r of rxn.reactants) {
+      const available = vessel.moles.get(r.speciesId) ?? 0;
+      const ratio = available / r.stoich;
+      if (ratio < limitingMoles) limitingMoles = ratio;
+    }
+    if (limitingMoles <= 1e-6) continue;
+
+    // Rate constant k = A * exp(-Ea / (R * T))
+    const k = rxn.preExponentialA * Math.exp(-rxn.activationEnergyJ / (GAS_CONSTANT_R * vessel.temperatureK));
+    const extentDeltaMol = Math.min(limitingMoles, limitingMoles * (1 - Math.exp(-k * dtSeconds)));
+
+    if (extentDeltaMol > 1e-9) {
+      for (const r of rxn.reactants) {
+        const current = vessel.moles.get(r.speciesId)!;
+        vessel.moles.set(r.speciesId, Math.max(0, current - extentDeltaMol * r.stoich));
+      }
+      for (const p of rxn.products) {
+        const current = vessel.moles.get(p.speciesId) ?? 0;
+        vessel.moles.set(p.speciesId, current + extentDeltaMol * p.stoich);
+      }
+      // Exothermic (dH < 0) adds heat to vessel
+      netReactionHeatJ += -rxn.enthalpyJPerMol * extentDeltaMol;
+    }
+  }
+
+  // 3. Apply external heating & Newtonian cooling to ambient
+  const surfaceAreaM2 = 0.12;
+  const wallThicknessM = 0.015;
+  const heatLossWatts =
+    (vessel.thermalConductivity * surfaceAreaM2 * (vessel.temperatureK - ambientTempK)) / wallThicknessM;
+  const netHeatJ = netReactionHeatJ + (externalHeatWatts - heatLossWatts) * dtSeconds;
+
+  vessel.temperatureK = Math.max(200, vessel.temperatureK + netHeatJ / totalHeatCapacityJPerK);
+}
+
+```
+
+### Exact Physics of the Soap Gameplay Loop
+
+With the engine above, the soap example executes through five physical transformations rather than scripted timers:
+
+1. **Wood Drying (Fickian Diffusion & Latent Heat)**:
+* Clicking **Trees -> Hardwood -> White Oak** yields logs with $45\%$ moisture by mass ($1.0\text{ kg}$ cellulose/lignin + $0.82\text{ kg}$ $\text{H}_2\text{O}$).
+* Attempting to burn green oak fails because evaporating $0.82\text{ kg}$ of water absorbs $1853\text{ kJ}$ ($\Delta H_{\text{vap}} = 2260\text{ kJ/kg}$), pinning the fire temperature below the $553\text{ K}$ ($280^\circ\text{C}$) pyrolysis threshold of lignin.
+* Placing the oak on a drying rack exposes it to ambient vapor pressure deficit ($VPD$). Sleeping 1 day ($24\text{ ticks} = 86,400\text{ simulated seconds}$) reduces moisture to $12\%$, raising the Lower Heating Value (LHV) from $10.2\text{ MJ/kg}$ to $16.8\text{ MJ/kg}$.
+* If the player burns **Softwood (Pine)** instead, its high abietic acid/terpene resin content combusts incompletely into carbon soot (lampblack) and pine tar with only $0.4\text{ wt\%}$ potassium, failing to yield usable lye.
+
+
+2. **Pyrolysis & Calcination ($1050\text{ K}$)**:
+* Burning $5.0\text{ kg}$ of seasoned Oak at $1050\text{ K}$ ($777^\circ\text{C}$) leaves $75\text{ g}$ of white wood ash composed of $18\text{ wt\%}$ Potassium Carbonate ($\text{K}_2\text{CO}_3$, $13.5\text{ g} = 0.0977\text{ mol}$), $32\text{ wt\%}$ Calcium Oxide ($\text{CaO}$, $24.0\text{ g} = 0.428\text{ mol}$), and inert silica/phosphates.
+
+
+3. **Leaching & Double-Displacement Causticization**:
+* Dumping $75\text{ g}$ of hardwood ash into a carved Wooden Bucket ($T_{\text{max}} = 523\text{ K}$) with $0.5\text{ L}$ water ($27.75\text{ mol}$ $\text{H}_2\text{O}$) triggers two sequential reactions over the 24-tick sleep cycle:
+
+$$\text{CaO}(s) + \text{H}_2\text{O}(l) \longrightarrow \text{Ca(OH)}_2(aq/s) \quad (\Delta H = -63.7\text{ kJ/mol})$$
+
+
+$$\text{K}_2\text{CO}_3(aq) + \text{Ca(OH)}_2(aq) \longrightarrow 2\text{KOH}(aq) + \text{CaCO}_3(s)\downarrow$$
+
+
+* Because Calcium Carbonate ($\text{CaCO}_3$) is insoluble ($K_{sp} = 3.36 \times 10^{-9}$), it precipitates as white chalk sludge at the bottom of the bucket during the 24-tick sleep period, leaving $0.195\text{ mol}$ of dissolved Potassium Hydroxide ($\text{KOH}$) in the supernatant liquid ($\text{pH} = 13.59$).
+
+
+4. **Decanting & Rendering**:
+* Draining the bucket through woven plant fiber separates the aqueous $\text{KOH}$ lye from the $\text{CaCO}_3$ sediment.
+* Heating $200\text{ g}$ of raw adipose tissue (from a Medium animal) at $385\text{ K}$ ($112^\circ\text{C}$) melts out $145\text{ g}$ ($0.162\text{ mol}$) of purified Tristearin ($\text{C}_{57}\text{H}_{110}\text{O}_6$) tallow, separating it from collagen cracklings.
+
+
+5. **Alkaline Hydrolysis (Saponification)**:
+* Mixing the $0.162\text{ mol}$ Tristearin with the $0.5\text{ L}$ $\text{KOH}$ solution ($0.486\text{ mol}$ required for exact 1:3 stoichiometry; player must leach 2.5 batches of ash or boil down the lye to increase molarity) at $345\text{ K}$ ($72^\circ\text{C}$) executes:
+
+$$\text{C}_{57}\text{H}_{110}\text{O}_6 + 3\text{KOH} \longrightarrow 3\text{C}_{18}\text{H}_{35}\text{KO}_2\text{ (Soft Potash Soap)} + \text{C}_3\text{H}_8\text{O}_3\text{ (Glycerol)}$$
+
+
+* **Salting Out (Optional Upgrade)**: Adding crushed Halite ($\text{NaCl}$) swaps the $\text{K}^+$ ion for $\text{Na}^+$ via common-ion precipitation, floating solid hard **Sodium Stearate ($\text{C}_{18}\text{H}_{35}\text{NaO}_2$)** soap curds to the top while leaving glycerol in the bottom brine layer (which can later be nitrated into nitroglycerin).
+
+
+
+---
+
+## 4. Hierarchical World Nodes & Bio-Mechanical Energy Model
+
+Clicking a top-level category on the Biome Canvas drills down through a 3-level Directed Acyclic Graph (DAG): **Category -> Species -> Anatomical/Mineral Part**.
+
+### Resource Node Drill-Down Schema
+
+* **Trees**
+* **Quercus alba (White Oak — Hardwood)**: Density $0.75\text{ g/cm}^3$. Parts: *Outer Bark* ($14\text{ wt\%}$ Quercitannic Acid $\text{C}_{28}\text{H}_{24}\text{O}_{12}$ for leather tanning), *Sapwood*, *Heartwood* (high $\text{K}_2\text{CO}_3$ ash yield), *Acorns* (requires water leaching to remove bitter tannins before eating; $387\text{ kcal}/100\text{ g}$).
+* **Pinus sylvestris (Scots Pine — Softwood)**: Density $0.47\text{ g/cm}^3$. Parts: *Deadfall Branches*, *Resinous Heartwood*, *Oleoresin Sap* (distills into Turpentine $\text{C}_{10}\text{H}_{16}$ + Rosin pitch for waterproofing), *Pine Needles* ($85\text{ mg}$ Ascorbic Acid / $100\text{ g}$ to prevent scurvy).
+* **Salix alba (White Willow — Soft Hardwood)**: Density $0.42\text{ g/cm}^3$. Parts: *Inner Phloem Bark* ($2.8\text{ wt\%}$ Salicin $\text{C}_{13}\text{H}_{18}\text{O}_7$, precursor to Salicylic Acid painkiller), *Flexible Shoots* (wicker basket weaving).
+
+
+* **Rocks & Outcrops**
+* **Silicates**: *Chert/Flint Nodules* ($\text{SiO}_2$, Mohs 7.0, conchoidal fracture for $0.05\,\mu\text{m}$ cutting edges), *Vein Quartz* (piezoelectric & glassmaking flux target), *Kaolinite Clay Bed* ($\text{Al}_2\text{Si}_2\text{O}_5(\text{OH})_4$, vitrifies at $1373\text{ K}$).
+* **Evaporites & Carbonates**: *Limestone* ($\text{CaCO}_3$, Mohs 3.0), *Halite* ($\text{NaCl}$), *Natron* ($\text{Na}_2\text{CO}_3\cdot 10\text{H}_2\text{O}$), *Gypsum* ($\text{CaSO}_4\cdot 2\text{H}_2\text{O}$).
+* **Sulfide & Oxide Ores**: *Malachite* ($\text{Cu}_2\text{CO}_3(\text{OH})_2$, $57.5\%$ $\text{Cu}$), *Cassiterite* ($\text{SnO}_2$, $78.8\%$ $\text{Sn}$), *Sphalerite* ($\text{ZnS}$, $67\%$ $\text{Zn}$), *Pyrite* ($\text{FeS}_2$, strike-a-light sparks + roasting into $\text{SO}_2 \rightarrow \text{H}_2\text{SO}_4$ battery acid).
+
+
+* **Mushrooms & Cryptogams**
+* **Agaricus bisporus (Meadow Mushroom)**: Safe nutrition ($22\text{ kcal}/100\text{ g}$, B-vitamins, chitin fiber).
+* **Fomes fomentarius (Hoof Tinder Fungus)**: Contains *amadou* trama layer; soaking in leached wood ash ($\text{KNO}_3$/$\text{K}_2\text{CO}_3$) and pounding creates slow-match tinder that catches a single $600\text{ K}$ flint-and-pyrite spark.
+* **Penicillium chrysogenum**: Cultured by leaving damp cooked starch in the dark at $297\text{ K}$ ($24^\circ\text{C}$) for 96 ticks; liquid surface fermentation yields crude benzylpenicillin broth.
+* **Amanita phalloides (Death Cap)**: Indistinguishable to unskilled players without a Spore Print test; contains $\alpha$-amanitin (inhibits RNA polymerase II, causing fatal delayed hepatotoxicity after 36 ticks unless treated with activated charcoal).
+
+
+* **Animals (4 Size Classes + Harvest Anatomy)**
+
+| Size Class | Representative Species | Mass Range | Hunt Cost & Required Tool | Anatomical Yield (Mass & Chemical Utility) |
+| --- | --- | --- | --- | --- |
+| **Small** | Hare, Ptarmigan | $1.5\text{–}3.2\text{ kg}$ | $45\text{ kcal}$ (Snare / Throwing Stone) | $1\times$ Thin Pelt ($0.15\text{ m}^2$), $35\text{ g}$ Subcutaneous Fat, $650\text{ g}$ Lean Muscle, Gut String |
+| **Medium** | Roe Deer, Wild Boar | $25\text{–}65\text{ kg}$ | $160\text{ kcal}$ (Fire-Hardened Spear / Bow) | $1\times$ Medium Hide ($1.2\text{ m}^2$), $2.8\text{ kg}$ Perirenal Suet/Lard, $14\text{ kg}$ Meat, Backstrap Sinew, Femur Bone |
+| **Large** | Red Deer, Aurochs Heifer | $180\text{–}420\text{ kg}$ | $410\text{ kcal}$ (Flint Atlatl / Pitfall Trap) | $1\times$ Heavy Hide ($3.5\text{ m}^2$), $16\text{ kg}$ Tallow, $85\text{ kg}$ Meat, Hoof Keratin (hide glue), Bladder (water/gas bag) |
+| **Extra Large** | Steppe Bison, Moose | $550\text{–}950\text{ kg}$ | $780\text{ kcal}$ (Bronze Spear + Deadfall) | $2\times$ Heavy Hides ($7.0\text{ m}^2$), $42\text{ kg}$ Tallow, $240\text{ kg}$ Meat, Heavy Scapula (shovel blade), Antler/Horn |
+
+### Bio-Thermodynamic Energy & Tool Physics
+
+Instead of an arbitrary 1-to-100 stamina bar, the player's body is simulated as a thermodynamic engine with a **Glycogen/Blood Glucose Pool ($0\text{ to }2000\text{ kcal}$)** and an **Adipose Reserve Pool ($15,000\text{ kcal}$ initial)**.
+
+* **Basal & Thermal Drain**:
+
+$$\dot{E}_{\text{total}} = \text{BMR}_{70\text{ kcal/hr}} + \dot{W}_{\text{mechanical}} \cdot \frac{1}{\eta_{\text{human}}} + \max\left(0, \frac{T_{\text{core}} - T_{\text{ambient}}}{0.155 \cdot I_{\text{clo}}}\right)$$
+
+
+
+Human muscular efficiency $\eta_{\text{human}}$ is $0.22$ ($22\%$). Starting naked ($I_{\text{clo}} = 0.05$) at night ($285\text{ K} / 12^\circ\text{C}$) triggers shivering thermogenesis that burns an extra $140\text{ kcal/hr}$. Crafting **Tanned Leather Clothes** raises $I_{\text{clo}}$ to $1.15$, cutting cold drain to zero at $12^\circ\text{C}$.
+* **Tool Mechanical Advantage Formula**:
+Every harvesting action requires overcoming material fracture toughness $G_c$. Equipping a tool from the **Dedicated Tool Menu** modifies energy cost by Mohs hardness ratio and wedge mechanical advantage ($MA = L / t$):
+
+$$E_{\text{action}} = \frac{W_{\text{fracture}}}{MA_{\text{tool}}} \cdot \left(\frac{\text{Mohs}_{\text{target}}}{\text{Mohs}_{\text{tool}}}\right)^2$$
+
+
+
+Attempting to chop Oak ($\text{Mohs } 2.2$) with bare hands ($\text{Mohs } 2.5$ fingernail, $MA = 1.0$) is impossible for heartwood and costs $120\text{ kcal}$ for deadfall branches. Equipping a **Hafted Flint Axe** ($\text{Mohs } 7.0$, $MA = 6.5$) drops the cost of felling a full tree to $42\text{ kcal}$.
+
+---
+
+## 5. Inventory Bootstrapping & The Leather Backpack Pipeline
+
+Because a player cannot carry $15\text{ kg}$ of wet hides, oak bark, and water without a container, the inventory system enforces a strict **3-Tier Spatial Constraint**:
+
+1. **Tier 0 (Unencumbered Start)**:
+* **Left & Right Hand Slots**: 2 active carry slots, max $6.0\text{ kg}$ or $1$ bulk item per hand.
+* **Stationary Camp Pile**: Unlimited ground storage at coordinates $(0,0)$, exposed to rain (leaches soluble salts, wets firewood) and scavengers (unprotected raw meat spoils or gets stolen at night).
+
+
+2. **Tier 0.5 (Woven Bark Sling — Optional Bridge)**:
+* Stripping fibrous inner bast from Willow or Linden trees and twining it creates a **Bast Fiber Sling** (4 slots, max $8.0\text{ kg}$, $18\text{ durability ticks}$).
+
+
+3. **Tier 1 (Vegetable-Tanned Leather Backpack)**:
+* **Step 1 (Skinning & Fleshing)**: Kill a Medium Animal, equip a knapped **Flint Scraper** in the Tool Menu, and strip the subcutaneous fat from the raw dermis ($45\text{ kcal}$) to halt rapid bacterial putrefaction.
+* **Step 2 (Alkaline Dehairing)**: Soak the raw hide in weak wood-ash liquor ($\text{pH } 11.5$) for 12 ticks to swell the collagen fibers and loosen hair follicles, then scrape hair off over a log beam.
+* **Step 3 (Tannic Acid Cross-Linking)**: Crush $2.0\text{ kg}$ of White Oak Outer Bark with a hammerstone and steep in $8.0\text{ L}$ water inside a dugout wooden trough to extract $0.08\text{ M}$ Tannic Acid ($\text{pH } 4.2$). Submerge the dehaired hide for 48 ticks (2 days sleep). Tannin polyphenols form hydrogen and covalent bonds across the collagen triple-helix peptides, raising the hydrothermal shrinkage temperature from $335\text{ K}$ ($62^\circ\text{C}$) to $358\text{ K}$ ($85^\circ\text{C}$) and rendering the hide rot-proof.
+* **Step 4 (Fat-Liquoring & Stitching)**: Rub rendered animal brain or tallow-soap emulsion into the damp leather so fibers don't dry stiff as rawhide. Pierce seams with a **Bone Awl** and stitch with dried **Deer Sinew** to unlock the **Leather Backpack** (**24 Grid Slots, $40.0\text{ kg}$ max payload, waterproof cover, + 6 Dedicated Tool Belt Quick-Slots**).
+
+
+
+---
+
+## 6. Main Menu, Settings & State-Driven Viewport Spec
+
+### Main Menu & Settings Architecture (`src/ui/MenuController.ts`)
+
+* **Initialization & Save Detection**: On boot, the main thread pings the Worker's IndexedDB `save_meta` object store. If a valid schema version (`v1.0.0`) exists, the **Continue** button activates and displays the saved Day count, player core temperature, and last active reaction.
+* **Settings Best Practices**:
+* **Performance & Tick Rate**: Slider for Background Worker Catch-Up Speed ($1\times$ to $100\times$ during sleep cycles) and Canvas FPS cap ($30$, $60$, or Uncapped `requestAnimationFrame`).
+* **Accessibility**: WCAG AAA high-contrast chemical formula mode, colorblind-safe pH indicator palettes (Viridis/Cividis instead of Red-Green litmus), and UI font scaling ($100\%$ to $150\%$).
+* **Deterministic Save Portability**: "Export Save String" compresses the IndexedDB binary state via `CompressionStream('gzip')` into a Base64 string copied to clipboard; "Import Save" validates the SHA-256 checksum before hydrating state.
+
+
+
+### Four-Panel Game Viewport (CSS Grid `100vw x 100vh`, `overflow: hidden`)
+
+1. **Top Telemetry Bar (`height: 48px`)**: Live readouts of Blood Glucose ($\text{kcal}$), Core Temp ($37.0^\circ\text{C}$), Hydration ($\%$), Insulation ($I_{\text{clo}}$), Time of Day (Tick $0\text{–}23$), and Sleep Duration selector ($1\text{–}12\text{ hours}$ with predicted metabolic/thermal survival check before confirming sleep).
+2. **Left Panel — Hierarchical Biome Explorer (`width: 320px`)**: Collapsible virtualized tree for **Trees**, **Rocks**, **Mushrooms**, and **Animals**. Hovering any anatomical/mineral part displays exact harvest energy cost based on the currently active tool in the Tool Menu.
+3. **Center Panel — Thermodynamics & Reaction Workbench (`1fr`)**: Interactive vessel slots. Players drag reactants into vessels, adjust airflow bellows (controls fire $\text{O}_2$ supply from $600\text{ K}$ smolder to $1550\text{ K}$ forced-draft charcoal forge), attach condensers, or decant supernatant liquids from precipitates.
+4. **Right Panel — Dedicated Tool Menu & Backpack Grid (`width: 360px`)**:
+* **Top Half (Tool Belt)**: Dedicated slots for *Cutting*, *Percussion/Crushing*, *Digging/Mining*, *Thermal/Tongs*, *Medical*, and *Eating Utensil* (equipping the **Bronze Fork** applies a passive modifier to all cooked meat consumption, preventing hand-to-mouth pathogen transmission and boosting digestive net energy efficiency by $15\%$).
+* **Bottom Half (Inventory)**: Locked behind a padlock state until the Leather Backpack is crafted (displaying only the 2 Bare Hand slots and Camp Ground Pile until unlocked).
+
+
+
+---
+
+## 7. Complete Chemical Tech Progression (Stone to Electrochemistry)
+
+Every target milestone you specified maps to an authentic chemical synthesis pathway executable inside the `stepVesselThermodynamics` solver:
+
+| Milestone | Raw Biome Inputs | Intermediate Reagents | Final Chemical Reaction & Conditions | Exact In-Game System Effect |
+| --- | --- | --- | --- | --- |
+| **1. Leather & Clothes** | Medium Hide, White Oak Bark, Flint, Water | Dehaired Collagen, $0.08\text{ M}$ Tannic Acid ($\text{C}_{76}\text{H}_{52}\text{O}_{46}$) | Collagen $-\text{NH}_2$ cross-linking at $\text{pH } 4.2$ for $48\text{ ticks}$ ($293\text{ K}$) | Unlocks **24-slot Backpack** ($40\text{ kg}$ cap) & **Leather Tunic** ($+1.10\text{ clo}$ insulation) |
+| **2. Potash Soap** | Seasoned Oak, Animal Suet, Limestone, Water | $\text{K}_2\text{CO}_3$, $\text{Ca(OH)}_2$, $\text{KOH}$ Lye ($\text{pH } 13.5$), Tristearin | $\text{C}_{57}\text{H}_{110}\text{O}_6 + 3\text{KOH} \rightarrow 3\text{C}_{18}\text{H}_{35}\text{KO}_2 + \text{C}_3\text{H}_8\text{O}_3$ at $345\text{ K}$ | Reduces wound infection probability from $35\%$ to $2\%$; emulsifies nonpolar oils |
+| **3. Bronze Fork** | Malachite, Cassiterite, Hardwood Charcoal, Kaolin | $\text{CuO}$, $\text{SnO}_2$, $\text{CO}$ reducing gas, Ceramic Crucible | $\text{Cu}_2\text{CO}_3(\text{OH})_2 + \text{C} \rightarrow 2\text{Cu} + 2\text{CO}_2 + \text{H}_2\text{O}$ alloyed $88:12$ with $\text{Sn}$ at $1360\text{ K}$ | Eliminates enteric parasite rolls on meat; $+15\%$ $\text{kcal}$ assimilation rate |
+| **4. Medicines** | Willow Bark, *Penicillium* mold, Pyrite, Natron | Salicin ($\text{C}_{13}\text{H}_{18}\text{O}_7$), Dilute $\text{H}_2\text{SO}_4$, $\text{O}_2$ | Acid hydrolysis + oxidation of Salicin $\rightarrow$ **Salicylic Acid** ($\text{C}_7\text{H}_6\text{O}_3$) at $368\text{ K}$ | Suppresses fever hyperthermia ($-1.8^\circ\text{C}$); Penicillin clears systemic sepsis |
+| **5. Electricity & Elements** | Malachite, Sphalerite ($\text{ZnS}$), Pyrite ($\text{FeS}_2$), Halite ($\text{NaCl}$) | Metallic $\text{Cu}$ & $\text{Zn}$ plates, $\text{H}_2\text{SO}_4$ electrolyte ($2.5\text{ M}$), Brine | 10-cell **Voltaic Pile**: $\text{Zn} + \text{Cu}^{2+} \rightarrow \text{Zn}^{2+} + \text{Cu}$ ($E^\circ = 1.10\text{ V/cell} = 11.0\text{ V DC}$) | Powers **Chlor-Alkali & Downs Electrolysis** to isolate pure $\text{Cl}_2$, $\text{H}_2$, $\text{NaOH}$, and metallic $\text{Na}$/$\text{K}$ |
+
+1. The SharedArrayBuffer Bug (You Cannot Put a JS Map in Shared Memory)Draft 2 claimed to use a SharedArrayBuffer for zero-copy thread isolation, then defined moles: Map<string, number> inside VesselState. JavaScript heap objects (Map, strings, arrays) cannot exist inside a SharedArrayBuffer—passing them via postMessage triggers structured-clone serialization and defeats zero-copy memory.The Fix (Fixed-Stride TypedArray Layout): Map all chemical species to static integer indices (0 to 255) and allocate a flat SharedArrayBuffer ($64\text{ KB}$) partitioned into typed views synchronized via Atomics.TypeScript// src/engine/memoryLayout.ts
+export const MAX_VESSELS = 32;
+export const MAX_SPECIES = 256;
+
+// Total Buffer: 32 vessels * 256 species * 8 bytes (Float64) = 65,536 bytes (64 KB)
+// Plus 32 vessels * 8 telemetry floats (tempK, pressurePa, pH, volumeL, etc.) = 2,048 bytes
+export const SAB_BYTE_LENGTH = 67584;
+
+export class SharedWorldView {
+  public readonly syncFlags: Int32Array;      // 4-byte lock/tick counter for Atomics
+  public readonly vesselTelemetry: Float64Array; // Stride 8 per vessel: [tempK, pH, pressureKPa, maxTempK...]
+  public readonly vesselMoles: Float64Array;     // Stride 256 per vessel: moles of each species ID
+
+  constructor(sab: SharedArrayBuffer) {
+    this.syncFlags = new Int32Array(sab, 0, 16);
+    this.vesselTelemetry = new Float64Array(sab, 64, MAX_VESSELS * 8);
+    this.vesselMoles = new Float64Array(sab, 64 + MAX_VESSELS * 64, MAX_VESSELS * MAX_SPECIES);
+  }
+
+  public getMoles(vesselIndex: number, speciesIndex: number): number {
+    return this.vesselMoles[vesselIndex * MAX_SPECIES + speciesIndex];
+  }
+
+  public setMoles(vesselIndex: number, speciesIndex: number, moles: number): void {
+    this.vesselMoles[vesselIndex * MAX_SPECIES + speciesIndex] = moles;
+  }
+}
+2. Missing Phase Transitions, $K_{sp}$ Precipitation, and Faraday ElectrolysisIn Draft 2, ChemicalSpecies declared boilingPointK, solubility293K, and pKa, but stepVesselThermodynamics never evaluated them. Without those three solvers:Latent Heat & Distillation: Liquid water would heat past $373.15\text{ K}$ ($100^\circ\text{C}$) without boiling into steam, making fractional distillation of ethanol or concentration of lye impossible.Ideal Gas Law Rupture: Closed vessels (headSpaceClosed = true) must calculate internal gas pressure $P = \frac{n_{\text{gas}} R T}{V_{\text{headspace}}}$. Exceeding the material's tensile burst limit ($P_{\text{max}} = 250\text{ kPa}$ for clay, $1200\text{ kPa}$ for copper) violently ruptures the vessel.Electrochemical Element Isolation (Faraday's First Law): To unlock the fundamental elements ($\text{H}_2, \text{O}_2, \text{Cl}_2, \text{Na}, \text{K}, \text{Cu}, \text{Zn}$) using electricity from the Voltaic Pile, the engine must run an electrolysis solver per tick:$$\Delta n_{\text{isolated}} = \frac{I \cdot \Delta t}{F \cdot z}, \quad \text{where } I = \frac{\max(0, V_{\text{pile}} - E_{\text{cell}}^{\text{rev}} - \eta_{\text{overpotential}})}{R_{\text{electrolyte}}}$$Here $F = 96,485\text{ C/mol}$ (Faraday constant) and $z$ is the ion valence. Applying $11.0\text{ V}$ at $1.8\text{ A}$ across molten $\text{KOH}$ ($E_{\text{rev}} = 2.93\text{ V}$, $z = 1$) deposits $1.86 \times 10^{-5}\text{ mol/s}$ of pure metallic Potassium ($\text{K}^0$) at the cathode.3. Animal Farming & Domestication (Not Just Hunting)Your prompt explicitly specified "hunting/farming animals". Draft 2 only modeled lethal hunting, which forces constant high-energy foraging and depletes local wildlife.Live Capture & Taming: Small and Medium animals can be captured alive using Box Traps or Bolas/Pitfalls (requires 20% higher harvest energy to transport live weight).Enclosure & Metabolic Conversion Loop: Placing a breeding pair inside a crafted Split-Rail Paddock converts cheap plant cellulose (grass, acorns, crop waste) into continuous animal yields every 24 ticks:Domesticated ClassDaily Feed & Water Input (per head)Gestation / Maturation TicksContinuous Renewable YieldCulled Yield (Slaughter)Small (Rabbit / Fowl)$150\text{ g}$ Greens, $0.2\text{ L}$ $\text{H}_2\text{O}$$72\text{ ticks}$ ($3\text{ days}$)$1\times$ Egg ($75\text{ kcal}$, Albumin binder), $40\text{ g}$ High-N Guano$50\text{ g}$ Fat, $400\text{ g}$ Meat, Small PeltMedium (Goat / Pig)$2.5\text{ kg}$ Fodder/Mast, $4.0\text{ L}$ $\text{H}_2\text{O}$$240\text{ ticks}$ ($10\text{ days}$)$1.2\text{ L}$ Milk ($4.5\%$ butterfat triglycerides + casein), $800\text{ g}$ Manure$3.5\text{ kg}$ Lard/Tallow, $18\text{ kg}$ Meat, Medium HideLarge (Cattle / Aurochs)$9.0\text{ kg}$ Hay/Grass, $25\text{ L}$ $\text{H}_2\text{O}$$480\text{ ticks}$ ($20\text{ days}$)$6.0\text{ L}$ Milk, Draft Power ($4\times$ hauling capacity), $5.0\text{ kg}$ Manure$22\text{ kg}$ Suet/Tallow, $110\text{ kg}$ Meat, Heavy HideChemistry Synergy (The Saltpeter Loop): Farming animals produces Manure (Urea, $\text{CO(NH}_2)_2$). Composting manure with wood ash ($\text{K}_2\text{CO}_3$) and limestone in a damp Niter Bed for 120 ticks allows Nitrosomonas and Nitrobacter bacteria to oxidize ammonia into Potassium Nitrate ($\text{KNO}_3$)—essential for gunpowder and nitric acid ($\text{HNO}_3$) synthesis.4. Mechanical Fabrication vs. Chemical ReactionsCarving a wooden bucket from a log with a stone, stitching leather clothes, and shaping a bronze fork are physical geometry operations, not aqueous reactions. Draft 2 lacked a mechanical fabrication solver.TypeScript// src/engine/fabrication.ts
+export type MechanicalOp = 'KNAP' | 'CARVE_HOLLOW' | 'ABRADE' | 'PIERCE_STITCH' | 'CAST_MOLD' | 'FORGE_HAMMER';
+
+export interface FabricationBlueprint {
+  readonly id: string;                 // e.g., 'WOODEN_BUCKET_5L', 'BRONZE_FORK'
+  readonly operation: MechanicalOp;
+  readonly requiredToolCategory: string;
+  readonly minToolMohs: number;
+  readonly workEnergyJoules: number;   // Mechanical work required from player
+  readonly toolWearN: number;          // Abrasive wear applied to equipped tool edge
+  readonly inputs: ReadonlyArray<{ itemId: string; count: number; minTempK?: number }>;
+  readonly outputItemId: string;
+}
+Carving the Bucket: Requires WOODEN_LOG_SOFTWOOD + Equipped FLINT_ADZE ($\text{Mohs } 7.0 \ge \text{Wood Mohs } 2.0$). Consumes $35\text{ kJ}$ mechanical work ($38\text{ kcal}$ dietary energy at $22\%$ human efficiency), degrades the flint edge by $14\%$ via micro-fracturing, and outputs a hollow WOODEN_BUCKET_5L + $400\text{ g}$ WOOD_SHAVINGS (tinder).Forging the Fork: Requires heating BRONZE_INGOT to its solidus-annealing window ($773\text{ K–}973\text{ K}$) and striking with a HAMMERSTONE on a GRANITE_ANVIL, or pouring molten bronze ($1320\text{ K}$) into a two-part CARVED_SOAPSTONE_MOLD.5. Ecology Depletion, Foraging Radii, & Mycelium CultivationIf clicking "Trees" or "Mushrooms" yields infinite free materials at static energy costs, the survival loop collapses.Radial Travel Cost: Each biome node has a local stock (e.g., $12$ Oak trees within $100\text{ m}$ of camp). Depleting the immediate radius increases the foraging distance $d$, adding a transport energy surcharge:$$E_{\text{haul}} = (m_{\text{body}} + m_{\text{payload}}) \cdot g \cdot c_{\text{terrain}} \cdot d$$This makes crafting the Leather Backpack ($40\text{ kg}$ capacity, reducing round-trips by $80\%$) mandatory before stripping resources beyond $250\text{ m}$.Spore Prints & Crop Propagation: Rather than walking $2\text{ km}$ for mushrooms or willow bark in the mid-game, players inoculate wet hardwood logs with Fomes or Agaricus spores and plant willow cuttings at camp.
