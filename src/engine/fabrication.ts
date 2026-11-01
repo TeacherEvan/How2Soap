@@ -164,6 +164,101 @@ export const FABRICATION_RECIPES: ReadonlyArray<FabricationRecipe> = [
     workTicks: 2,
     description: 'Craft a waterproof 24-slot backpack, unlocking 40kg portable carrying capacity.',
   },
+  {
+    id: 'CARVE_SOAPSTONE_MOLD',
+    name: 'Carve Soapstone Ingot & Utensil Mold',
+    inputs: [
+      { itemId: 'SOAPSTONE_CHUNK', count: 1, label: 'Soapstone Chunk' },
+    ],
+    outputs: [
+      { itemId: 'SOAPSTONE_MOLD', count: 1, label: 'Soapstone Ingot & Utensil Mold' },
+    ],
+    requiredToolSlot: 'CUTTING_SKINNING',
+    energyCostKcal: 25.0,
+    workTicks: 2,
+    description: 'Carve refractory talc-schist block using a flint flake blade into durable two-part casting molds.',
+  },
+  {
+    id: 'SMELT_COPPER_INGOT',
+    name: 'Smelt Copper Ingot',
+    inputs: [
+      { itemId: 'MALACHITE_ORE', count: 2, label: 'Malachite Ore (Cu2CO3(OH)2)' },
+      { itemId: 'CHARCOAL', count: 1, label: 'Hardwood Charcoal' },
+    ],
+    outputs: [
+      { itemId: 'COPPER_INGOT', count: 1, label: 'Refined Copper Ingot' },
+    ],
+    requiredToolSlot: 'THERMAL_HANDLING',
+    energyCostKcal: 65.0,
+    workTicks: 4,
+    description: 'Carbothermic reduction of malachite with charcoal in a high-temperature crucible produces molten copper.',
+  },
+  {
+    id: 'SMELT_TIN_INGOT',
+    name: 'Smelt Tin Ingot',
+    inputs: [
+      { itemId: 'CASSITERITE_ORE', count: 2, label: 'Cassiterite Ore (SnO2)' },
+      { itemId: 'CHARCOAL', count: 1, label: 'Hardwood Charcoal' },
+    ],
+    outputs: [
+      { itemId: 'TIN_INGOT', count: 1, label: 'Refined Tin Ingot' },
+    ],
+    requiredToolSlot: 'THERMAL_HANDLING',
+    energyCostKcal: 50.0,
+    workTicks: 3,
+    description: 'Reduce cassiterite tin dioxide with charcoal at high heat to cast metallic tin.',
+  },
+  {
+    id: 'CAST_BRONZE_FORK',
+    name: 'Cast Bronze Fork',
+    inputs: [
+      { itemId: 'COPPER_INGOT', count: 1, label: 'Copper Ingot (88 wt%)' },
+      { itemId: 'TIN_INGOT', count: 1, label: 'Tin Ingot (12 wt%)' },
+      { itemId: 'SOAPSTONE_MOLD', count: 1, label: 'Soapstone Mold' },
+      { itemId: 'TUYERE_PIPE', count: 1, label: 'Tuyere Blast Pipe' },
+    ],
+    outputs: [
+      { itemId: 'BRONZE_FORK', count: 1, label: 'Bronze Fork' },
+    ],
+    requiredToolSlot: 'THERMAL_HANDLING',
+    energyCostKcal: 70.0,
+    workTicks: 3,
+    description: 'Melt copper (88%) and tin (12%) in mold with forced-draft tuyere blast pipe into a hygienic eating fork.',
+  },
+  {
+    id: 'CAST_BRONZE_SPEARHEAD',
+    name: 'Cast Bronze Spear',
+    inputs: [
+      { itemId: 'COPPER_INGOT', count: 1, label: 'Copper Ingot (88 wt%)' },
+      { itemId: 'TIN_INGOT', count: 1, label: 'Tin Ingot (12 wt%)' },
+      { itemId: 'SOAPSTONE_MOLD', count: 1, label: 'Soapstone Mold' },
+      { itemId: 'WOOD_BRANCH', count: 1, label: 'Sturdy Branch Shaft' },
+    ],
+    outputs: [
+      { itemId: 'BRONZE_SPEAR', count: 1, label: 'Bronze Spear' },
+    ],
+    requiredToolSlot: 'CUTTING_SKINNING',
+    energyCostKcal: 85.0,
+    workTicks: 4,
+    description: 'Cast bronze spearhead in carved soapstone mold and lash to haft for high-efficiency piercing and skinning.',
+  },
+  {
+    id: 'CAST_BRONZE_AXE',
+    name: 'Cast Bronze Axe',
+    inputs: [
+      { itemId: 'COPPER_INGOT', count: 1, label: 'Copper Ingot (88 wt%)' },
+      { itemId: 'TIN_INGOT', count: 1, label: 'Tin Ingot (12 wt%)' },
+      { itemId: 'SOAPSTONE_MOLD', count: 1, label: 'Soapstone Mold' },
+      { itemId: 'WOOD_BRANCH', count: 1, label: 'Hardwood Handle' },
+    ],
+    outputs: [
+      { itemId: 'BRONZE_AXE', count: 1, label: 'Bronze Axe' },
+    ],
+    requiredToolSlot: 'CHOPPING_CARVING',
+    energyCostKcal: 90.0,
+    workTicks: 4,
+    description: 'Cast heavy bronze celt/axe head and mount onto wood haft for high mechanical advantage chopping.',
+  },
 ];
 
 export const INITIAL_PRIMITIVE_TOOLS: Record<ToolSlotKey, ToolItem | null> = {
@@ -182,3 +277,60 @@ export const INITIAL_PRIMITIVE_TOOLS: Record<ToolSlotKey, ToolItem | null> = {
   STITCHING_MEDICAL: null,
   EATING_UTENSIL: null,
 };
+
+/**
+ * Predefined Bronze & Tier 3 Tools definitions
+ */
+export const METALLURGY_TOOLS: Record<'BRONZE_FORK' | 'BRONZE_SPEAR' | 'BRONZE_AXE', ToolItem> = {
+  BRONZE_FORK: {
+    id: 'BRONZE_FORK',
+    name: 'Bronze Fork',
+    slot: 'EATING_UTENSIL',
+    mohs: 3.5,
+    mechanicalAdvantage: 1.0,
+    durability: 100,
+    maxDurability: 100,
+  },
+  BRONZE_SPEAR: {
+    id: 'BRONZE_SPEAR',
+    name: 'Bronze Spear',
+    slot: 'CUTTING_SKINNING',
+    mohs: 3.5,
+    mechanicalAdvantage: 2.2,
+    durability: 100,
+    maxDurability: 100,
+  },
+  BRONZE_AXE: {
+    id: 'BRONZE_AXE',
+    name: 'Bronze Axe',
+    slot: 'CHOPPING_CARVING',
+    mohs: 3.5,
+    mechanicalAdvantage: 2.5,
+    durability: 100,
+    maxDurability: 100,
+  },
+};
+
+export interface EatingUtensilBonus {
+  netCaloricBonusPct: number;    // e.g. 0.15 (+15%)
+  pathogenRiskEliminated: boolean;
+}
+
+/**
+ * Check eating utensil tool slot bonus.
+ * When an item is equipped in EATING_UTENSIL (like BRONZE_FORK),
+ * it provides +15% net caloric digestion efficiency and eliminates pathogen risk.
+ */
+export function getEatingUtensilBonus(tool: ToolItem | null): EatingUtensilBonus {
+  if (!tool || tool.slot !== 'EATING_UTENSIL') {
+    return {
+      netCaloricBonusPct: 0,
+      pathogenRiskEliminated: false,
+    };
+  }
+  return {
+    netCaloricBonusPct: 0.15,
+    pathogenRiskEliminated: true,
+  };
+}
+

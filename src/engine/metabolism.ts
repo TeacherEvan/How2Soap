@@ -141,14 +141,53 @@ export function stepPlayerMetabolism(
   };
 }
 
-/** Consume food items to replenish glucose and fat. */
-export function consumeFood(player: PlayerMetabolismState, kcal: number, hydrationBonus = 0): void {
+export interface ConsumeFoodOptions {
+  hydrationBonus?: number;
+  hasCleanUtensil?: boolean;
+}
+
+export interface ConsumeFoodResult {
+  absorbedKcal: number;
+  bonusKcal: number;
+  pathogenRiskEliminated: boolean;
+}
+
+/**
+ * Consume food items to replenish glucose and fat.
+ * If hasCleanUtensil is true (or options.hasCleanUtensil is true),
+ * digestive return is boosted by +15% net caloric digestion efficiency,
+ * and pathogen risk is eliminated.
+ */
+export function consumeFood(
+  player: PlayerMetabolismState,
+  kcal: number,
+  hydrationBonusOrOptions: number | ConsumeFoodOptions = 0,
+): ConsumeFoodResult {
+  let hydrationBonus = 0;
+  let hasCleanUtensil = false;
+
+  if (typeof hydrationBonusOrOptions === 'number') {
+    hydrationBonus = hydrationBonusOrOptions;
+  } else if (hydrationBonusOrOptions) {
+    hydrationBonus = hydrationBonusOrOptions.hydrationBonus ?? 0;
+    hasCleanUtensil = hydrationBonusOrOptions.hasCleanUtensil ?? false;
+  }
+
+  const effectiveKcal = hasCleanUtensil ? kcal * 1.15 : kcal;
+  const bonusKcal = effectiveKcal - kcal;
+
   const roomInGlucose = METABOLIC_CONSTANTS.MAX_GLUCOSE_KCAL - player.glucoseKcal;
-  if (kcal <= roomInGlucose) {
-    player.glucoseKcal += kcal;
+  if (effectiveKcal <= roomInGlucose) {
+    player.glucoseKcal += effectiveKcal;
   } else {
     player.glucoseKcal = METABOLIC_CONSTANTS.MAX_GLUCOSE_KCAL;
-    player.adiposeKcal += (kcal - roomInGlucose);
+    player.adiposeKcal += (effectiveKcal - roomInGlucose);
   }
   player.hydrationPct = Math.min(100, player.hydrationPct + hydrationBonus);
+
+  return {
+    absorbedKcal: effectiveKcal,
+    bonusKcal,
+    pathogenRiskEliminated: hasCleanUtensil,
+  };
 }

@@ -95,6 +95,52 @@ export const REACTIONS: ReadonlyArray<ReactionRule> = [
     enthalpyJPerMol: -8000,
     minTempK: 300,
   },
+  {
+    id: 'malachite_reduction',
+    label: 'Cu2CO3(OH)2 + C -> 2 Cu + 2 CO2 + H2O',
+    reactants: [
+      { speciesIdx: SPECIES.MALACHITE, stoich: 1 },
+      { speciesIdx: SPECIES.CARBON, stoich: 1 },
+    ],
+    products: [
+      { speciesIdx: SPECIES.COPPER, stoich: 2 },
+      { speciesIdx: SPECIES.CO2, stoich: 2 },
+      { speciesIdx: SPECIES.H2O, stoich: 1 },
+    ],
+    activationEnergyJ: 120000,
+    preExponentialA: 2.0e7,
+    enthalpyJPerMol: 180000,
+    minTempK: 1200,
+  },
+  {
+    id: 'cassiterite_reduction',
+    label: 'SnO2 + C -> Sn + CO2',
+    reactants: [
+      { speciesIdx: SPECIES.CASSITERITE, stoich: 1 },
+      { speciesIdx: SPECIES.CARBON, stoich: 1 },
+    ],
+    products: [
+      { speciesIdx: SPECIES.TIN, stoich: 1 },
+      { speciesIdx: SPECIES.CO2, stoich: 1 },
+    ],
+    activationEnergyJ: 140000,
+    preExponentialA: 1.5e7,
+    enthalpyJPerMol: 190000,
+    minTempK: 1200,
+  },
+  {
+    id: 'bronze_alloying',
+    label: '22 Cu + 3 Sn -> 25 Bronze',
+    reactants: [
+      { speciesIdx: SPECIES.COPPER, stoich: 22 },
+      { speciesIdx: SPECIES.TIN, stoich: 3 },
+    ],
+    products: [{ speciesIdx: SPECIES.BRONZE, stoich: 25 }],
+    activationEnergyJ: 50000,
+    preExponentialA: 1.0e6,
+    enthalpyJPerMol: -10000,
+    minTempK: 1250,
+  },
 ];
 
 export const ELECTROLYSIS_RULES: ReadonlyArray<ElectrolysisRule> = [

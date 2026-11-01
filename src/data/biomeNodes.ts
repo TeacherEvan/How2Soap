@@ -248,6 +248,72 @@ export const BIOME_DAG: ReadonlyArray<BiomeCategoryNode> = [
           },
         ],
       },
+      {
+        id: 'ROCK_MALACHITE',
+        name: 'Malachite Outcrop',
+        subtype: 'Carbonates',
+        baseDistanceMeters: 180,
+        parts: [
+          {
+            id: 'MALACHITE_ORE_HARVEST',
+            name: 'Malachite Ore (2 kg)',
+            baseWorkJoules: 110000,
+            requiredToolSlot: 'PERCUSSION_MINING',
+            minMohs: 4.5,
+            targetMohs: 3.5,
+            moisturePct: 0,
+            harvestTimeTicks: 1,
+            yields: [
+              { itemId: 'MALACHITE_ORE', name: 'Malachite Ore', massKg: 2.0, speciesIdx: 19, chemicalFormula: 'Cu2CO3(OH)2' },
+            ],
+            description: 'Basic copper carbonate ore. Smelts with carbon/charcoal in high-temperature forge into metallic copper.',
+          },
+        ],
+      },
+      {
+        id: 'ROCK_CASSITERITE',
+        name: 'Cassiterite Vein',
+        subtype: 'Oxides',
+        baseDistanceMeters: 220,
+        parts: [
+          {
+            id: 'CASSITERITE_ORE_HARVEST',
+            name: 'Cassiterite Ore (2 kg)',
+            baseWorkJoules: 140000,
+            requiredToolSlot: 'PERCUSSION_MINING',
+            minMohs: 6.5,
+            targetMohs: 6.0,
+            moisturePct: 0,
+            harvestTimeTicks: 1,
+            yields: [
+              { itemId: 'CASSITERITE_ORE', name: 'Cassiterite Ore', massKg: 2.0, speciesIdx: 20, chemicalFormula: 'SnO2' },
+            ],
+            description: 'Tin dioxide ore. Reduced with charcoal at 1200 K to yield metallic tin for bronze alloying.',
+          },
+        ],
+      },
+      {
+        id: 'ROCK_SOAPSTONE',
+        name: 'Soapstone Deposit',
+        subtype: 'Silicates',
+        baseDistanceMeters: 140,
+        parts: [
+          {
+            id: 'SOAPSTONE_BLOCK_HARVEST',
+            name: 'Soapstone Block (3 kg)',
+            baseWorkJoules: 50000,
+            requiredToolSlot: 'PERCUSSION_MINING',
+            minMohs: 2.0,
+            targetMohs: 1.5,
+            moisturePct: 0,
+            harvestTimeTicks: 1,
+            yields: [
+              { itemId: 'SOAPSTONE_BLOCK', name: 'Soapstone Block', massKg: 3.0, chemicalFormula: 'Mg3Si4O10(OH)2' },
+            ],
+            description: 'Soft talc-schist rock (Mohs 1.5), easily carved into refractory casting molds and crucibles.',
+          },
+        ],
+      },
     ],
   },
   {
