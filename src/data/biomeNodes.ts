@@ -314,6 +314,72 @@ export const BIOME_DAG: ReadonlyArray<BiomeCategoryNode> = [
           },
         ],
       },
+      {
+        id: 'ROCK_SPHALERITE',
+        name: 'Sphalerite Zinc Deposit',
+        subtype: 'Sulfides',
+        baseDistanceMeters: 250,
+        parts: [
+          {
+            id: 'SPHALERITE_ORE_HARVEST',
+            name: 'Sphalerite Ore (2 kg)',
+            baseWorkJoules: 130000,
+            requiredToolSlot: 'PERCUSSION_MINING',
+            minMohs: 4.5,
+            targetMohs: 3.8,
+            moisturePct: 0,
+            harvestTimeTicks: 1,
+            yields: [
+              { itemId: 'SPHALERITE_ORE', name: 'Sphalerite Ore', massKg: 2.0, speciesIdx: 29, chemicalFormula: 'ZnS' },
+            ],
+            description: 'Zinc sulfide mineral (Mohs 3.8). Roast to ZnO and SO2, then smelt with charcoal to extract zinc metal.',
+          },
+        ],
+      },
+      {
+        id: 'ROCK_PYRITE',
+        name: 'Pyrite Mineral Outcrop',
+        subtype: 'Sulfides',
+        baseDistanceMeters: 260,
+        parts: [
+          {
+            id: 'PYRITE_ORE_HARVEST',
+            name: 'Pyrite Ore (2 kg)',
+            baseWorkJoules: 160000,
+            requiredToolSlot: 'PERCUSSION_MINING',
+            minMohs: 6.5,
+            targetMohs: 6.0,
+            moisturePct: 0,
+            harvestTimeTicks: 1,
+            yields: [
+              { itemId: 'PYRITE_ORE', name: 'Pyrite Ore', massKg: 2.0, speciesIdx: 30, chemicalFormula: 'FeS2' },
+            ],
+            description: 'Iron disulfide (Mohs 6.0). Strikes sparks with flint; roasts to yield sulfur dioxide for sulfuric acid.',
+          },
+        ],
+      },
+      {
+        id: 'ROCK_SALTPETER',
+        name: 'Crude Niter & Saltpeter Beds',
+        subtype: 'Nitrates',
+        baseDistanceMeters: 170,
+        parts: [
+          {
+            id: 'SALTPETER_CRYSTALS_HARVEST',
+            name: 'Saltpeter Crystals (1 kg)',
+            baseWorkJoules: 45000,
+            requiredToolSlot: 'BARE_HANDS',
+            minMohs: 1.0,
+            targetMohs: 2.0,
+            moisturePct: 5,
+            harvestTimeTicks: 1,
+            yields: [
+              { itemId: 'SALTPETER_CRYSTALS', name: 'Saltpeter (KNO3)', massKg: 1.0, speciesIdx: 31, chemicalFormula: 'KNO3' },
+            ],
+            description: 'Efflorescent potassium nitrate encrustations from evaporated soil and manure beds. Key oxidizer for lead acid chamber.',
+          },
+        ],
+      },
     ],
   },
   {

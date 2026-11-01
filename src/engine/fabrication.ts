@@ -361,6 +361,84 @@ export const FABRICATION_RECIPES: ReadonlyArray<FabricationRecipe> = [
     workTicks: 1,
     description: 'Craft medical consumable: Ethanol Disinfectant topical antiseptic.',
   },
+  {
+    id: 'SMELT_ZINC_DISCS',
+    name: 'Smelt Zinc Discs',
+    inputs: [
+      { itemId: 'ZINC_METAL', count: 1, label: 'Zinc Metal' },
+    ],
+    outputs: [
+      { itemId: 'ZINC_DISCS', count: 12, label: 'Cast Zinc Discs (12x)' },
+    ],
+    requiredToolSlot: 'THERMAL_HANDLING',
+    energyCostKcal: 45.0,
+    workTicks: 2,
+    description: 'Cast Zinc discs from Zinc metal using high-temperature mold.',
+  },
+  {
+    id: 'STACK_VOLTAIC_PILE',
+    name: 'Stack Voltaic Pile Battery',
+    inputs: [
+      { itemId: 'COPPER_INGOT', count: 1, label: 'Copper Ingot' },
+      { itemId: 'ZINC_METAL', count: 1, label: 'Zinc Metal' },
+      { itemId: 'SULFURIC_ACID', count: 1, label: 'Sulfuric Acid' },
+      { itemId: 'LEATHER_SCRAP', count: 1, label: 'Leather Scrap' },
+    ],
+    outputs: [
+      { itemId: 'VOLTAIC_PILE_BATTERY', count: 1, label: 'Voltaic Pile Battery (13.2 V DC)' },
+    ],
+    requiredToolSlot: 'STITCHING_MEDICAL',
+    energyCostKcal: 60.0,
+    workTicks: 3,
+    description: 'Assemble 12x Cu/Zn pairs separated by H2SO4-soaked leather discs. Generates 13.2 V DC (1.10 V/cell).',
+  },
+  {
+    id: 'CRAFT_ELECTROLYSIS_CELL',
+    name: 'Craft Electrolysis Cell',
+    inputs: [
+      { itemId: 'FIRED_CERAMIC_VESSEL', count: 1, label: 'Lead/Ceramic Vessel' },
+      { itemId: 'CARBON_ELECTRODES', count: 2, label: 'Carbon Electrodes' },
+    ],
+    outputs: [
+      { itemId: 'ELECTROLYSIS_CELL', count: 1, label: 'Electrolysis Cell Vessel' },
+    ],
+    requiredToolSlot: 'CHOPPING_CARVING',
+    energyCostKcal: 50.0,
+    workTicks: 2,
+    description: 'Build lead/ceramic electrolysis vessel with carbon electrodes.',
+  },
+  {
+    id: 'FABRICATE_ELEMENTAL_SODIUM',
+    name: 'Fabricate Elemental Sodium Metal',
+    inputs: [
+      { itemId: 'MOLTEN_NAOH', count: 1, label: 'Molten NaOH' },
+      { itemId: 'VOLTAIC_PILE_BATTERY', count: 1, label: 'Voltaic Pile Battery' },
+      { itemId: 'ELECTROLYSIS_CELL', count: 1, label: 'Electrolysis Cell' },
+    ],
+    outputs: [
+      { itemId: 'SODIUM_METAL', count: 1, label: 'Pure Sodium Metal (Na)' },
+    ],
+    requiredToolSlot: 'THERMAL_HANDLING',
+    energyCostKcal: 70.0,
+    workTicks: 4,
+    description: 'Run Faraday molten electrolysis on NaOH -> Pure Sodium Metal (Na).',
+  },
+  {
+    id: 'FABRICATE_ELEMENTAL_POTASSIUM',
+    name: 'Fabricate Elemental Potassium Metal',
+    inputs: [
+      { itemId: 'MOLTEN_KOH', count: 1, label: 'Molten KOH' },
+      { itemId: 'VOLTAIC_PILE_BATTERY', count: 1, label: 'Voltaic Pile Battery' },
+      { itemId: 'ELECTROLYSIS_CELL', count: 1, label: 'Electrolysis Cell' },
+    ],
+    outputs: [
+      { itemId: 'POTASSIUM_METAL', count: 1, label: 'Pure Potassium Metal (K)' },
+    ],
+    requiredToolSlot: 'THERMAL_HANDLING',
+    energyCostKcal: 75.0,
+    workTicks: 4,
+    description: 'Run Faraday molten electrolysis on KOH -> Pure Potassium Metal (K).',
+  },
 ];
 
 export interface MedicalConsumableItem {

@@ -259,6 +259,7 @@ export function stepVessel(vessel: VesselState, options: StepOptions): StepResul
   // 3. Electrolysis (Faraday), if a pile is connected.
   if (vessel.appliedVolts > 0) {
     for (const rule of electrolysisRules) {
+      if (rule.minTempK !== undefined && vessel.temperatureK < rule.minTempK) continue;
       if (vessel.appliedVolts <= rule.minDecompositionVolts) continue;
       const current =
         (vessel.appliedVolts - rule.minDecompositionVolts) /

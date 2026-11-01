@@ -31,6 +31,7 @@ export interface ElectrolysisRule {
   readonly coProducts?: ReadonlyArray<ReactionStoich>;
   readonly minDecompositionVolts: number; // E_rev + overpotential
   readonly electronsZ: number;
+  readonly minTempK?: number;
 }
 
 export const REACTIONS: ReadonlyArray<ReactionRule> = [
@@ -170,6 +171,55 @@ export const REACTIONS: ReadonlyArray<ReactionRule> = [
     enthalpyJPerMol: -15000,
     minTempK: 320,
   },
+  {
+    id: 'sphalerite_roasting',
+    label: '2 ZnS + 3 O2 -> 2 ZnO + 2 SO2',
+    reactants: [
+      { speciesIdx: SPECIES.SPHALERITE, stoich: 2 },
+      { speciesIdx: SPECIES.O2, stoich: 3 },
+    ],
+    products: [
+      { speciesIdx: SPECIES.ZNO, stoich: 2 },
+      { speciesIdx: SPECIES.SO2, stoich: 2 },
+    ],
+    activationEnergyJ: 110000,
+    preExponentialA: 2.0e7,
+    enthalpyJPerMol: -879000,
+    minTempK: 1100,
+  },
+  {
+    id: 'sulfuric_acid_chamber',
+    label: '2 SO2 + 2 KNO3 + 2 H2O -> 2 H2SO4 + K2CO3',
+    reactants: [
+      { speciesIdx: SPECIES.SO2, stoich: 2 },
+      { speciesIdx: SPECIES.KNO3, stoich: 2 },
+      { speciesIdx: SPECIES.H2O, stoich: 2 },
+    ],
+    products: [
+      { speciesIdx: SPECIES.H2SO4, stoich: 2 },
+      { speciesIdx: SPECIES.K2CO3, stoich: 1 },
+    ],
+    activationEnergyJ: 35000,
+    preExponentialA: 5.0e5,
+    enthalpyJPerMol: -260000,
+    minTempK: 350,
+  },
+  {
+    id: 'zinc_smelting',
+    label: 'ZnO + C -> Zn + CO2',
+    reactants: [
+      { speciesIdx: SPECIES.ZNO, stoich: 1 },
+      { speciesIdx: SPECIES.CARBON, stoich: 1 },
+    ],
+    products: [
+      { speciesIdx: SPECIES.ZINC, stoich: 1 },
+      { speciesIdx: SPECIES.CO2, stoich: 1 },
+    ],
+    activationEnergyJ: 130000,
+    preExponentialA: 1.8e7,
+    enthalpyJPerMol: 238000,
+    minTempK: 1250,
+  },
 ];
 
 export const ELECTROLYSIS_RULES: ReadonlyArray<ElectrolysisRule> = [
@@ -200,6 +250,34 @@ export const ELECTROLYSIS_RULES: ReadonlyArray<ElectrolysisRule> = [
     cathodeStoich: 2,
     minDecompositionVolts: 1.73,
     electronsZ: 2,
+  },
+  {
+    id: 'molten_koh_electrolysis',
+    label: '4 KOH -> 4 K + O2 + 2 H2O',
+    electrolyteSpeciesIdx: SPECIES.KOH,
+    electrolyteStoich: 4,
+    anodeProductIdx: SPECIES.O2,
+    anodeStoich: 1,
+    cathodeProductIdx: SPECIES.POTASSIUM_METAL,
+    cathodeStoich: 4,
+    coProducts: [{ speciesIdx: SPECIES.H2O, stoich: 2 }],
+    minDecompositionVolts: 2.2,
+    electronsZ: 4,
+    minTempK: 633, // melting point of KOH (360 °C = 633 K)
+  },
+  {
+    id: 'molten_naoh_electrolysis',
+    label: '4 NaOH -> 4 Na + O2 + 2 H2O',
+    electrolyteSpeciesIdx: SPECIES.NAOH,
+    electrolyteStoich: 4,
+    anodeProductIdx: SPECIES.O2,
+    anodeStoich: 1,
+    cathodeProductIdx: SPECIES.SODIUM_METAL,
+    cathodeStoich: 4,
+    coProducts: [{ speciesIdx: SPECIES.H2O, stoich: 2 }],
+    minDecompositionVolts: 2.25,
+    electronsZ: 4,
+    minTempK: 591, // melting point of NaOH (318 °C = 591 K)
   },
 ];
 
