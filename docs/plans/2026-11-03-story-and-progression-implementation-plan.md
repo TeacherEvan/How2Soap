@@ -483,11 +483,11 @@ const boarPart = boarSpecies.parts[0];
 const oakLog = oakSpecies.parts[0]; // White Oak Log
 
 describe('applyHarvest', () => {
-  it('deducts kcal and adds yields to bare hands when they fit', () => {
+  it('deducts kcal and adds yields with tools equipped (toolless: kcal infeasible by formula design)', () => {
     const p = createPlayerMetabolism();
     const inv = createInventoryState();
-    const rng = createSeededRng(1);
-    const out = applyHarvest(p, inv, oakLog, oakSpecies.baseDistanceMeters, null, null, rng);
+    const axe = { mohs: 7.0, mechanicalAdvantage: 2.5 };  // stone axe — knap first, hunt second
+    const out = applyHarvest(p, inv, oakLog, oakSpecies.baseDistanceMeters, 'CHOPPING_CARVING', axe, createSeededRng(1));
     expect(out.ok).toBe(true);
     expect(out.kcalCost).toBeGreaterThan(0);
     expect(p.glucoseKcal).toBeCloseTo(1200 - out.kcalCost, 6);
@@ -516,11 +516,13 @@ describe('applyHarvest', () => {
     expect(out2.wound).toBe(out.wound);
   });
 
-  it('toolless boar hunt: meat lands in inventory, deterministic across seeds', () => {
+  it('boar hunt with a flint blade: MEAT_RAW lands in inventory (routing spans containers)', () => {
     const p = createPlayerMetabolism();
     const inv = createInventoryState();
-    applyHarvest(p, inv, boarPart, boarSpecies.baseDistanceMeters, null, null, createSeededRng(4));
-    expect(JSON.stringify(inv.bareHands.slots.map(s => s?.itemId))).toContain('MEAT_RAW');
+    const blade = { mohs: 7.0, mechanicalAdvantage: 2.4 };
+    applyHarvest(p, inv, boarPart, boarSpecies.baseDistanceMeters, 'CUTTING_SKINNING', blade, createSeededRng(4));
+    const all = [...inv.bareHands.slots, ...inv.campCache.slots, ...inv.backpack.slots];
+    expect(all.some(s => s?.itemId === 'MEAT_RAW')).toBe(true);
   });
 });
 ```
@@ -724,6 +726,34 @@ Expected: new suite PASS; existing 54 still PASS.
 git add src/engine/fabrication.ts src/engine/sim.worker.ts tests/fabricateConsume.test.ts
 git commit -m "feat(worker): functional FABRICATE (atomic consume + data-driven effects), EAT_FOOD, EQUIP_TOOL, HARVEST_PART"
 ```
+
+
+### Task 5 — Amendment (ruling R2, vessel-bench fabrication)
+R2 from the controller ledger: FABRICATE must ALSO resolve **vessel-only inputs** (the 8 vessel ids the item catalog deliberately does not carry). Without this, Tier 4/5 chains (penicillin, tincture, electrolysis, dehair) are unreachable and chapters 4–6 are unwinnable.
+
+Add a pure module `src/engine/vesselInputs.ts`:
+```ts
+import { liquidVolumeL, type VesselState } from './chemistry';
+import { SPECIES } from '../data/speciesRegistry';
+export interface VesselInputNeed { speciesIdx: number | null; minMoles: number; minLiquidL?: number; consume: 'all' | 'none' }
+export const VESSEL_INPUTS: Readonly<Record<string, VesselInputNeed>> = {
+  WATER_VESSEL:     { speciesIdx: null, minMoles: 0, minLiquidL: 1.0, consume: 'none' }, // any vessel with ≥ 1 L liquid
+  HARDWOOD_ASH_WATER:{ speciesIdx: null, minMoles: 0, minLiquidL: 0.5, consume: 'none' }, // weak lye wash — presence check only
+  ETHANOL_BROTH:    { speciesIdx: SPECIES.ETHANOL,  minMoles: 0.5, consume: 'all' },
+  PENICILLIN_BROTH: { speciesIdx: SPECIES.PENICILLIN, minMoles: 0.001, consume: 'all' },
+  SALICYLIC_ACID:   { speciesIdx: SPECIES.SALICYLIC_ACID, minMoles: 0.001, consume: 'all' },
+  SULFURIC_ACID:    { speciesIdx: SPECIES.H2SO4,    minMoles: 0.5, consume: 'all' },
+  MOLTEN_KOH:       { speciesIdx: SPECIES.KOH,      minMoles: 1.0, consume: 'all' },
+  MOLTEN_NAOH:      { speciesIdx: SPECIES.NAOH,     minMoles: 1.0, consume: 'all' },
+};
+export function satisfyVesselInputs(worldVessels: readonly VesselState[], ids: readonly string[]):
+  { ok: true, consumption: Array<{ vesselId: number; speciesIdx: number | null; consume: 'all' | 'none' }> } | { ok: false; shortfall: string[] } {
+  /* for each VESSEL_INPUTS id in ids: find a vessel satisfying predicate (liquid volume for speciess-index-null entries; moles ≥ minMoles otherwise). Consumption plan concatenated. Shortfalls named with the id's label. */
+}
+```
+Worker `FABRICATE` flow becomes: (1) split inputs into `itemId`-resolvable-in-catalog (containers, all-or-nothing as in the base task) vs `VESSEL_INPUTS` keys; (2) if both plans check out → consume containers AND apply vessel consumption (all→ set the matching species moles to 0 in that vessel; none→ untouched), add outputs, post `OBJECTIVE recipe`; (3) if any check fails → EVENTS `Missing (bench): …` naming shortfalls, consume NOTHING anywhere (global all-or-nothing). `HARDWOOD_ASH_WATER`'s spec §5 use case ("soak 12 ticks") remains vibes-level — no new chemistry, just the presence gate.
+
+Tests (extend `tests/fabricateConsume.test.ts` or a new `tests/vesselInputs.test.ts`): build a `WorldState` with one ceramic vessel, add moles, assert satisfaction/shortfall/one-shot consumption semantics; assert failure path consumes zero of ANY input when one need is missing. `npm test` green at end.
 
 ---
 
