@@ -10,6 +10,7 @@ import { BIOME_DAG, type HarvestablePart } from '../data/biomeNodes';
 export function renderBiomeTreePanel(
   container: HTMLElement,
   onHarvest: (part: HarvestablePart) => void,
+  getHaulKcal?: (part: HarvestablePart, speciesDistanceMeters: number) => number,
 ): void {
   container.innerHTML = `
     <div class="biome-panel-inner">
@@ -29,15 +30,19 @@ export function renderBiomeTreePanel(
                 <div class="species-item">
                   <div class="species-name">${sp.name} <small class="text-muted">(${sp.baseDistanceMeters}m)</small></div>
                   <div class="parts-list">
-                    ${sp.parts.map((p) => `
+                    ${sp.parts.map((p) => {
+                      const estKcal = getHaulKcal ? getHaulKcal(p, sp.baseDistanceMeters) : null;
+                      const costDisplay = estKcal !== null ? `<span class="haul-cost" title="Estimated kcal with your equipped tool">≈ ${Math.round(estKcal)} kcal</span>` : '';
+                      return `
                       <div class="part-row">
                         <div class="part-info">
                           <span class="part-name">${p.name}</span>
                           <span class="part-desc">${p.description}</span>
+                          ${costDisplay}
                         </div>
                         <button class="btn-harvest" data-part-id="${p.id}">Harvest</button>
                       </div>
-                    `).join('')}
+                    `;}).join('')}
                   </div>
                 </div>
               `).join('')}

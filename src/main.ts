@@ -14,10 +14,12 @@ import {
 } from './ui/WorkbenchCanvas';
 import { initMenuAndSettings } from './ui/MenuController';
 import type { HarvestablePart } from './data/biomeNodes';
+import { calculateHarvestTotalCostKcal } from './data/biomeNodes';
 import type { SerializedWorldSave } from './engine/persistence';
 import { showToast } from './ui/Toast';
 import { mountJournal } from './ui/JournalPanel';
 import { StoryMode } from './ui/StoryMode';
+import { bannerModel, treatmentModel } from './ui/panelModels';
 import {
   initialProgression,
   applyProgressEventsWithSensor,
@@ -176,6 +178,13 @@ app.innerHTML = `
         <div class="stat"><span class="stat-label">Glucose</span><strong id="p-glucose">1200 kcal</strong></div>
         <div class="stat"><span class="stat-label">Body Temp</span><strong id="p-temp">37.0 °C</strong></div>
         <div class="stat"><span class="stat-label">Insulation</span><strong id="p-iclo">0.05 clo</strong></div>
+        <div class="hud-chip" id="hud-adipose" title="Adipose reserves — your famine buffer">Adipose <b id="val-adipose">15,000 kcal</b></div>
+        <div class="hud-chip" id="hud-hydration" title="Hydration">Hydration <b id="val-hydration">100%</b></div>
+        <div class="hud-chip" id="hud-ambient" title="Ambient temperature">Amb <b id="val-ambient">288 K</b></div>
+        <div class="hud-chip" id="hud-renown" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" title="Renown progress">
+          <span id="val-renown-title">L1 · Scrub Apprentice</span>
+          <svg class="renown-ring" viewBox="0 0 36 36"><circle class="ring-bg" cx="18" cy="18" r="15.5"/><circle class="ring-fg" id="ring-renown-fg" cx="18" cy="18" r="15.5"/></svg>
+        </div>
       </div>
       <div class="controls">
         <button id="pause" class="ghost">Pause</button>
@@ -184,6 +193,8 @@ app.innerHTML = `
         <button id="reset" class="ghost danger">New world</button>
       </div>
     </header>
+
+    <div class="banners" id="banners" aria-live="polite"></div>
 
     <main class="layout-4panel">
       <!-- Panel 1: Left Biome Tree -->
@@ -262,10 +273,10 @@ app.innerHTML = `
   </div>
 `;
 
-const $ = <T extends HTMLElement>(id: string): T => {
+const $ = <T extends HTMLElement = HTMLElement>(id: string): T => {
   const element = document.getElementById(id);
   if (!element) throw new Error(`Missing element #${id}`);
-  return element as T;
+  return element as unknown as T;
 };
 
 const isoBadge = $('isolation');
@@ -273,6 +284,12 @@ const clock = $('clock');
 const pGlucose = $('p-glucose');
 const pTemp = $('p-temp');
 const pIclo = $('p-iclo');
+const valAdipose = $('val-adipose');
+const valHydration = $('val-hydration');
+const valAmbient = $('val-ambient');
+const valRenownTitle = $('val-renown-title');
+const ringRenownFg = document.getElementById('ring-renown-fg') as SVGCircleElement | null;
+const bannersRow = $('banners');
 const vesselList = $('vessel-list');
 const vesselTitle = $('vessel-title');
 const vesselSub = $('vessel-sub');
@@ -505,8 +522,45 @@ function updatePlayerUI(): void {
   pGlucose.textContent = `${state.player.glucoseKcal} kcal`;
   pTemp.textContent = `${state.player.coreTempC} °C`;
   pIclo.textContent = `${state.player.clothingIclo.toFixed(2)} clo`;
-  renderToolAndInventoryPanel(toolInvPanel, state.inventory, () => {
-    send({ type: 'FABRICATE', recipeId: 'RECIPE_STITCH_BACKPACK' });
+
+  if (valAdipose) valAdipose.textContent = `${Math.round(state.player.adiposeKcal).toLocaleString()} kcal`;
+  if (valHydration) valHydration.textContent = `${Math.round(state.player.hydrationPct)}%`;
+  if (valAmbient) valAmbient.textContent = `${Math.round(state.player.ambientTempK)} K`;
+
+  const renownInfo = levelFromRenown(state.progression.renown);
+  if (valRenownTitle) valRenownTitle.textContent = `L${renownInfo.level} · ${renownInfo.title}`;
+  if (ringRenownFg) {
+    const circumference = 2 * Math.PI * 15.5; // ≈ 97.389
+    const pct = renownInfo.span > 0 ? Math.min(1, renownInfo.intoLevel / renownInfo.span) : 1;
+    const offset = circumference * (1 - pct);
+    ringRenownFg.style.strokeDasharray = `${circumference}`;
+    ringRenownFg.style.strokeDashoffset = `${offset}`;
+  }
+
+  // Update banners
+  const banners = bannerModel(state.player);
+  bannersRow.innerHTML = banners
+    .map(b => `<div class="banner banner-${b.severity}">${b.text}</div>`)
+    .join('');
+
+  // Active treatments
+  const treatments = treatmentModel(state.items, state.player);
+
+  renderToolAndInventoryPanel(toolInvPanel, state.inventory, {
+    onCraftBackpack: () => {
+      send({ type: 'FABRICATE', recipeId: 'RECIPE_STITCH_BACKPACK' });
+    },
+    onEatFood: (itemId) => {
+      send({ type: 'EAT_FOOD', itemId });
+    },
+    onEquipTool: (itemId, slot) => {
+      send({ type: 'EQUIP_TOOL', itemId, slot });
+    },
+    onAdministerTreatment: (itemId) => {
+      send({ type: 'APPLY_TREATMENT', itemId });
+    },
+    treatments,
+    isDead: state.player.conditions?.dead,
   });
 }
 
@@ -554,6 +608,14 @@ function startWorld(): void {
     } else if (data.type === 'EVENTS') {
       for (const ev of data.events) {
         state.log.push(ev.message);
+        if (
+          ev.message.startsWith('Too exhausted') ||
+          ev.message.startsWith('Missing:') ||
+          ev.message.startsWith('Not a food') ||
+          ev.message.startsWith('Cannot treat')
+        ) {
+          showToast(ev.message, 'failure');
+        }
       }
       renderLog();
     } else if (data.type === 'PLAYER_SYNC') {
@@ -636,10 +698,27 @@ function startWorld(): void {
   state.worker.postMessage({ type: 'INIT', sab });
 
   // Initial Biome DAG rendering
-  renderBiomeTreePanel(biomePanel, (part: HarvestablePart) => {
-    state.log.push(`Harvested ${part.name} (${part.description})`);
-    renderLog();
-  });
+  renderBiomeTreePanel(
+    biomePanel,
+    (part: HarvestablePart) => {
+      send({ type: 'HARVEST_PART', partId: part.id });
+      state.log.push(`Harvested ${part.name} (${part.description})`);
+      renderLog();
+    },
+    (part, distance) => {
+      const equipped = part.requiredToolSlot ? state.inventory.tools[part.requiredToolSlot] : null;
+      const mohs = equipped?.mohs ?? 1.0;
+      const ma = equipped ? 2.0 : 1.0;
+      return calculateHarvestTotalCostKcal(
+        part.baseWorkJoules,
+        mohs,
+        part.targetMohs,
+        ma,
+        distance,
+        0,
+      );
+    },
+  );
 
   // Settings & Compendium Modal
   initMenuAndSettings({
