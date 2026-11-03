@@ -24,7 +24,7 @@ export interface HarvestOutcome {
   kcalCost: number;
   added: Array<{ itemId: string; count: number; container: 'bareHands' | 'backpack' | 'campCache' }>;
   overflowKg: number;
-  wound: boolean;   // true if the seeded roll opened a wound (animal_hunt parts only)
+  wound: boolean;
 }
 
 const ANIMAL_HUNT_IDS = new Set(['BOAR_HUNT']); // extend as the biome DAG grows: any part whose id endsWith('_HUNT')

@@ -439,6 +439,15 @@ export const FABRICATION_RECIPES: ReadonlyArray<FabricationRecipe> = [
     workTicks: 4,
     description: 'Run Faraday molten electrolysis on KOH -> Pure Potassium Metal (K).',
   },
+  {
+    id: 'RECIPE_SALINE_RINSE',
+    name: 'Saline Wound Rinse',
+    inputs: [ { itemId: 'HALITE_SALT', count: 1, label: 'Halite Salt' } ],
+    outputs: [ { itemId: 'SALINE_RINSE', count: 1, label: 'Saline Rinse' } ],
+    energyCostKcal: 2,
+    workTicks: 0,
+    description: 'Salt of the earth in a palm of water; the cheapest clean wound there is.',
+  },
 ];
 
 export interface MedicalConsumableItem {
@@ -545,4 +554,15 @@ export function getEatingUtensilBonus(tool: ToolItem | null): EatingUtensilBonus
     pathogenRiskEliminated: true,
   };
 }
+
+// ---- Recipe side-effects (data-driven; the worker switches on this, not on recipe ids) ----
+export interface RecipeEffect {
+  readonly onFabricate?: 'unlock_backpack' | 'equip_eating_utensil' | 'equip_weapon' | 'equip_axe' | 'noop';
+}
+export const RECIPE_EFFECTS: Readonly<Record<string, RecipeEffect>> = {
+  RECIPE_STITCH_BACKPACK: { onFabricate: 'unlock_backpack' },
+  CAST_BRONZE_FORK: { onFabricate: 'equip_eating_utensil' },
+  CAST_BRONZE_SPEARHEAD: { onFabricate: 'equip_weapon' },
+  CAST_BRONZE_AXE: { onFabricate: 'equip_axe' },
+};
 

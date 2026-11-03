@@ -29,6 +29,9 @@ export interface PlayerMetabolismState {
   clothingIclo: number;      // 0.05 nude baseline, 1.15 leather backpack/tunic
   isSleeping: boolean;
   conditions: PlayerConditions;
+  dead?: boolean;
+  woundOnsetSeconds?: number;
+  sepsisOnsetSeconds?: number;
 }
 
 export const METABOLIC_CONSTANTS = {
