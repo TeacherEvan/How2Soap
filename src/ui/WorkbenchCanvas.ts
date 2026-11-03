@@ -10,7 +10,7 @@
 
 import { FABRICATION_RECIPES } from '../engine/fabrication';
 
-export type WorkbenchTab = 'REACTIONS' | 'FABRICATION' | 'PADDOCKS';
+export type WorkbenchTab = 'REACTIONS' | 'FABRICATION' | 'PADDOCKS' | 'JOURNAL';
 
 export interface WorkbenchProps {
   currentTab: WorkbenchTab;
@@ -28,6 +28,7 @@ export function renderWorkbenchTabs(
     { key: 'REACTIONS' as WorkbenchTab, label: '🔬 Chemical Workbench' },
     { key: 'FABRICATION' as WorkbenchTab, label: '🔨 Fabrication Bench' },
     { key: 'PADDOCKS' as WorkbenchTab, label: '🌾 Animal Paddocks' },
+    { key: 'JOURNAL' as WorkbenchTab, label: '📖 Journal & Missions' },
   ];
 
   container.innerHTML = `

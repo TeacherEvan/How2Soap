@@ -15,6 +15,15 @@ import {
 import { initMenuAndSettings } from './ui/MenuController';
 import type { HarvestablePart } from './data/biomeNodes';
 import type { SerializedWorldSave } from './engine/persistence';
+import { showToast } from './ui/Toast';
+import { mountJournal } from './ui/JournalPanel';
+import { StoryMode } from './ui/StoryMode';
+import {
+  initialProgression,
+  applyProgressEventsWithSensor,
+  levelFromRenown,
+} from './engine/progression';
+import { CHAPTERS } from './data/story';
 
 interface VesselMeta {
   id: number;
@@ -66,7 +75,7 @@ const state = {
     clothingIclo: 0.05,
     day: 1,
     ambientTempK: 288.15,
-    conditions: { fever: false, systemicInfection: false, woundContamination: false },
+    conditions: { fever: false, systemicInfection: false, woundContamination: false, dead: false },
   },
   inventory: {
     backpackUnlocked: false,
@@ -88,6 +97,7 @@ const state = {
     manureKg: 0.84,
   },
   items: [] as Array<{ id: string; count: number; massKg: number }>,
+  progression: initialProgression(),
 };
 
 const app = document.querySelector<HTMLDivElement>('#app');
@@ -231,6 +241,9 @@ app.innerHTML = `
         <!-- Tab 3: Domesticated Paddocks -->
         <div id="tab-paddocks-content" class="tab-pane hidden"></div>
 
+        <!-- Tab 4: Journal & Missions -->
+        <div id="tab-journal-content" class="tab-pane hidden"></div>
+
         <div class="workbench-foot">
           <div class="quest-box">
             <h3>Master Tech Progression</h3>
@@ -279,6 +292,7 @@ const tabsNavContainer = $('workbench-tabs-container');
 const tabReactions = $('tab-reactions-content');
 const tabFabrication = $('tab-fabrication-content');
 const tabPaddocks = $('tab-paddocks-content');
+const tabJournal = $('tab-journal-content');
 
 function send(command: unknown): void {
   state.worker?.postMessage(command);
@@ -453,6 +467,7 @@ function switchTab(tab: WorkbenchTab): void {
   tabReactions.classList.toggle('hidden', tab !== 'REACTIONS');
   tabFabrication.classList.toggle('hidden', tab !== 'FABRICATION');
   tabPaddocks.classList.toggle('hidden', tab !== 'PADDOCKS');
+  tabJournal.classList.toggle('hidden', tab !== 'JOURNAL');
 
   if (tab === 'FABRICATION') {
     renderFabricationTab(tabFabrication, (recipeId) => {
@@ -462,6 +477,8 @@ function switchTab(tab: WorkbenchTab): void {
     });
   } else if (tab === 'PADDOCKS') {
     updatePaddockUI();
+  } else if (tab === 'JOURNAL') {
+    mountJournal(tabJournal, state.progression);
   }
 }
 
@@ -524,6 +541,7 @@ function startWorld(): void {
       | { type: 'VESSELS'; vessels: VesselMeta[] }
       | { type: 'EVENTS'; events: Array<{ vesselId: number; message: string }> }
       | { type: 'PLAYER_SYNC'; player: any; inventory: any & { items?: Array<{ id: string; count: number; massKg: number }> } }
+      | { type: 'OBJECTIVE'; kind: 'recipe' | 'eat' | 'treat' | 'harvest' | 'flag'; target: string }
     >,
   ) => {
     const data = event.data;
@@ -543,6 +561,75 @@ function startWorld(): void {
       state.inventory = data.inventory;
       state.items = data.inventory.items ?? [];
       updatePlayerUI();
+      if (state.player.conditions?.dead) {
+        StoryMode.death('sepsis', { days: state.player.day ?? 1, renown: state.progression.renown }, () => {
+          localStorage.removeItem('how2soap.save.v2');
+          location.reload();
+        });
+      }
+    } else if (data.type === 'OBJECTIVE') {
+      const sensor = {
+        hasSpecies: (idx: number, minMoles: number) => {
+          if (!state.snapshot) return false;
+          for (let v = 0; v < state.vessels.length; v++) {
+            if (speciesMoles(state.snapshot, v, idx) >= minMoles) return true;
+          }
+          return false;
+        },
+        hasItem: (itemId: string, count = 1) => {
+          const item = state.items.find(i => i.id === itemId);
+          return (item?.count ?? 0) >= count;
+        },
+        hasFabricated: (id: string) => state.progression.fabricatedRecipes.includes(id),
+        hasFlag: (f: string) => !!state.progression.ever[f],
+        hasEaten: (id: string) => (state.progression.craftStats.eaten[id] ?? 0) > 0,
+        hasTreated: (k: string) => (state.progression.craftStats.treated[k] ?? 0) > 0,
+      };
+
+      const res = applyProgressEventsWithSensor(
+        state.progression,
+        { kind: data.kind, target: data.target },
+        sensor,
+      );
+
+      for (const objId of res.objectives) {
+        showToast(`Objective completed: ${objId} (+25 Renown)`, 'success');
+      }
+      for (const letId of res.letters) {
+        showToast(`Council letter received: ${letId}!`, 'renown');
+      }
+      for (const lu of res.levelUps) {
+        showToast(`⭐ Advanced to Level ${lu.level}: ${lu.title}!`, 'renown');
+      }
+      for (const chId of res.chapters) {
+        const completedCh = CHAPTERS.find(c => c.id === chId);
+        if (completedCh) {
+          StoryMode.chapterComplete(completedCh, () => {
+            if (state.progression.chapter >= CHAPTERS.length) {
+              StoryMode.victory(
+                {
+                  days: state.player.day ?? 1,
+                  fabricated: state.progression.fabricatedRecipes.length,
+                  renown: state.progression.renown,
+                  levelTitle: levelFromRenown(state.progression.renown).title,
+                },
+                'You stand upon the heights of discovery, master of fire and flesh.',
+                {
+                  onFreeCraft: () => {},
+                  onNewWorld: () => {
+                    localStorage.removeItem('how2soap.save.v2');
+                    location.reload();
+                  },
+                },
+              );
+            }
+          });
+        }
+      }
+
+      if (state.activeTab === 'JOURNAL') {
+        mountJournal(tabJournal, state.progression);
+      }
     }
   };
 
@@ -702,8 +789,55 @@ function bindActions(): void {
   });
 }
 
-startWorld();
-bindActions();
-renderVessels();
-renderLog();
-requestAnimationFrame(frame);
+function bootFlow(): void {
+  bindActions();
+  renderVessels();
+  renderLog();
+  requestAnimationFrame(frame);
+
+  const existingSave = localStorage.getItem('how2soap.save.v2');
+  if (existingSave) {
+    try {
+      const parsed = JSON.parse(existingSave);
+      const chTitle = CHAPTERS[parsed.chapter ?? 0]?.title ?? 'The First Fire';
+      const lvl = levelFromRenown(parsed.renown ?? 0);
+      StoryMode.bootSplash(
+        {
+          day: parsed.day ?? 1,
+          chapterTitle: chTitle,
+          renown: parsed.renown ?? 0,
+          title: lvl.title,
+          hasSave: true,
+        },
+        {
+          onContinue: () => {
+            startWorld();
+            // load saved progression
+            state.progression.renown = parsed.renown ?? 0;
+            state.progression.chapter = parsed.chapter ?? 0;
+            state.progression.fabricatedRecipes = parsed.fabricatedRecipes ?? [];
+            state.progression.objectivesDone = parsed.objectivesDone ?? [];
+            state.progression.lettersDone = parsed.lettersDone ?? [];
+            state.progression.affinity = parsed.affinity ?? state.progression.affinity;
+            state.progression.ever = parsed.ever ?? {};
+          },
+          onNewWorld: () => {
+            localStorage.removeItem('how2soap.save.v2');
+            StoryMode.prologue(() => {
+              startWorld();
+            });
+          },
+        },
+      );
+      return;
+    } catch {
+      // parse failed, proceed fresh
+    }
+  }
+
+  StoryMode.prologue(() => {
+    startWorld();
+  });
+}
+
+bootFlow();
