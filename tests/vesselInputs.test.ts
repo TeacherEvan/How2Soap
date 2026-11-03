@@ -16,7 +16,7 @@ describe('vesselInputs (Task 5 pure unit coverage)', () => {
   });
 
   it('fails with human-readable shortfall labels when vessel requirements are not satisfied', () => {
-    const emptyVessels: VesselState[] = [createVessel(1)];
+    const emptyVessels: VesselState[] = [createVessel(1, 'WOOD', 2.0)];
     const res = satisfyVesselInputs(emptyVessels, ['WATER_VESSEL', 'ETHANOL_BROTH']);
     expect(res.ok).toBe(false);
     expect(res.shortfall).toContain('Water (≥ 1 L)');
@@ -25,7 +25,7 @@ describe('vesselInputs (Task 5 pure unit coverage)', () => {
   });
 
   it('satisfies volume-based inputs (e.g. WATER_VESSEL) and respects consume=none', () => {
-    const v = createVessel(1);
+    const v = createVessel(1, 'WOOD', 2.0);
     v.moles[SPECIES.H2O] = 100; // ~1.8 L
     const res = satisfyVesselInputs([v], ['WATER_VESSEL']);
     expect(res.ok).toBe(true);
@@ -41,7 +41,7 @@ describe('vesselInputs (Task 5 pure unit coverage)', () => {
   });
 
   it('satisfies species-based inputs and zeroes species when consume=all', () => {
-    const v = createVessel(2);
+    const v = createVessel(2, 'COPPER', 2.0);
     v.moles[SPECIES.ETHANOL] = 1.0;
     const res = satisfyVesselInputs([v], ['ETHANOL_BROTH']);
     expect(res.ok).toBe(true);
