@@ -445,6 +445,7 @@ git commit -m "feat(ui): inline SVG icon set for the item catalog (dark-theme st
 
 **Interfaces:**
 - Consumes: `PlayerMetabolismState`; `addItemToContainer`, `InventoryState`/`InventorySlot` from `./inventory`; `calculateHarvestTotalCostKcal`, `HarvestablePart` from `../data/biomeNodes`; `Mulberry32`-style `{ roll(p:number):boolean }` from `./rng`.
+- *Note on toolless kcal*: By biome math, toolless harvests of heavy/hard materials (like logs) exceed starting glucose limits (~2,400+ kcal required vs 1,200 starting glucose). Tests and callers use equipped tools (or appropriate tools) reflecting physical feasibility.
 - Produces (exact):
 ```ts
 export interface HarvestOutcome {
