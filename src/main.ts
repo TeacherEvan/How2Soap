@@ -1,4 +1,7 @@
 import './styles.css';
+import splashMp4 from './media/how2soap-intro.mp4';
+import splashWebm from './media/how2soap-intro.webm';
+import splashPoster from './media/how2soap-poster.png';
 import { SharedWorldView, SAB_BYTE_LENGTH, MAX_SPECIES, TELEMETRY } from './engine/memoryLayout';
 import { getSpecies, SPECIES, MAX_DEFINED_SPECIES } from './data/speciesRegistry';
 import { renderBiomeTreePanel } from './ui/BiomeTreePanel';
@@ -81,10 +84,68 @@ const state = {
     waterL: 50.0,
     manureKg: 0.84,
   },
+  items: [] as Array<{ id: string; count: number; massKg: number }>,
 };
 
 const app = document.querySelector<HTMLDivElement>('#app');
 if (!app) throw new Error('#app missing');
+
+/**
+ * Launch the intro splash on every startup. The world boots underneath it;
+ * any click, keypress, or the video ending fades it out. Audio autoplay is
+ * attempted and falls back to a muted play (browser autoplay policies).
+ * Users who prefer reduced motion skip the splash entirely.
+ */
+function launchSplash(): void {
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+  const overlay = document.createElement('div');
+  overlay.className = 'splash-overlay';
+  overlay.setAttribute('aria-hidden', 'true');
+
+  const video = document.createElement('video');
+  video.className = 'splash-video';
+  video.autoplay = true;
+  video.playsInline = true;
+  video.preload = 'auto';
+  video.poster = splashPoster;
+
+  const mp4Source = document.createElement('source');
+  mp4Source.src = splashMp4;
+  mp4Source.type = 'video/mp4';
+  const webmSource = document.createElement('source');
+  webmSource.src = splashWebm;
+  webmSource.type = 'video/webm';
+  video.append(mp4Source, webmSource);
+
+  const hint = document.createElement('div');
+  hint.className = 'splash-hint';
+  hint.textContent = 'Click anywhere to skip';
+
+  overlay.append(video, hint);
+  document.body.appendChild(overlay);
+
+  let dismissed = false;
+  const dismiss = (): void => {
+    if (dismissed) return;
+    dismissed = true;
+    document.removeEventListener('keydown', dismiss);
+    overlay.classList.add('splash-fade');
+    window.setTimeout(() => overlay.remove(), 650);
+  };
+
+  overlay.addEventListener('click', dismiss);
+  video.addEventListener('ended', dismiss);
+  document.addEventListener('keydown', dismiss);
+
+  video.play().catch(() => {
+    // Autoplay with audio blocked: retry muted rather than dropping the splash.
+    video.muted = true;
+    video.play().catch(() => dismiss());
+  });
+}
+
+launchSplash();
 
 app.innerHTML = `
   <div class="game">
@@ -459,7 +520,7 @@ function startWorld(): void {
       | { type: 'READY' }
       | { type: 'VESSELS'; vessels: VesselMeta[] }
       | { type: 'EVENTS'; events: Array<{ vesselId: number; message: string }> }
-      | { type: 'PLAYER_SYNC'; player: any; inventory: any }
+      | { type: 'PLAYER_SYNC'; player: any; inventory: any & { items?: Array<{ id: string; count: number; massKg: number }> } }
     >,
   ) => {
     const data = event.data;
@@ -477,6 +538,7 @@ function startWorld(): void {
     } else if (data.type === 'PLAYER_SYNC') {
       state.player = data.player;
       state.inventory = data.inventory;
+      state.items = data.inventory.items ?? [];
       updatePlayerUI();
     }
   };

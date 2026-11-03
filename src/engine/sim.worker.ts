@@ -35,10 +35,7 @@ import { BIOME_DAG } from '../data/biomeNodes';
 import { ITEM_BY_ID } from '../data/items';
 import { FABRICATION_RECIPES, RECIPE_EFFECTS, METALLURGY_TOOLS } from './fabrication';
 import { satisfyVesselInputs, applyVesselConsumption, type VesselInputResult, VESSEL_INPUTS } from './vesselInputs';
-
-/** One simulation step = 6 simulated minutes; 10 steps = 1 game hour. */
-const SIM_STEP_SECONDS = 360;
-const WORKER_HZ = 10;
+import { SIM_STEP_SECONDS, WORKER_HZ } from './time';
 
 export interface FullSimState {
   world: WorldState;
