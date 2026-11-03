@@ -28,6 +28,8 @@ import {
 import { CHAPTERS } from './data/story';
 import { globalOverlayStack } from './ui/overlayStack';
 import { audio } from './ui/audio';
+import { snapshotSignature } from './engine/saveSignature';
+import { migrateSave } from './engine/persistence';
 
 interface VesselMeta {
   id: number;
@@ -595,7 +597,12 @@ function frame(): void {
   requestAnimationFrame(frame);
 }
 
-function startWorld(): void {
+function startWorld(options?: { load?: SerializedWorldSave }): void {
+  if (state.worker) {
+    state.worker.terminate();
+    state.worker = null;
+  }
+
   const isIsolated = window.crossOriginIsolated;
   isoBadge.textContent = isIsolated ? 'Isolated (SAB active)' : 'Fallback (simulated SAB)';
   isoBadge.classList.toggle('good', isIsolated);
@@ -616,7 +623,9 @@ function startWorld(): void {
   ) => {
     const data = event.data;
     if (data.type === 'READY') {
-      createSeedVessels();
+      if (!options?.load) {
+        createSeedVessels();
+      }
     } else if (data.type === 'VESSELS') {
       state.vessels = data.vessels;
       renderVessels();
@@ -634,11 +643,13 @@ function startWorld(): void {
         }
       }
       renderLog();
+      requestAutoSave();
     } else if (data.type === 'PLAYER_SYNC') {
       state.player = data.player;
       state.inventory = data.inventory;
       state.items = data.inventory.items ?? [];
       updatePlayerUI();
+      requestAutoSave();
       if (state.player.conditions?.dead) {
         StoryMode.death('sepsis', { days: state.player.day ?? 1, renown: state.progression.renown }, () => {
           localStorage.removeItem('how2soap.save.v2');
@@ -714,7 +725,11 @@ function startWorld(): void {
     }
   };
 
-  state.worker.postMessage({ type: 'INIT', sab });
+  if (options?.load) {
+    state.worker.postMessage({ type: 'LOAD_WORLD', sab, save: options.load });
+  } else {
+    state.worker.postMessage({ type: 'INIT', sab });
+  }
 
   // Initial Biome DAG rendering
   renderBiomeTreePanel(
@@ -746,45 +761,21 @@ function startWorld(): void {
       $('reset').click();
     },
     onExportSave: async (): Promise<SerializedWorldSave> => {
-      const rngSeed = (Math.random() * 0xffffffff) >>> 0;
-      return {
-        version: 2,
-        timestamp: Date.now(),
-        tick: state.snapshot ? state.snapshot.tick : 0,
-        day: state.player.day ?? 1,
-        ambientTempK: state.player.ambientTempK ?? 288.15,
-        rngSeed,
-        player: {
-          glucoseKcal: state.player.glucoseKcal,
-          adiposeKcal: state.player.adiposeKcal,
-          hydrationPct: state.player.hydrationPct,
-          coreTempK: state.player.coreTempC ? parseFloat(state.player.coreTempC) + 273.15 : 310.15,
-          clothingIclo: state.player.clothingIclo,
-          conditions: state.player.conditions,
-          dead: false,
-          woundOnsetSeconds: 0,
-          sepsisOnsetSeconds: 0,
-        },
-        inventory: state.inventory,
-        vessels: state.vessels.map(v => ({
-          id: v.id,
-          material: v.material,
-          capacityL: v.capacityL,
-          closed: v.closed,
-          label: v.label,
-        })),
-        ever: state.ever ?? {},
-        renown: 0,
-        affinity: { apothecary: 0, soapwright: 0, forgewright: 0 },
-        chapter: 0,
-        fabricatedRecipes: [],
-        objectivesDone: [],
-        lettersDone: [],
-        epilogueSeen: false,
-      };
+      return buildSaveSnapshot();
     },
     onImportSave: (save: SerializedWorldSave) => {
-      state.log.push(`Imported game save from Day ${save.day}, Tick ${save.tick}`);
+      const migrated = migrateSave(save);
+      state.progression.renown = migrated.renown ?? 0;
+      state.progression.chapter = migrated.chapter ?? 0;
+      state.progression.fabricatedRecipes = migrated.fabricatedRecipes ?? [];
+      state.progression.objectivesDone = migrated.objectivesDone ?? [];
+      state.progression.lettersDone = migrated.lettersDone ?? [];
+      state.progression.affinity = migrated.affinity ?? state.progression.affinity;
+      state.progression.ever = migrated.ever ?? {};
+
+      startWorld({ load: migrated });
+      showToast(`Save restored — Day ${migrated.day ?? 1}`, 'success');
+      state.log.push(`Imported game save from Day ${migrated.day}, Tick ${migrated.tick}`);
       renderLog();
     },
   });
@@ -818,6 +809,91 @@ function createSeedVessels(): void {
     label: 'Copper Still',
   });
 }
+
+function buildSaveSnapshot(): SerializedWorldSave {
+  const rngSeed = (Math.random() * 0xffffffff) >>> 0;
+  return {
+    version: 2,
+    timestamp: Date.now(),
+    tick: state.snapshot ? state.snapshot.tick : 0,
+    day: state.player.day ?? 1,
+    ambientTempK: state.player.ambientTempK ?? 288.15,
+    rngSeed,
+    player: {
+      glucoseKcal: state.player.glucoseKcal,
+      adiposeKcal: state.player.adiposeKcal,
+      hydrationPct: state.player.hydrationPct,
+      coreTempK: state.player.coreTempC ? parseFloat(state.player.coreTempC) + 273.15 : 310.15,
+      clothingIclo: state.player.clothingIclo,
+      conditions: state.player.conditions,
+      dead: !!state.player.conditions?.dead,
+      woundOnsetSeconds: 0,
+      sepsisOnsetSeconds: 0,
+    },
+    inventory: state.inventory,
+    vessels: state.vessels.map((v, i) => {
+      let moles: number[] = [];
+      if (state.snapshot && state.snapshot.moles) {
+        moles = Array.from(state.snapshot.moles.slice(i * MAX_SPECIES, (i + 1) * MAX_SPECIES));
+      }
+      return {
+        id: v.id,
+        material: v.material,
+        capacityL: v.capacityL,
+        closed: v.closed,
+        label: v.label,
+        moles,
+        precipitated: [], // precipitated cloudiness resets on Continue; harmlessly re-settles
+      };
+    }),
+    ever: state.progression.ever ?? {},
+    renown: state.progression.renown ?? 0,
+    affinity: state.progression.affinity ?? { apothecary: 0, soapwright: 0, forgewright: 0 },
+    chapter: state.progression.chapter ?? 0,
+    fabricatedRecipes: state.progression.fabricatedRecipes ?? [],
+    objectivesDone: state.progression.objectivesDone ?? [],
+    lettersDone: state.progression.lettersDone ?? [],
+    epilogueSeen: false,
+  };
+}
+
+const AUTO_SAVE_KEY = 'how2soap.save.v2';
+let lastSaveSignature = '';
+let autoSaveTimer: number | null = null;
+
+function requestAutoSave(): void {
+  const currentSig = snapshotSignature({
+    tick: state.snapshot?.tick ?? 0,
+    glucose: state.player?.glucoseKcal ?? 0,
+    seed: 0,
+    day: state.player?.day ?? 1,
+  });
+
+  if (currentSig === lastSaveSignature) return;
+
+  if (autoSaveTimer !== null) {
+    window.clearTimeout(autoSaveTimer);
+  }
+
+  autoSaveTimer = window.setTimeout(() => {
+    try {
+      const snap = buildSaveSnapshot();
+      localStorage.setItem(AUTO_SAVE_KEY, JSON.stringify(snap));
+      lastSaveSignature = currentSig;
+    } catch {
+      // Storage quota or private browsing limitation
+    }
+  }, 2000);
+}
+
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') {
+    try {
+      const snap = buildSaveSnapshot();
+      localStorage.setItem(AUTO_SAVE_KEY, JSON.stringify(snap));
+    } catch {}
+  }
+});
 
 function bindActions(): void {
   document.querySelectorAll<HTMLButtonElement>('[data-action]').forEach((button) => {
@@ -894,10 +970,11 @@ function bootFlow(): void {
   renderLog();
   requestAnimationFrame(frame);
 
-  const existingSave = localStorage.getItem('how2soap.save.v2');
+  const existingSave = localStorage.getItem(AUTO_SAVE_KEY);
   if (existingSave) {
     try {
-      const parsed = JSON.parse(existingSave);
+      const raw = JSON.parse(existingSave);
+      const parsed = migrateSave(raw);
       const chTitle = CHAPTERS[parsed.chapter ?? 0]?.title ?? 'The First Fire';
       const lvl = levelFromRenown(parsed.renown ?? 0);
       StoryMode.bootSplash(
@@ -910,8 +987,6 @@ function bootFlow(): void {
         },
         {
           onContinue: () => {
-            startWorld();
-            // load saved progression
             state.progression.renown = parsed.renown ?? 0;
             state.progression.chapter = parsed.chapter ?? 0;
             state.progression.fabricatedRecipes = parsed.fabricatedRecipes ?? [];
@@ -919,9 +994,12 @@ function bootFlow(): void {
             state.progression.lettersDone = parsed.lettersDone ?? [];
             state.progression.affinity = parsed.affinity ?? state.progression.affinity;
             state.progression.ever = parsed.ever ?? {};
+
+            startWorld({ load: parsed });
           },
           onNewWorld: () => {
-            localStorage.removeItem('how2soap.save.v2');
+            localStorage.removeItem(AUTO_SAVE_KEY);
+            state.progression = initialProgression();
             StoryMode.prologue(() => {
               startWorld();
             });

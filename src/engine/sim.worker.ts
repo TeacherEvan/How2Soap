@@ -212,7 +212,7 @@ ctx.onmessage = (event: MessageEvent<Command>) => {
           material: raw.material,
           capacityL: raw.capacityL,
           headspaceClosed: !!raw.headspaceClosed,
-          temperatureK: raw.temperatureK,
+          temperatureK: raw.temperatureK ?? (save.ambientTempK ?? 288.15),
           moles: new Float64Array(raw.moles ?? []),
           precipitated: new Float64Array(raw.precipitated ?? []),
           heaterWatts: raw.heaterWatts ?? 0,
@@ -222,6 +222,9 @@ ctx.onmessage = (event: MessageEvent<Command>) => {
           appliedVolts: raw.appliedVolts ?? 0,
           cellResistanceOhm: raw.cellResistanceOhm ?? 0,
         });
+        if (raw.label) {
+          labels.set(raw.id, raw.label);
+        }
       }
       player = createPlayerMetabolism(save.player?.clothingIclo ?? 0.05);
       Object.assign(player, save.player);
@@ -233,6 +236,7 @@ ctx.onmessage = (event: MessageEvent<Command>) => {
       syncWorldToShared(world, view);
       if (timer === null) timer = setInterval(tick, 1000 / WORKER_HZ);
       ctx.postMessage({ type: 'READY' });
+      postVessels();
       postPlayerAndInventory();
       break;
     }
