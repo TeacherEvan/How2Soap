@@ -14,6 +14,7 @@
 
 import { SPECIES_BY_INDEX, MAX_DEFINED_SPECIES, type ChemicalSpecies } from '../data/speciesRegistry';
 import { compressSaveToBase64, decompressBase64ToSave, type SerializedWorldSave } from '../engine/persistence';
+import { globalOverlayStack } from './overlayStack';
 
 export interface MenuControllerOptions {
   onNewGame: () => void;
@@ -149,13 +150,22 @@ export function initMenuAndSettings(options: MenuControllerOptions): void {
   }
 
   // Event handlers
+  const closeModal = () => {
+    modalContainer.classList.add('hidden');
+    globalOverlayStack.remove(modalOverlayEntry);
+  };
+
+  const modalOverlayEntry = {
+    id: 'settings-modal',
+    close: closeModal,
+  };
+
   openBtn.addEventListener('click', () => {
     modalContainer.classList.remove('hidden');
+    globalOverlayStack.push(modalOverlayEntry);
   });
 
-  modalContainer.querySelector('#modal-close')?.addEventListener('click', () => {
-    modalContainer.classList.add('hidden');
-  });
+  modalContainer.querySelector('#modal-close')?.addEventListener('click', closeModal);
 
   modalContainer.querySelectorAll<HTMLButtonElement>('.m-tab-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
@@ -182,7 +192,7 @@ export function initMenuAndSettings(options: MenuControllerOptions): void {
       try {
         const restored = await decompressBase64ToSave(textarea.value.trim());
         options.onImportSave(restored);
-        modalContainer.classList.add('hidden');
+        closeModal();
       } catch (err) {
         alert('Invalid or corrupted save string!');
       }

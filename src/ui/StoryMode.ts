@@ -1,7 +1,8 @@
 import type { ChapterDef } from '../data/story';
+import { globalOverlayStack } from './overlayStack';
 
 export const StoryMode = (() => {
-  const showOverlay = (markup: string, cls = ''): HTMLElement => {
+  const showOverlay = (markup: string, cls = '', closable = true): HTMLElement => {
     const existing = document.getElementById('story-overlay');
     if (existing) existing.remove();
 
@@ -10,6 +11,17 @@ export const StoryMode = (() => {
     overlay.className = `story-overlay ${cls}`.trim();
     overlay.innerHTML = markup;
     document.body.appendChild(overlay);
+
+    if (closable) {
+      const entry = {
+        id: overlay.id,
+        close: () => {
+          overlay.remove();
+          globalOverlayStack.remove(entry);
+        },
+      };
+      globalOverlayStack.push(entry);
+    }
 
     // Focus trap / auto-focus first button
     const firstBtn = overlay.querySelector('button');
@@ -47,7 +59,7 @@ export const StoryMode = (() => {
           }
         </div>
       `;
-      const overlay = showOverlay(markup, 'boot-splash-overlay');
+      const overlay = showOverlay(markup, 'boot-splash-overlay', false);
       if (opts.hasSave) {
         overlay.querySelector('#btn-splash-continue')?.addEventListener('click', () => {
           overlay.remove();
@@ -89,7 +101,7 @@ export const StoryMode = (() => {
           </footer>
         </div>
       `;
-      const overlay = showOverlay(markup, 'prologue-overlay');
+      const overlay = showOverlay(markup, 'prologue-overlay', false);
       const bodyEl = overlay.querySelector('#prologue-body') as HTMLElement;
       const beginBtn = overlay.querySelector('#btn-prologue-begin') as HTMLElement;
       const skipBtn = overlay.querySelector('#btn-prologue-skip') as HTMLElement;

@@ -40,6 +40,10 @@ module.exports = (env, argv) => {
           test: /\.css$/,
           use: [MiniCssExtractPlugin.loader, 'css-loader'],
         },
+        {
+          test: /\.(mp4|webm|png)$/i,
+          type: 'asset/resource',
+        },
       ],
     },
     optimization: {
@@ -78,6 +82,8 @@ module.exports = (env, argv) => {
           maxEntrypointSize: 200000,
           maxAssetSize: 200000,
           hints: 'error',
+          // Intro-splash media are cached static assets, not JS bundle weight.
+          assetFilter: (assetFilename) => !/\.(mp4|webm)$/i.test(assetFilename),
         }
       : false,
     plugins: [

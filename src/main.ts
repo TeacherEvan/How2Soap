@@ -26,6 +26,7 @@ import {
   levelFromRenown,
 } from './engine/progression';
 import { CHAPTERS } from './data/story';
+import { globalOverlayStack } from './ui/overlayStack';
 
 interface VesselMeta {
   id: number;
@@ -159,6 +160,13 @@ function launchSplash(): void {
     video.play().catch(() => dismiss());
   });
 }
+
+// Global ESC listener for overlay and modal management
+document.addEventListener('keydown', (e: KeyboardEvent) => {
+  if (e.key === 'Escape') {
+    globalOverlayStack.closeTop();
+  }
+});
 
 launchSplash();
 
