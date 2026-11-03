@@ -3,8 +3,8 @@
 [![CI](https://github.com/TeacherEvan/How2Soap/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/TeacherEvan/How2Soap)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![TypeScript: 5.4+](https://img.shields.io/badge/TypeScript-5.4+-blue.svg)](https://www.typescriptlang.org/)
-[![Vitest: 100% Pass](https://img.shields.io/badge/Vitest-53%2F53%20Passed-brightgreen.svg)](https://vitest.dev/)
-[![Bundle: 77.8 KB](https://img.shields.io/badge/Bundle-77.8%20KB%20%2F%20200%20KB-success.svg)](https://webpack.js.org/)
+[![Vitest: 100% Pass](https://img.shields.io/badge/Vitest-109%2F109%20Passed-brightgreen.svg)](https://vitest.dev/)
+[![Bundle: 74.6 KB](https://img.shields.io/badge/Bundle-74.6%20KB%20%2F%20200%20KB-success.svg)](https://webpack.js.org/)
 
 An emergent thermodynamics, physical chemistry, and primitive survival simulation engine built with zero external runtime dependencies. Features zero-copy Web Worker multithreading using atomic `SeqLock` shared memory, Arrhenius kinetics, calorimetry, latent heat phase transitions, electroneutrality pH calculations, Faraday electrolysis, and a full 5-tier technological progression from primitive fire to molten salt electrolysis.
 
@@ -62,6 +62,15 @@ An emergent thermodynamics, physical chemistry, and primitive survival simulatio
 
 ---
 
+## 📜 What's New: The Grand Crucible Chronicle
+
+- **Story & Chapter Progression**: 6 narrative chapters (from *The First Fire* to *The Lightning in the Bottle*) with Council of Solitude correspondence letters, dynamic Renown ranking (Apprentice through Grand Magister), and three distinct artisan affinities (*Apothecary*, *Soapwright*, *Forgewright*).
+- **Survival Mechanics & Pathology**: Dual-compartment human metabolic burn, wild hunt animal wound risk, infection latency, septic fever, hypothermia, starvation death conditions, and clinical treatment applications.
+- **Narrative Overlays & Audio**: Procedural typewriter prologue, chapter completions, victory/death overlays, and zero-asset synthesized Web Audio SFX (harvest thuds, clinks, chimes, stamps, level-ups, and ambient fire crackle).
+- **Persistent World V2**: Continuous debounced auto-saving to `localStorage` (`how2soap.save.v2`), seamless Continue Chronicle / New World boot flows, and Gzip Base64 import/export with SHA-256 checksum verification (settled precipitate cloudiness gracefully re-settles upon world restoration).
+
+---
+
 ## 📦 Project Structure
 
 ```
@@ -79,16 +88,21 @@ chemistry-survival/
 │   │   ├── metabolism.ts       # Dual-compartment bio-energetics & clinical treatments
 │   │   ├── fabrication.ts      # Mohs scaling, mechanical recipes & tool system
 │   │   ├── husbandry.ts        # Live animal paddocks & renewable yields
-│   │   ├── persistence.ts      # IndexedDB storage with Gzip Base64 compression
+│   │   ├── persistence.ts      # LocalStorage & Gzip Base64 import/export with SHA-256 integrity
+│   │   ├── progression.ts      # Renown rank, affinity calculation, and objective evaluations
+│   │   ├── conditions.ts       # Sepsis, hypothermia, fever, and starvation pathology
 │   │   └── sim.worker.ts       # 10 Hz deterministic Web Worker simulation loop
 │   ├── ui/
-│   │   ├── BiomeTreePanel.ts       # Collapsible DAG explorer
-│   │   ├── WorkbenchCanvas.ts      # Multi-tab reaction, fabrication & paddock workbench
+│   │   ├── BiomeTreePanel.ts       # Collapsible DAG explorer with energy cost telemetry
+│   │   ├── WorkbenchCanvas.ts      # Multi-tab reaction, fabrication, paddock & journal workbench
 │   │   ├── ToolAndInventoryPanel.ts# 6-slot Tool Menu & dynamic inventory containers
-│   │   └── MenuController.ts       # WCAG 2.1 AAA settings & 256-species compendium modal
+│   │   ├── JournalPanel.ts         # Council of Solitude letters, chapter tracking & milestones
+│   │   ├── StoryMode.ts            # Typewriter prologue, splash screen & chapter overlays
+│   │   ├── MenuController.ts       # WCAG 2.1 AAA settings & 38-species compendium modal
+│   │   └── audio.ts                # Synthesized Web Audio SFX & ambient soundscape
 │   ├── main.ts             # 60 FPS render pipeline, COOP/COEP isolation detection
 │   └── styles.css          # Responsive dark-theme 4-panel viewport styling
-├── tests/                  # 11 Vitest test suites (53 tests passing 100%)
+├── tests/                  # 29 Vitest test suites (109 tests passing 100%)
 ├── vercel.json             # Vercel deployment COOP/COEP isolation headers
 └── webpack.config.js       # Webpack 5 production build with strict chunk budgets
 ```
@@ -112,7 +126,7 @@ Dev server will start at `http://localhost:8080/` with Cross-Origin Isolation he
 
 ### Testing & Verification
 ```bash
-# Run Vitest test suite (53 tests)
+# Run Vitest test suite (109 tests across 29 suites)
 npm test
 
 # Run TypeScript strict typecheck
