@@ -20,6 +20,8 @@ A chemistry-vessel sandbox with a 5-tier checklist. The engine is genuinely stro
 | `applySalicylicAcid` / `applyPenicillin` / `applyEthanolDisinfectant` written — never UI-reachable | `src/engine/metabolism.ts` (bottom three functions) |
 | `calculateRadialHaulCostKcal` / `calculateHarvestTotalCostKcal` written — never wired | `src/data/biomeNodes.ts:478, 502` |
 | Camp Ground Cache (6 slots, 150 kg) exists in engine — never rendered | `src/engine/inventory.ts:62-69`; `src/ui/ToolAndInventoryPanel.ts` |
+| `PLAYER_SYNC` carries player/inventory but **no item counts, no ambient temp, no day** — item-kind objectives and the survival HUD are impossible client-side without extending the payload | `src/engine/sim.worker.ts` (`postPlayerAndInventory`, ~lines 99-115) |
+| Fast-forward (`Sleep 8 h` → `ADVANCE`) steps the same metabolism but has **no escalation hook** — a wound→fever→sepsis fuse that only ticks in `tick()` would be bypassed entirely by Sleep | `src/engine/sim.worker.ts` (`advance()`, `tick()`); `src/engine/metabolism.ts` |
 | `hasCleanUtensil` (Bronze Fork payoff, `getEatingUtensilBonus`) written — unreachable from play | `src/engine/metabolism.ts` (`ConsumeFoodOptions`); `src/engine/fabrication.ts` (`getEatingUtensilBonus`) |
 | Export save fake: hardcoded `day: 1`, `ambientTempK: 288.15`; no integrity checksum; import applies **nothing**; no IndexedDB; `state.ever` never saved | `src/main.ts:499-513, 515-519`; `src/engine/persistence.ts` |
 | Zero SVG / images / icons; all glyphs are emoji/Unicode; zero CSS `@keyframes`; High-Contrast & Reduced-Motion toggles render classes **no CSS targets**; `.quest li.check` styled in markup but `.tick` is the styled class | `styles.css`; `src/ui/MenuController.ts:193-201`; `src/main.ts:353` |
@@ -107,9 +109,10 @@ Faithful to spec's unused `PlayerConditions` machinery; makes Apothecary the sur
 | Wound (`woundContamination`) | Boar harvest, 20 % seeded roll | +10 kcal/h drain, banner "The wound festers" | **Saline Rinse** (NaCl + H₂O → 1× rinse; `RECIPE_SALINE_RINSE`, available from Tier 1), **Ethanol Disinfectant** (`applyEthanolDisinfectant`) |
 | Fever (`fever`) | Wound untreated 12 game-hours (worker-tracked `woundOnsetSeconds`) | +1.8 K core temp, sweat, +60-ish metabolic load; banner red | **Salicylic Tincture** (`applySalicylicAcid`, −1.8 K); or treat the wound |
 | Systemic sepsis (`systemicInfection`) | Fever untreated another 24 game-hours | **+60 kcal/h** drain live (existing constant comment finally true), fever persists, warning flashes | **Penicillin Dose** only (`applyPenicillin`) |
-| Death | Sepsis untreated 48 game-hours | `dead = true` → worker halts sim, posts `PLAYER_SYNC { dead, cause: 'sepsis' }`; client shows death screen (Phase 4) | None — restart |
+| Death | Sepsis untreated 48 game-hours | `dead = true` → worker halts **both** `tick()` and `advance()` (Sleep blocked), posts `PLAYER_SYNC { dead, cause: 'sepsis' }`; client shows death screen (Phase 4) | None — restart |
 
-- The ladder is deterministic given seed; timer fields (`woundOnsetSeconds`, `sepsisOnsetSeconds`) live on `player.conditions` in the SAB-adjacent heap (worker memory) and in save v2.
+**Fast-forward parity rule (mandatory):** the ladder check lives in a shared helper `escalateConditions(player, dtHours): WorldEvent[]` called by **both** `stepPlayerMetabolism`-adjacent paths (`tick()` and `advance()`). A fuse that only runs at 10 Hz wall-clock would let "Sleep 8 h" skip sepsis entirely — that would make the stakes fictional.
+- The ladder is deterministic given seed; timer fields (`woundOnsetSeconds`, `sepsisOnsetSeconds`) live on `player.conditions` in worker heap and in save v2.
 - One seeded RNG stream only; harvest rolls and nothing else.
 - Apothecary renown: treating wound/sepsis via items grants affinity points (Phase 3) — the doctor path has teeth.
 - New emergency recipe `RECIPE_SALINE_RINSE` keeps pre-Tier-4 players survivable without trivializing (20 % roll, one rinse stock per salt cache).
@@ -125,6 +128,18 @@ Faithful to spec's unused `PlayerConditions` machinery; makes Apothecary the sur
 
 ### 3.7 Camp cache visibility
 Right panel gains "Camp Ground Cache (6 slots · 150 kg)" block rendering existing `inventory` cache model (move from engine to PLAYER_SYNC payload). Rain/scavenger decay: **out of scope** (documented).
+
+### 3.8 PLAYER_SYNC v2 — the client↔worker contract extension (was missing; load-bearing)
+Without this, Phase 2/3/4 cannot work: the client currently receives **no item counts, no ambient temperature, no day** — only tool slots, backpack state and vitals. Extend the payload (all additive; old readers ignore extras):
+```ts
+// client receives, in addition to today's fields:
+inventory: { backpackUnlocked, bareHands, backpack, tools,   // unchanged
+             items: Array<{ id: string; count: number }> }   // NEW — worker-side reduce of hands+backpack+cache
+player:      { …, conditions,                                 // already synced
+               day: number,                                   // NEW — 1 + floor(tick / DAY_TICKS); DAY_TICKS constant documented
+               ambientTempK: number }                          // NEW — from world (was worker-only)
+```
+`items[]` is the single source for: item-kind objective evaluation, [Eat] affordances, tool-equip availability, Letters' `hasItem` targets, autosave diffing. Contract addition only — `Command` union unchanged except new `EAT_FOOD`/`EQUIP_TOOL`/`LOAD_WORLD` cases.
 
 ---
 
@@ -228,8 +243,11 @@ Displayed as aged "letters" with era + wax seal; completed letters get stamped (
 
 - **Boot splash** (replaces silent auto-boot): if autosave exists → `The Grand Crucible` splash: [Continue — Day N · Ch. Title] [New World] + renown/title; else straight into prologue overlay. (Spec's missing "Continue" delivered; full FSM still out.)
 - **Workbench tab 4→5:** add `📖 Journal & Missions` tab. Layout: left column = chapter timeline (locked/current/done states, epigraph quote, objective checklist, chapter-complete stamp); right column = affinity meters (3 bars with rank titles) + **The Council of Chemists** letter cards (state: Locked(chapter n)/Available/Claimed). Letters render with era + figure + 2-line excerpt + reward line; stamp on claim.
-- **Top bar additions:** Renown chip with animated SVG progress ring (level number centered, tooltip "Renown: x / next-level"); inline **condition banners** under the bar: `🩸 Ravenous` `🥶 Shivering!` `🌡 Fever 38.6°` `🧫 Sepsis!` `🩹 Wound festering` — colored chips, appear/disappear live off `conditions`.
+- **Top bar additions:** Renown chip with animated SVG progress ring (level number centered, tooltip "Renown: x / next-level"); **Adipose (kcal), Hydration %, Ambient (K) and Core Temp (°C) join the bar** — adipose/hydration are already in `PLAYER_SYNC` (pure addition), ambient/day arrive via §3.8 — plus inline **condition banners** under the bar: `🩸 Ravenous` `🥶 Shivering!` `🌡 Fever 38.6°` `🧫 Sepsis!` `🩹 Wound festering` — colored chips, appear/disappear live off `conditions` (this finally puts spec §2.2/§2.4's promise on screen: adipose, hydration, ambient, exposure).
 - **Right panel:** camp-cache block + **Treatments card** (visible only when a condition active): shows held meds with [Administer] (antisepsis/tincture/penicillin) + saline/ethanol when wound only.
+- **Biome panel:** each part row gains a live **haul-cost column** (`≈ N kcal`) recomputed from the currently equipped tool via `calculateHarvestTotalCostKcal` — spec §2.2's "exact caloric energy cost recalculated from the currently equipped tool" finally delivered. **Stock counts deliberately excluded**: the engine has no ecology/depletion model and faking numbers would be worse than absence — documented cut.
+- **Failure feedback honesty** (currently silent no-ops): HARVEST with insufficient glucose → `Too exhausted to forage (need ≈ N kcal)`; FABRICATE with missing inputs → `Missing: 2× quicklime, 1× fat` listing actual shortfall; EAT on non-food item → disabled control; all surface as failure toasts (red-tinted), not log-only.
+- **Keyboard & screen readers** (spec §2.1 WCAG intent — currently zero coverage): every new control is `<button>`-native or `role=button` with Enter/Space activation; logical tab order across top bar → biome → vessels → workbench → right panel → modal; ESC closes overlays/menus; focus trap in story/death/victory overlays with focus restored on close; `focus-visible` outlines on all interactives; SVG icons get `role="img"` + `aria-label` (decorative neighboring text icons `aria-hidden`); toasts and journal objective updates use `aria-live="polite"`; progress ring has `role="progressbar"` with `aria-valuenow/min/max`.
 - **Item affordances:** bare-hands/backpack slots render icon + name; hover tooltip = desc + tier + affinity; food items get [Eat]; backpack banner references icons not text.
 - **Compendium:** two tabs (Species 38 | Items), live filter, per-item icon.
 - **Toasts** (bottom-right, stacked, auto-dismiss 3.5 s, cap 3): objective complete, letter claimed, level up, chapter complete, wound warning. Queue, never overlap log panel.
@@ -268,7 +286,7 @@ New Vitest suites (target ~25+ new assertions, zero changes to existing expectat
 - `tests/storyCompleteness.test.ts` — every chapter's objectives resolvable; every letter maps to a real recipe/species/flag; 18 letters × affinity sums = correct; eras monotonic.
 - `tests/persistenceV2.test.ts` — round-trip with conditions/ever/seed/progress; v1→v2 migration; checksum ok/fail.
 - `tests/fabricationConsume.test.ts` — atomic validation (insufficient input → no partial consumption), backpack path parity, fork auto-equip, saline recipe.
-- `tests/worldRestore.test.ts` — `LOAD_WORLD` rebuild: vessels' moles/pH identical pre/post serialise; tick/day continuity; RNG continuity (same seed + same rolls → same wound/no-wound).
+- `tests/worldRestore.test.ts` — `restoreWorldFromSave(save): WorldState` implemented as a **pure engine-side function** (not inline worker code) so it is unit-testable without SAB/worker: vessels' moles/pH identical pre/post serialise; tick/day continuity; RNG continuity (same seed + same rolls → same wound/no-wound); un-serialisable vessels arrays rejected fail-loud.
 - RNG determinism test for contamination roll (seeded; forced-sequential).
 
 Gates per phase: `npm test` · `npx tsc --noEmit` · `npm run build` (record entry size; must stay ≤ 200 KB — expect ≈ 120–135 KB total headroom).
@@ -291,13 +309,14 @@ Canvas cutscenes · web fonts · IndexedDB · paddock rework · ecology depletio
 
 ## 16. Self-audit — "Is that the best you can do?"
 - Fun without redesigning the engine: **yes** — closed the starvation loop (eat), consequence loop (sepsis), identity loop (affinity), and arrival/reward loops (letters/renown/stamps/sounds).
-- Respects the spec where feasible (Continue splash, SHA-256, accessibility toggles, ambience) without rebuilding it.
+- Respects the spec where feasible (Continue splash, SHA-256, accessibility toggles **with a real keyboard/SR layer**, ambience, adipose/hydration/ambient HUD, tool-aware haul cost) without rebuilding it.
 - Every "unlocked Epic" claim maps to a real, testable state change — nothing is a badge on an empty function.
+- Fast-forward parity (fuse works under Sleep 8h) is called out as mandatory, not implied.
 - Honest cuts documented; determinism preserved; no new deps; one new fictional character (Magister Hennig), zero invented chemistry.
-- Weak spots admitted: no Playwright suite in-repo (verify manually on dev server), no IndexedDB, paddock static — all explicitly deferred, not forgotten.
+- Weak spots admitted: no Playwright suite in-repo (manual dev-server verify), no IndexedDB, paddock static, no ecology model (hence no stock counts on parts) — all deferred, none forgotten.
 
 ## 17. Open review questions for the owner
 1. Affinity naming/voice — "Soapwright/Apothecary/Forgewright" ok, or prefer "Purifier/Doctor/Smith"?
 2. Saline-rinse accessibility (Tier 1 cure) — keep, or make ethanol the only cure (harder, more historically strict)?
 3. Renown level-cap 10 — or visible infinite scaling?
-4. Commit this doc on `main` (docs-only) now?
+4. My own neglect audit (this revision) closed six gaps: (1) `PLAYER_SYNC` carries no items/ambient/day → contract extension §3.8; (2) wound/sepsis fuse would be bypassed by Sleep 8 h → fast-forward parity rule; (3) adipose/hydration/ambient/core-temp missing from top bar → added; (4) tool-aware haul-cost column added (stock counts still cut — no ecology model); (5) keyboard/ARIA/focus management now specified, not implied; (6) save-restore factored into pure testable `restoreWorldFromSave()`. **Anything else you noticed that I still haven't addressed?**
