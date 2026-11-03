@@ -27,6 +27,7 @@ import {
 } from './engine/progression';
 import { CHAPTERS } from './data/story';
 import { globalOverlayStack } from './ui/overlayStack';
+import { audio } from './ui/audio';
 
 interface VesselMeta {
   id: number;
@@ -160,6 +161,9 @@ function launchSplash(): void {
     video.play().catch(() => dismiss());
   });
 }
+
+// Unlock Web Audio context on user gesture
+document.addEventListener('pointerdown', () => audio.unlock(), { once: true });
 
 // Global ESC listener for overlay and modal management
 document.addEventListener('keydown', (e: KeyboardEvent) => {
@@ -556,15 +560,19 @@ function updatePlayerUI(): void {
 
   renderToolAndInventoryPanel(toolInvPanel, state.inventory, {
     onCraftBackpack: () => {
+      audio.clink();
       send({ type: 'FABRICATE', recipeId: 'RECIPE_STITCH_BACKPACK' });
     },
     onEatFood: (itemId) => {
+      audio.munch();
       send({ type: 'EAT_FOOD', itemId });
     },
     onEquipTool: (itemId, slot) => {
+      audio.clink();
       send({ type: 'EQUIP_TOOL', itemId, slot });
     },
     onAdministerTreatment: (itemId) => {
+      audio.sealDone();
       send({ type: 'APPLY_TREATMENT', itemId });
     },
     treatments,
@@ -663,12 +671,15 @@ function startWorld(): void {
       );
 
       for (const objId of res.objectives) {
+        audio.chime();
         showToast(`Objective completed: ${objId} (+25 Renown)`, 'success');
       }
       for (const letId of res.letters) {
+        audio.stamp();
         showToast(`Council letter received: ${letId}!`, 'renown');
       }
       for (const lu of res.levelUps) {
+        audio.levelUp();
         showToast(`⭐ Advanced to Level ${lu.level}: ${lu.title}!`, 'renown');
       }
       for (const chId of res.chapters) {
@@ -709,6 +720,7 @@ function startWorld(): void {
   renderBiomeTreePanel(
     biomePanel,
     (part: HarvestablePart) => {
+      audio.harvestThud();
       send({ type: 'HARVEST_PART', partId: part.id });
       state.log.push(`Harvested ${part.name} (${part.description})`);
       renderLog();

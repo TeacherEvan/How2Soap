@@ -1,5 +1,6 @@
 import type { ChapterDef } from '../data/story';
 import { globalOverlayStack } from './overlayStack';
+import { audio } from './audio';
 
 export const StoryMode = (() => {
   const showOverlay = (markup: string, cls = '', closable = true): HTMLElement => {
@@ -158,6 +159,7 @@ export const StoryMode = (() => {
     },
 
     chapterComplete(ch: ChapterDef, onContinue: () => void): void {
+      audio.levelUp();
       const markup = `
         <div class="story-card chapter-complete-card">
           <div class="chapter-stamp">CHAPTER COMPLETE</div>
@@ -181,6 +183,7 @@ export const StoryMode = (() => {
       epilogue: string,
       cb: { onFreeCraft(): void; onNewWorld(): void },
     ): void {
+      audio.victory();
       const markup = `
         <div class="story-card victory-card">
           <div class="chapter-stamp victory-stamp">VICTORY</div>
@@ -214,6 +217,7 @@ export const StoryMode = (() => {
       stats: { days: number; renown: number },
       onRestart: () => void,
     ): void {
+      audio.toll();
       const causeText =
         cause === 'sepsis'
           ? 'Systemic infection took hold. Fever and sepsis claimed your strength.'

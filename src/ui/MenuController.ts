@@ -15,6 +15,7 @@
 import { SPECIES_BY_INDEX, MAX_DEFINED_SPECIES, type ChemicalSpecies } from '../data/speciesRegistry';
 import { compressSaveToBase64, decompressBase64ToSave, type SerializedWorldSave } from '../engine/persistence';
 import { globalOverlayStack } from './overlayStack';
+import { audio, sliderToGain } from './audio';
 
 export interface MenuControllerOptions {
   onNewGame: () => void;
@@ -197,6 +198,22 @@ export function initMenuAndSettings(options: MenuControllerOptions): void {
         alert('Invalid or corrupted save string!');
       }
     }
+  });
+
+  // Audio volume sliders
+  modalContainer.querySelector<HTMLInputElement>('#vol-master')?.addEventListener('input', (e) => {
+    const val = Number((e.target as HTMLInputElement).value);
+    audio.setChannel('master', sliderToGain(val));
+  });
+
+  modalContainer.querySelector<HTMLInputElement>('#vol-sfx')?.addEventListener('input', (e) => {
+    const val = Number((e.target as HTMLInputElement).value);
+    audio.setChannel('sfx', sliderToGain(val));
+  });
+
+  modalContainer.querySelector<HTMLInputElement>('#vol-ambient')?.addEventListener('input', (e) => {
+    const val = Number((e.target as HTMLInputElement).value);
+    audio.setChannel('ambient', sliderToGain(val));
   });
 
   // Accessibility toggles
