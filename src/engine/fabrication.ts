@@ -19,6 +19,8 @@
  *   6. Carve Bone Awl + Stitch Vegetable Tanned Leather with Sinew -> Leather Backpack (24 slots, 40 kg cap).
  */
 
+import { ITEM_BY_ID } from '../data/items';
+
 export type ToolSlotKey =
   | 'CUTTING_SKINNING'
   | 'CHOPPING_CARVING'
@@ -448,6 +450,69 @@ export const FABRICATION_RECIPES: ReadonlyArray<FabricationRecipe> = [
     workTicks: 0,
     description: 'Salt of the earth in a palm of water; the cheapest clean wound there is.',
   },
+  {
+    id: 'MOLD_BAR_SOAP',
+    name: 'Mold Bar Soap',
+    inputs: [
+      { itemId: 'RAW_ADIPOSE_FAT', count: 1, label: 'Rendered Adipose Fat' },
+      { itemId: 'HALITE_SALT', count: 1, label: 'Halite Salt' },
+      { itemId: 'SOAPSTONE_MOLD', count: 1, label: 'Soapstone Mold' },
+      { itemId: 'WATER_VESSEL', count: 1, label: 'Ash Lye Water' },
+    ],
+    outputs: [
+      { itemId: 'BAR_SOAP', count: 1, label: 'Molded Bar Soap' },
+      { itemId: 'SOAPSTONE_MOLD', count: 1, label: 'Soapstone Mold' },
+    ],
+    requiredToolSlot: 'THERMAL_HANDLING',
+    energyCostKcal: 35.0,
+    workTicks: 2,
+    description: 'Saponify rendered fat with alkali lye, salt out curds, and press into soapstone mold.',
+  },
+  {
+    id: 'BREW_WILLOW_TEA',
+    name: 'Brew Willow Tea',
+    inputs: [
+      { itemId: 'WILLOW_BARK', count: 1, label: 'Inner Willow Bark' },
+      { itemId: 'WATER_VESSEL', count: 1, label: 'Boiling Water' },
+    ],
+    outputs: [
+      { itemId: 'WILLOW_TEA', count: 1, label: 'Brewed Willow Tea' },
+    ],
+    requiredToolSlot: 'THERMAL_HANDLING',
+    energyCostKcal: 15.0,
+    workTicks: 1,
+    description: 'Decoct salicin-rich willow phloem in simmering water to brew a soothing stimulant tea.',
+  },
+  {
+    id: 'DISTILL_MINT_TONIC',
+    name: 'Distill Mint Tonic',
+    inputs: [
+      { itemId: 'ETHANOL_DISINFECTANT', count: 1, label: 'Distilled Ethanol' },
+      { itemId: 'WATER_VESSEL', count: 1, label: 'Aromatic Floral Water' },
+    ],
+    outputs: [
+      { itemId: 'MINT_TONIC', count: 1, label: 'Distilled Mint Tonic' },
+    ],
+    requiredToolSlot: 'THERMAL_HANDLING',
+    energyCostKcal: 25.0,
+    workTicks: 2,
+    description: 'Steep wild mint essences into distilled spirit; produces an invigorating hauler tonic.',
+  },
+  {
+    id: 'SYNTHESIZE_NITROUS_TONIC',
+    name: 'Synthesize Nitrous Draught',
+    inputs: [
+      { itemId: 'ETHANOL_DISINFECTANT', count: 1, label: 'Ethanol Spirit' },
+      { itemId: 'SALTPETER_CRYSTALS', count: 1, label: 'Purified Saltpeter (KNO3)' },
+    ],
+    outputs: [
+      { itemId: 'NITROUS_TONIC', count: 1, label: 'Nitrous Draught' },
+    ],
+    requiredToolSlot: 'THERMAL_HANDLING',
+    energyCostKcal: 45.0,
+    workTicks: 3,
+    description: 'React volatile spirits with nitrate salts under closed reflux into a potent stimulant draught.',
+  },
 ];
 
 export interface MedicalConsumableItem {
@@ -531,6 +596,26 @@ export const METALLURGY_TOOLS: Record<'BRONZE_FORK' | 'BRONZE_SPEAR' | 'BRONZE_A
     maxDurability: 100,
   },
 };
+
+/**
+ * Resolves any tool item (metallurgy or catalog item with toolSlot) into a ToolItem structure.
+ */
+export function resolveToolItem(itemId: string): ToolItem | undefined {
+  if (itemId in METALLURGY_TOOLS) {
+    return METALLURGY_TOOLS[itemId as keyof typeof METALLURGY_TOOLS];
+  }
+  const item = ITEM_BY_ID[itemId];
+  if (!item || !item.toolSlot) return undefined;
+  return {
+    id: item.id,
+    name: item.name,
+    slot: item.toolSlot,
+    mohs: item.mohs ?? 1.0,
+    mechanicalAdvantage: item.tier >= 2 ? 2.0 : 1.4,
+    durability: 100,
+    maxDurability: 100,
+  };
+}
 
 export interface EatingUtensilBonus {
   netCaloricBonusPct: number;    // e.g. 0.15 (+15%)

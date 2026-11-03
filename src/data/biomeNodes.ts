@@ -39,8 +39,11 @@ export interface BiomeSpeciesNode {
   readonly scientificName?: string;
   readonly subtype: string;
   readonly baseDistanceMeters: number; // d0 nominal distance
+  readonly mapAngleRad: number;       // deterministic 2D angle in radians [0, 2*PI)
   readonly parts: ReadonlyArray<HarvestablePart>;
 }
+
+export type BiomeNodeDefinition = BiomeSpeciesNode;
 
 export interface BiomeCategoryNode {
   readonly key: BiomeCategoryKey;
@@ -61,6 +64,7 @@ export const BIOME_DAG: ReadonlyArray<BiomeCategoryNode> = [
         scientificName: 'Quercus alba',
         subtype: 'Hardwood',
         baseDistanceMeters: 50,
+        mapAngleRad: 0.35, // ~20 deg NE
         parts: [
           {
             id: 'OAK_HEARTWOOD_LOG',
@@ -98,6 +102,7 @@ export const BIOME_DAG: ReadonlyArray<BiomeCategoryNode> = [
         scientificName: 'Pinus sylvestris',
         subtype: 'Softwood',
         baseDistanceMeters: 40,
+        mapAngleRad: 0.85, // ~49 deg NE
         parts: [
           {
             id: 'PINE_TRUNK',
@@ -136,6 +141,7 @@ export const BIOME_DAG: ReadonlyArray<BiomeCategoryNode> = [
         scientificName: 'Salix alba',
         subtype: 'Soft Hardwood',
         baseDistanceMeters: 75,
+        mapAngleRad: 1.45, // ~83 deg E
         parts: [
           {
             id: 'WILLOW_PHLOEM_BARK',
@@ -165,6 +171,7 @@ export const BIOME_DAG: ReadonlyArray<BiomeCategoryNode> = [
         name: 'Chert & Flint Nodules',
         subtype: 'Silicates',
         baseDistanceMeters: 60,
+        mapAngleRad: 2.10, // ~120 deg SE
         parts: [
           {
             id: 'FLINT_NODULE_HARVEST',
@@ -187,6 +194,7 @@ export const BIOME_DAG: ReadonlyArray<BiomeCategoryNode> = [
         name: 'Kaolinite Clay Bed',
         subtype: 'Silicates',
         baseDistanceMeters: 90,
+        mapAngleRad: 2.70, // ~155 deg S
         parts: [
           {
             id: 'KAOLIN_CLAY_HARVEST',
@@ -209,6 +217,7 @@ export const BIOME_DAG: ReadonlyArray<BiomeCategoryNode> = [
         name: 'Limestone Outcrop',
         subtype: 'Carbonates',
         baseDistanceMeters: 120,
+        mapAngleRad: 3.30, // ~189 deg S
         parts: [
           {
             id: 'LIMESTONE_CHUNKS',
@@ -231,6 +240,7 @@ export const BIOME_DAG: ReadonlyArray<BiomeCategoryNode> = [
         name: 'Halite & Natron Beds',
         subtype: 'Evaporites',
         baseDistanceMeters: 150,
+        mapAngleRad: 3.85, // ~220 deg SW
         parts: [
           {
             id: 'HALITE_SALT_HARVEST',
@@ -253,6 +263,7 @@ export const BIOME_DAG: ReadonlyArray<BiomeCategoryNode> = [
         name: 'Malachite Outcrop',
         subtype: 'Carbonates',
         baseDistanceMeters: 180,
+        mapAngleRad: 4.40, // ~252 deg W
         parts: [
           {
             id: 'MALACHITE_ORE_HARVEST',
@@ -275,6 +286,7 @@ export const BIOME_DAG: ReadonlyArray<BiomeCategoryNode> = [
         name: 'Cassiterite Vein',
         subtype: 'Oxides',
         baseDistanceMeters: 220,
+        mapAngleRad: 4.95, // ~283 deg WNW
         parts: [
           {
             id: 'CASSITERITE_ORE_HARVEST',
@@ -297,6 +309,7 @@ export const BIOME_DAG: ReadonlyArray<BiomeCategoryNode> = [
         name: 'Soapstone Deposit',
         subtype: 'Silicates',
         baseDistanceMeters: 140,
+        mapAngleRad: 5.45, // ~312 deg NW
         parts: [
           {
             id: 'SOAPSTONE_BLOCK_HARVEST',
@@ -319,6 +332,7 @@ export const BIOME_DAG: ReadonlyArray<BiomeCategoryNode> = [
         name: 'Sphalerite Zinc Deposit',
         subtype: 'Sulfides',
         baseDistanceMeters: 250,
+        mapAngleRad: 5.90, // ~338 deg NNW
         parts: [
           {
             id: 'SPHALERITE_ORE_HARVEST',
@@ -341,6 +355,7 @@ export const BIOME_DAG: ReadonlyArray<BiomeCategoryNode> = [
         name: 'Pyrite Mineral Outcrop',
         subtype: 'Sulfides',
         baseDistanceMeters: 260,
+        mapAngleRad: 0.15, // ~8 deg NNE
         parts: [
           {
             id: 'PYRITE_ORE_HARVEST',
@@ -363,6 +378,7 @@ export const BIOME_DAG: ReadonlyArray<BiomeCategoryNode> = [
         name: 'Crude Niter & Saltpeter Beds',
         subtype: 'Nitrates',
         baseDistanceMeters: 170,
+        mapAngleRad: 1.15, // ~66 deg ENE
         parts: [
           {
             id: 'SALTPETER_CRYSTALS_HARVEST',
@@ -393,6 +409,7 @@ export const BIOME_DAG: ReadonlyArray<BiomeCategoryNode> = [
         scientificName: 'Agaricus bisporus',
         subtype: 'Fungi',
         baseDistanceMeters: 30,
+        mapAngleRad: 1.75, // ~100 deg ESE
         parts: [
           {
             id: 'MUSHROOM_CAPS',
@@ -416,6 +433,7 @@ export const BIOME_DAG: ReadonlyArray<BiomeCategoryNode> = [
         scientificName: 'Penicillium chrysogenum',
         subtype: 'Fungi',
         baseDistanceMeters: 45,
+        mapAngleRad: 2.45, // ~140 deg SE
         parts: [
           {
             id: 'PENICILLIUM_HARVEST',
@@ -447,6 +465,7 @@ export const BIOME_DAG: ReadonlyArray<BiomeCategoryNode> = [
         scientificName: 'Sus scrofa',
         subtype: 'Medium Animal',
         baseDistanceMeters: 180,
+        mapAngleRad: 3.65, // ~209 deg SSW
         parts: [
           {
             id: 'BOAR_HUNT',
@@ -512,4 +531,34 @@ export function calculateHarvestTotalCostKcal(
   const fractureKcal = fractureWorkJoules / (0.22 * 4184.0);
   const haulKcal = calculateRadialHaulCostKcal(distanceMeters, carriedMassKg);
   return fractureKcal + haulKcal;
+}
+
+/**
+ * Returns exact 2D world coordinates (x, y) in meters from camp hearth (0, 0)
+ * for a species node or node ID.
+ */
+export function getSpeciesWorldPosition(speciesIdOrNode: string | BiomeSpeciesNode): { x: number; y: number } {
+  let node: BiomeSpeciesNode | undefined;
+  if (typeof speciesIdOrNode === 'string') {
+    for (const cat of BIOME_DAG) {
+      const found = cat.species.find(s => s.id === speciesIdOrNode);
+      if (found) {
+        node = found;
+        break;
+      }
+    }
+  } else {
+    node = speciesIdOrNode;
+  }
+
+  if (!node) {
+    return { x: 0, y: 0 };
+  }
+
+  const r = node.baseDistanceMeters;
+  const theta = node.mapAngleRad;
+  return {
+    x: r * Math.cos(theta),
+    y: r * Math.sin(theta),
+  };
 }

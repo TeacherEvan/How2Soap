@@ -7,6 +7,14 @@
  *   with Base64 wrapping and SHA-256 / Checksum integrity validation.
  */
 
+export interface SerializedColonyState {
+  colonists: import('./colony').Colonist[];
+  ledger: import('./colony').ColonyLedgerEntry[];
+  desirePathGrid: number[]; // 1024 bytes serialized as number array
+  nextColonistId: number;
+  lastDecayTick?: number;
+}
+
 export interface SerializedWorldSave {
   version: number;
   timestamp: number;
@@ -35,6 +43,7 @@ export interface SerializedWorldSave {
   objectivesDone: string[];
   lettersDone: string[];
   epilogueSeen: boolean;
+  colony?: SerializedColonyState;
 }
 
 export function serializeSave(save: SerializedWorldSave): string {
@@ -75,6 +84,13 @@ export function deserializeSave(json: string): SerializedWorldSave {
     objectivesDone: parsed.objectivesDone ?? [],
     lettersDone: parsed.lettersDone ?? [],
     epilogueSeen: parsed.epilogueSeen ?? false,
+    colony: parsed.colony ? {
+      colonists: parsed.colony.colonists ?? [],
+      ledger: parsed.colony.ledger ?? [],
+      desirePathGrid: Array.isArray(parsed.colony.desirePathGrid) ? parsed.colony.desirePathGrid : [],
+      nextColonistId: parsed.colony.nextColonistId ?? 1,
+      lastDecayTick: parsed.colony.lastDecayTick,
+    } : undefined,
   };
 }
 

@@ -45,7 +45,7 @@ export const StoryMode = (() => {
               ? `
               <div class="save-summary">
                 <div><strong>Day ${opts.day}</strong> · ${opts.chapterTitle}</div>
-                <div>L${opts.title} · ${opts.renown} Renown</div>
+                <div>${opts.title} · ${opts.renown} Renown</div>
               </div>
               <div class="splash-actions">
                 <button class="btn btn-primary" id="btn-splash-continue">Continue Chronicle</button>

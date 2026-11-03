@@ -13,6 +13,18 @@ import type { ToolSlotKey } from '../engine/fabrication';
 export type ItemAffinity = 'apothecary' | 'soapwright' | 'forgewright';
 export type ItemCategory = 'tool' | 'weapon' | 'container' | 'material' | 'food' | 'medicine' | 'misc';
 
+export interface StimulantSpec {
+  readonly speedMultiplier: number;
+  readonly fatigueReduction?: number;
+  readonly durationMinutes: number;
+  readonly durationTicks?: number;
+  readonly crashMinutes: number;
+  readonly crashTicks?: number;
+  readonly crashMultiplier: number;
+  readonly crashSpeedPenalty?: number;
+  readonly moraleBonus?: number;
+}
+
 export interface ItemDef {
   readonly id: string;
   readonly name: string;
@@ -24,6 +36,9 @@ export interface ItemDef {
   readonly toolSlot?: ToolSlotKey;
   readonly foodKcal?: number;     // per 1 unit consumed
   readonly affinity?: ItemAffinity;
+  readonly wageValue?: number;
+  readonly stimulantSpec?: StimulantSpec;
+  readonly stimulant?: StimulantSpec;
 }
 
 export const ITEMS: readonly ItemDef[] = [
@@ -59,6 +74,103 @@ export const ITEMS: readonly ItemDef[] = [
   { id: 'PENICILLIUM_SPORES', name: 'Penicillium Spores', category: 'medicine', tier: 3, icon: 'spores', affinity: 'apothecary', desc: 'Wind-borne green dust; the seed of every penicillin brew.' },
   { id: 'PENICILLIUM_BROTH', name: 'Penicillium Mold Broth', category: 'medicine', tier: 3, icon: 'culture', affinity: 'apothecary', desc: 'Foraged moldy liquor, 0.5 kg; the antibiotic age starts in this jar.' },
   { id: 'PENICILLIUM_MOLD_CULTURE', name: 'Penicillium Mold Culture', category: 'medicine', tier: 3, icon: 'culture', affinity: 'apothecary', desc: 'Starter of P. chrysogenum on cooked starch; feed grain and buffer, wait 48 ticks.' },
+  { id: 'BAR_SOAP', name: 'Molded Bar Soap', category: 'medicine', tier: 2, icon: 'soapstone', wageValue: 25, affinity: 'soapwright', desc: 'Molded tallow bar soap; cleanses contamination and boosts colony morale.' },
+  {
+    id: 'WILLOW_TEA',
+    name: 'Brewed Willow Tea',
+    category: 'medicine',
+    tier: 2,
+    icon: 'willow',
+    wageValue: 8,
+    affinity: 'apothecary',
+    desc: 'Mild analgesic stimulant brew from inner willow bark and boiled water.',
+    stimulantSpec: {
+      speedMultiplier: 1.25,
+      fatigueReduction: 0.3,
+      durationMinutes: 180,
+      durationTicks: 3,
+      crashMinutes: 45,
+      crashTicks: 1,
+      crashMultiplier: 0.85,
+      crashSpeedPenalty: 0.05,
+      moraleBonus: 12,
+    },
+    stimulant: {
+      speedMultiplier: 1.25,
+      fatigueReduction: 0.3,
+      durationMinutes: 180,
+      durationTicks: 3,
+      crashMinutes: 45,
+      crashTicks: 1,
+      crashMultiplier: 0.85,
+      crashSpeedPenalty: 0.05,
+      moraleBonus: 12,
+    },
+  },
+  {
+    id: 'MINT_TONIC',
+    name: 'Distilled Mint Tonic',
+    category: 'medicine',
+    tier: 3,
+    icon: 'vial',
+    wageValue: 12,
+    affinity: 'apothecary',
+    desc: 'Refreshing menthol stimulant tonic; invigorates haulers and sharpens focus.',
+    stimulantSpec: {
+      speedMultiplier: 1.35,
+      fatigueReduction: 0.4,
+      durationMinutes: 240,
+      durationTicks: 4,
+      crashMinutes: 60,
+      crashTicks: 1,
+      crashMultiplier: 0.80,
+      crashSpeedPenalty: 0.15,
+      moraleBonus: 12,
+    },
+    stimulant: {
+      speedMultiplier: 1.35,
+      fatigueReduction: 0.4,
+      durationMinutes: 240,
+      durationTicks: 4,
+      crashMinutes: 60,
+      crashTicks: 1,
+      crashMultiplier: 0.80,
+      crashSpeedPenalty: 0.15,
+      moraleBonus: 12,
+    },
+  },
+  {
+    id: 'NITROUS_TONIC',
+    name: 'Nitrous Draught',
+    category: 'medicine',
+    tier: 4,
+    icon: 'vial',
+    wageValue: 35,
+    affinity: 'apothecary',
+    desc: 'Potent nitrous ether stimulant draught; surging burst of speed and vigor.',
+    stimulantSpec: {
+      speedMultiplier: 1.55,
+      fatigueReduction: 0.6,
+      durationMinutes: 180,
+      durationTicks: 3,
+      crashMinutes: 60,
+      crashTicks: 2,
+      crashMultiplier: 0.75,
+      crashSpeedPenalty: 0.25,
+      moraleBonus: 12,
+    },
+    stimulant: {
+      speedMultiplier: 1.55,
+      fatigueReduction: 0.6,
+      durationMinutes: 180,
+      durationTicks: 3,
+      crashMinutes: 60,
+      crashTicks: 2,
+      crashMultiplier: 0.75,
+      crashSpeedPenalty: 0.25,
+      moraleBonus: 12,
+    },
+  },
 
   // ---- Materials: wood & flora ----
   { id: 'LOG_WHITE_OAK', name: 'White Oak Log', category: 'material', tier: 1, icon: 'log', desc: 'Dense heartwood; seasons into charcoal and hardwood ash.' },

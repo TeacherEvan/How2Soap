@@ -44,6 +44,8 @@ export class SharedWorldView {
   public readonly syncFlags: Int32Array;
   public readonly vesselTelemetry: Float64Array;
   public readonly vesselMoles: Float64Array;
+  private lastSnapshot: WorldSnapshot | null = null;
+  private lastConsistentSeq = -1;
 
   constructor(sab: SharedArrayBuffer) {
     if (sab.byteLength < SAB_BYTE_LENGTH) {
@@ -102,21 +104,29 @@ export class SharedWorldView {
    * Copy a consistent snapshot of the shared world. Retries while the
    * SeqLock is odd or changed between the two reads.
    */
-  public readSnapshot(maxAttempts = 8): WorldSnapshot {
+  public readSnapshot(maxAttempts = 32): WorldSnapshot {
     let attempt = 0;
     for (;;) {
       const before = Atomics.load(this.syncFlags, 0);
       if ((before & 1) === 0) {
+        if (before === this.lastConsistentSeq && this.lastSnapshot !== null) {
+          return this.lastSnapshot;
+        }
         const tick = Atomics.load(this.syncFlags, 1);
         const telemetry = this.vesselTelemetry.slice();
         const moles = this.vesselMoles.slice();
         const after = Atomics.load(this.syncFlags, 0);
         if (before === after && (after & 1) === 0) {
-          return { tick, telemetry, moles };
+          this.lastConsistentSeq = before;
+          this.lastSnapshot = { tick, telemetry, moles };
+          return this.lastSnapshot;
         }
       }
       attempt += 1;
       if (attempt >= maxAttempts) {
+        if (this.lastSnapshot !== null) {
+          return this.lastSnapshot;
+        }
         throw new Error('SharedWorldView: unable to obtain a consistent snapshot');
       }
     }

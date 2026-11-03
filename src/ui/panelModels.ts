@@ -40,6 +40,11 @@ export const TREATMENTS: Record<string, { name: string; effects: string; clears:
     effects: 'Sterilizes active wound site; clears wound contamination',
     clears: 'woundContamination',
   },
+  SALICYLIC_ACID_TINCTURE: {
+    name: 'Salicylic Tincture',
+    effects: 'Antipyretic willow extract; reduces and clears pyrogenic fever',
+    clears: 'fever',
+  },
   SALICYLIC_TINCTURE: {
     name: 'Salicylic Tincture',
     effects: 'Antipyretic willow extract; reduces and clears pyrogenic fever',

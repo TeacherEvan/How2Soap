@@ -30,6 +30,12 @@ export function initMenuAndSettings(options: MenuControllerOptions): void {
     if (sp) speciesList.push(sp);
   }
 
+  // Remove duplicate modals if startWorld() is called repeatedly
+  const existingModal = document.getElementById('menu-modal-overlay');
+  if (existingModal) existingModal.remove();
+  const existingBtn = document.getElementById('btn-open-settings');
+  if (existingBtn) existingBtn.remove();
+
   const modalContainer = document.createElement('div');
   modalContainer.id = 'menu-modal-overlay';
   modalContainer.className = 'modal-overlay hidden';

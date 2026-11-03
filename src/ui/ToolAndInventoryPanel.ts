@@ -49,7 +49,7 @@ export function renderToolAndInventoryPanel(
     const descTitle = itemDef ? `title="${itemDef.desc}"` : '';
     const isFood = itemDef?.category === 'food' || itemDef?.foodKcal !== undefined;
     const isTool = itemDef?.category === 'tool' && itemDef.toolSlot;
-    const canEquip = isTool && itemDef?.toolSlot && !state.tools[itemDef.toolSlot];
+    const canEquip = isTool && itemDef?.toolSlot;
 
     let actionBtn = '';
     if (isFood) {

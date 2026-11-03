@@ -82,8 +82,8 @@ module.exports = (env, argv) => {
           maxEntrypointSize: 200000,
           maxAssetSize: 200000,
           hints: 'error',
-          // Intro-splash media are cached static assets, not JS bundle weight.
-          assetFilter: (assetFilename) => !/\.(mp4|webm)$/i.test(assetFilename),
+          // Intro-splash media and source maps are not JS bundle weight.
+          assetFilter: (assetFilename) => !/\.(mp4|webm|map)$/i.test(assetFilename),
         }
       : false,
     plugins: [

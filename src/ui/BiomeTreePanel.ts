@@ -5,11 +5,11 @@
  * Category -> Species -> Harvestable Part, with tool scaling and kcal costs.
  */
 
-import { BIOME_DAG, type HarvestablePart } from '../data/biomeNodes';
+import { BIOME_DAG, type HarvestablePart, type BiomeSpeciesNode } from '../data/biomeNodes';
 
 export function renderBiomeTreePanel(
   container: HTMLElement,
-  onHarvest: (part: HarvestablePart) => void,
+  onHarvest: (part: HarvestablePart, species: BiomeSpeciesNode) => void,
   getHaulKcal?: (part: HarvestablePart, speciesDistanceMeters: number) => number,
 ): void {
   container.innerHTML = `
@@ -61,7 +61,7 @@ export function renderBiomeTreePanel(
         for (const sp of cat.species) {
           const found = sp.parts.find((p) => p.id === partId);
           if (found) {
-            onHarvest(found);
+            onHarvest(found, sp);
             return;
           }
         }

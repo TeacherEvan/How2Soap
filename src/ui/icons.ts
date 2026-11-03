@@ -56,6 +56,11 @@ export const ICONS: Readonly<Record<string, string>> = {
   vial: svg('<path d="M9 3h6"/><path d="M10 3v6l-4 9a2.4 2.4 0 0 0 2.3 3h7.4A2.4 2.4 0 0 0 18 18l-4-9V3"/><path d="M8.5 14h7"/>'),
   willow: svg('<path d="M6 4c4 6 4 12 0 16"/><path d="M6 6c3 1 5 3 5 6"/><path d="M6 12c3 1 5 3 6 6"/>'),
   zinc: svg('<rect x="4" y="9" width="16" height="6" rx="1"/><path d="M8 9v6"/><path d="M12 9v6"/><path d="M16 9v6"/>'),
+  'soap-bar': svg('<rect x="4" y="7" width="16" height="10" rx="3"/><path d="M8 11h8"/><path d="M7 14h4"/>'),
+  'tea-cup': svg('<path d="M4 8h12v6a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5V8z"/><path d="M16 10h2a2 2 0 0 1 2 2v1a2 2 0 0 1-2 2h-2"/><path d="M3 21h14"/>'),
+  'mint-leaf': svg('<path d="M12 21C6 21 3 15 3 9a9 9 0 0 1 9-6c6 0 9 6 9 12a9 9 0 0 1-9 6z"/><path d="M12 3v18"/><path d="M12 9l5-2"/><path d="M12 15l-5-2"/>'),
+  'vial-fuming': svg('<path d="M9 3h6"/><path d="M10 3v6l-4 9a2.4 2.4 0 0 0 2.3 3h7.4A2.4 2.4 0 0 0 18 18l-4-9V3"/><path d="M8.5 14h7"/><path d="M19 4c1 1 1 2 0 3"/><path d="M21 2c1.5 1.5 1.5 3.5 0 5"/>'),
+  flask: svg('<path d="M10 3h4"/><path d="M11 3v5l-4.5 8.5A2 2 0 0 0 8.2 19h7.6a2 2 0 0 0 1.7-2.5L13 8V3"/>'),
 };
 export const FALLBACK_ICON = 'unknown';
 export function itemIcon(id: string, size = 20): string {

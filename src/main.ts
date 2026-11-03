@@ -12,9 +12,9 @@ import {
   renderPaddockTab,
   type WorkbenchTab,
 } from './ui/WorkbenchCanvas';
+import { StrategyMapCanvas } from './ui/StrategyMapCanvas';
 import { initMenuAndSettings } from './ui/MenuController';
-import type { HarvestablePart } from './data/biomeNodes';
-import { calculateHarvestTotalCostKcal } from './data/biomeNodes';
+import { calculateHarvestTotalCostKcal, type HarvestablePart, type BiomeSpeciesNode } from './data/biomeNodes';
 import type { SerializedWorldSave } from './engine/persistence';
 import { showToast } from './ui/Toast';
 import { mountJournal } from './ui/JournalPanel';
@@ -30,6 +30,7 @@ import { globalOverlayStack } from './ui/overlayStack';
 import { audio } from './ui/audio';
 import { snapshotSignature } from './engine/saveSignature';
 import { migrateSave } from './engine/persistence';
+import type { TutorialController } from './ui/TutorialController';
 
 interface VesselMeta {
   id: number;
@@ -52,6 +53,8 @@ const MATERIAL_LABEL: Record<string, string> = {
   COPPER: 'Copper',
   BOROSILICATE: 'Borosilicate',
 };
+
+let deathModalShown = false;
 
 const state = {
   worker: null as Worker | null,
@@ -104,6 +107,9 @@ const state = {
   },
   items: [] as Array<{ id: string; count: number; massKg: number }>,
   progression: initialProgression(),
+  colony: null as any,
+  strategyMap: null as StrategyMapCanvas | null,
+  tutorial: null as TutorialController | null,
 };
 
 const app = document.querySelector<HTMLDivElement>('#app');
@@ -266,7 +272,10 @@ app.innerHTML = `
         <!-- Tab 3: Domesticated Paddocks -->
         <div id="tab-paddocks-content" class="tab-pane hidden"></div>
 
-        <!-- Tab 4: Journal & Missions -->
+        <!-- Tab 4: Strategy & Labor Map -->
+        <div id="tab-strategy-content" class="tab-pane hidden"></div>
+
+        <!-- Tab 5: Journal & Missions -->
         <div id="tab-journal-content" class="tab-pane hidden"></div>
 
         <div class="workbench-foot">
@@ -302,6 +311,7 @@ const valAdipose = $('val-adipose');
 const valHydration = $('val-hydration');
 const valAmbient = $('val-ambient');
 const valRenownTitle = $('val-renown-title');
+const hudRenown = $('hud-renown');
 const ringRenownFg = document.getElementById('ring-renown-fg') as SVGCircleElement | null;
 const bannersRow = $('banners');
 const vesselList = $('vessel-list');
@@ -323,6 +333,7 @@ const tabsNavContainer = $('workbench-tabs-container');
 const tabReactions = $('tab-reactions-content');
 const tabFabrication = $('tab-fabrication-content');
 const tabPaddocks = $('tab-paddocks-content');
+const tabStrategy = $('tab-strategy-content');
 const tabJournal = $('tab-journal-content');
 
 function send(command: unknown): void {
@@ -482,22 +493,17 @@ function switchTab(tab: WorkbenchTab): void {
     onSelectTab: switchTab,
     onExecuteRecipe: (recipeId) => send({ type: 'FABRICATE', recipeId }),
     onFeedPaddock: () => {
-      state.paddock.feedKg += 5;
-      state.log.push('Refilled paddock feeder (+5 kg)');
-      renderLog();
-      updatePaddockUI();
+      send({ type: 'FEED_PADDOCK', massKg: 5 });
     },
     onWaterPaddock: () => {
-      state.paddock.waterL += 10;
-      state.log.push('Refilled paddock water trough (+10 L)');
-      renderLog();
-      updatePaddockUI();
+      send({ type: 'WATER_PADDOCK', liters: 10 });
     },
   });
 
   tabReactions.classList.toggle('hidden', tab !== 'REACTIONS');
   tabFabrication.classList.toggle('hidden', tab !== 'FABRICATION');
   tabPaddocks.classList.toggle('hidden', tab !== 'PADDOCKS');
+  tabStrategy.classList.toggle('hidden', tab !== 'STRATEGY');
   tabJournal.classList.toggle('hidden', tab !== 'JOURNAL');
 
   if (tab === 'FABRICATION') {
@@ -508,6 +514,8 @@ function switchTab(tab: WorkbenchTab): void {
     });
   } else if (tab === 'PADDOCKS') {
     updatePaddockUI();
+  } else if (tab === 'STRATEGY') {
+    state.strategyMap?.resizeCanvas();
   } else if (tab === 'JOURNAL') {
     mountJournal(tabJournal, state.progression);
   }
@@ -518,16 +526,10 @@ function updatePaddockUI(): void {
     tabPaddocks,
     state.paddock,
     () => {
-      state.paddock.feedKg += 5;
-      state.log.push('Refilled paddock feeder (+5 kg)');
-      renderLog();
-      updatePaddockUI();
+      send({ type: 'FEED_PADDOCK', massKg: 5 });
     },
     () => {
-      state.paddock.waterL += 10;
-      state.log.push('Refilled paddock water trough (+10 L)');
-      renderLog();
-      updatePaddockUI();
+      send({ type: 'WATER_PADDOCK', liters: 10 });
     },
   );
 }
@@ -543,6 +545,10 @@ function updatePlayerUI(): void {
 
   const renownInfo = levelFromRenown(state.progression.renown);
   if (valRenownTitle) valRenownTitle.textContent = `L${renownInfo.level} · ${renownInfo.title}`;
+  if (hudRenown) {
+    const pctNow = renownInfo.span > 0 ? Math.round((renownInfo.intoLevel / renownInfo.span) * 100) : 100;
+    hudRenown.setAttribute('aria-valuenow', `${pctNow}`);
+  }
   if (ringRenownFg) {
     const circumference = 2 * Math.PI * 15.5; // ≈ 97.389
     const pct = renownInfo.span > 0 ? Math.min(1, renownInfo.intoLevel / renownInfo.span) : 1;
@@ -572,6 +578,7 @@ function updatePlayerUI(): void {
     onEquipTool: (itemId, slot) => {
       audio.clink();
       send({ type: 'EQUIP_TOOL', itemId, slot });
+      renderBiomeExplorerTree();
     },
     onAdministerTreatment: (itemId) => {
       audio.sealDone();
@@ -582,19 +589,60 @@ function updatePlayerUI(): void {
   });
 }
 
+let lastRenderedTick = -1;
+
 function frame(): void {
   if (state.view) {
-    const snapshot = state.view.readSnapshot();
-    if (snapshot) {
-      state.snapshot = snapshot;
-      clock.textContent = formatClock(snapshot);
-      if (state.activeTab === 'REACTIONS') {
-        renderWorkbench(snapshot);
+    try {
+      const snapshot = state.view.readSnapshot(32);
+      if (snapshot) {
+        state.snapshot = snapshot;
+        clock.textContent = formatClock(snapshot);
+        if (snapshot.tick !== lastRenderedTick) {
+          lastRenderedTick = snapshot.tick;
+          if (state.activeTab === 'REACTIONS') {
+            renderWorkbench(snapshot);
+          }
+          renderQuest(snapshot);
+        }
       }
-      renderQuest(snapshot);
+    } catch {
+      // Retain last consistent snapshot on transient contention
     }
   }
   requestAnimationFrame(frame);
+}
+
+function renderBiomeExplorerTree(): void {
+  renderBiomeTreePanel(
+    biomePanel,
+    (part: HarvestablePart, species: BiomeSpeciesNode) => {
+      audio.harvestThud();
+      send({
+        type: 'HARVEST_PART',
+        partId: part.id,
+        speciesId: species.id,
+        carriedMassKg: 0,
+        toolSlot: part.requiredToolSlot ?? 'PERCUSSION_MINING',
+        distanceMeters: species.baseDistanceMeters,
+      });
+      state.log.push(`Harvested ${part.name} (${part.description})`);
+      renderLog();
+    },
+    (part, distance) => {
+      const equipped = part.requiredToolSlot ? state.inventory.tools[part.requiredToolSlot] : null;
+      const mohs = equipped?.mohs ?? 1.0;
+      const ma = equipped ? 2.0 : 1.0;
+      return calculateHarvestTotalCostKcal(
+        part.baseWorkJoules,
+        mohs,
+        part.targetMohs,
+        ma,
+        distance,
+        0,
+      );
+    },
+  );
 }
 
 function startWorld(options?: { load?: SerializedWorldSave }): void {
@@ -617,7 +665,8 @@ function startWorld(options?: { load?: SerializedWorldSave }): void {
       | { type: 'READY' }
       | { type: 'VESSELS'; vessels: VesselMeta[] }
       | { type: 'EVENTS'; events: Array<{ vesselId: number; message: string }> }
-      | { type: 'PLAYER_SYNC'; player: any; inventory: any & { items?: Array<{ id: string; count: number; massKg: number }> } }
+      | { type: 'PLAYER_SYNC'; player: any; inventory: any & { items?: Array<{ id: string; count: number; massKg: number }> }; paddock?: any }
+      | { type: 'COLONY_SYNC'; colony: any }
       | { type: 'OBJECTIVE'; kind: 'recipe' | 'eat' | 'treat' | 'harvest' | 'flag'; target: string }
     >,
   ) => {
@@ -633,6 +682,11 @@ function startWorld(options?: { load?: SerializedWorldSave }): void {
     } else if (data.type === 'EVENTS') {
       for (const ev of data.events) {
         state.log.push(ev.message);
+        if (ev.message.includes('strike') || ev.message.includes('Strike') || ev.message.includes('unpaid')) {
+          audio.strikeBell();
+        } else if (ev.message.includes('payroll') || ev.message.includes('paid') || ev.message.includes('Wage')) {
+          audio.wageClink();
+        }
         if (
           ev.message.startsWith('Too exhausted') ||
           ev.message.startsWith('Missing:') ||
@@ -648,13 +702,28 @@ function startWorld(options?: { load?: SerializedWorldSave }): void {
       state.player = data.player;
       state.inventory = data.inventory;
       state.items = data.inventory.items ?? [];
+      if (data.paddock) {
+        state.paddock = data.paddock;
+        updatePaddockUI();
+      }
       updatePlayerUI();
       requestAutoSave();
-      if (state.player.conditions?.dead) {
+      if (state.tutorial) {
+        state.tutorial.checkProgress({ state, snapshot: state.snapshot });
+      }
+      if ((state.player.conditions?.dead || (state.player as any).dead) && !deathModalShown) {
+        deathModalShown = true;
         StoryMode.death('sepsis', { days: state.player.day ?? 1, renown: state.progression.renown }, () => {
           localStorage.removeItem('how2soap.save.v2');
           location.reload();
         });
+      }
+    } else if (data.type === 'COLONY_SYNC') {
+      state.colony = data.colony;
+      const seconds = (state.snapshot?.tick ?? 0) * 360;
+      const minuteOfDay = Math.floor((seconds % 86400) / 60);
+      if (state.strategyMap) {
+        state.strategyMap.update(data.colony, minuteOfDay);
       }
     } else if (data.type === 'OBJECTIVE') {
       const sensor = {
@@ -734,9 +803,16 @@ function startWorld(options?: { load?: SerializedWorldSave }): void {
   // Initial Biome DAG rendering
   renderBiomeTreePanel(
     biomePanel,
-    (part: HarvestablePart) => {
+    (part: HarvestablePart, species: BiomeSpeciesNode) => {
       audio.harvestThud();
-      send({ type: 'HARVEST_PART', partId: part.id });
+      send({
+        type: 'HARVEST_PART',
+        partId: part.id,
+        speciesId: species.id,
+        carriedMassKg: 0,
+        toolSlot: part.requiredToolSlot ?? 'PERCUSSION_MINING',
+        distanceMeters: species.baseDistanceMeters,
+      });
       state.log.push(`Harvested ${part.name} (${part.description})`);
       renderLog();
     },
@@ -778,6 +854,69 @@ function startWorld(options?: { load?: SerializedWorldSave }): void {
       state.log.push(`Imported game save from Day ${migrated.day}, Tick ${migrated.tick}`);
       renderLog();
     },
+  });
+
+  // Instantiate Strategy Map Canvas & Labor Command Dock
+  if (state.strategyMap) {
+    state.strategyMap.destroy();
+    state.strategyMap = null;
+  }
+  state.strategyMap = new StrategyMapCanvas(tabStrategy, {
+    onRecruit: (recruit) => {
+      audio.recruitHorn();
+      send({
+        type: 'RECRUIT_COLONIST',
+        name: recruit.name,
+        archetype: recruit.archetype,
+        wageContract: recruit.wageContract,
+      });
+      state.log.push(`Recruited ${recruit.name} (${recruit.archetype})`);
+      renderLog();
+    },
+    onAssignJob: (colonistId, speciesId, partId) => {
+      audio.harvestThud();
+      send({
+        type: 'ASSIGN_COLONIST_JOB',
+        colonistId,
+        speciesId,
+        partId,
+      });
+      state.log.push(`Assigned colonist ${colonistId} to ${speciesId}`);
+      renderLog();
+    },
+    onAdministerStimulant: (colonistId, stimulantId) => {
+      audio.stimulantShimmer();
+      send({
+        type: 'ADMINISTER_STIMULANT',
+        colonistId,
+        stimulantId,
+      });
+      state.log.push(`Administered ${stimulantId} to ${colonistId}`);
+      renderLog();
+    },
+    onSetWageContract: (colonistId, wageContract) => {
+      audio.wageClink();
+      send({
+        type: 'SET_WAGE_CONTRACT',
+        colonistId,
+        wageContract,
+      });
+      state.log.push(`Updated wage contract for ${colonistId} to ${wageContract.commodity}`);
+      renderLog();
+    },
+  });
+
+  // Instantiate 3-Tier Tutorial & Compendium Academy Controller
+  import('./ui/TutorialController').then(({ TutorialController: TC }) => {
+    state.tutorial = new TC({
+      onDispatchWorkerCommand: (cmd) => send(cmd),
+      onSwitchTab: (tabKey) => {
+        if (tabKey === 'workbench') switchTab('REACTIONS');
+        else if (tabKey === 'strategy') switchTab('STRATEGY');
+        else if (tabKey === 'council') switchTab('JOURNAL');
+      },
+    });
+    state.tutorial.updateCoachmark();
   });
 
   switchTab('REACTIONS');
@@ -968,6 +1107,11 @@ function bootFlow(): void {
   bindActions();
   renderVessels();
   renderLog();
+  window.addEventListener('resize', () => {
+    if (state.activeTab === 'STRATEGY') {
+      state.strategyMap?.resizeCanvas();
+    }
+  });
   requestAnimationFrame(frame);
 
   const existingSave = localStorage.getItem(AUTO_SAVE_KEY);

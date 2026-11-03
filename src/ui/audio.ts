@@ -9,6 +9,18 @@ export function sliderToGain(sliderValue: number): number {
   return clamped / 100;
 }
 
+/**
+ * Maps world X coordinate in meters [-maxDistanceMeters, maxDistanceMeters]
+ * to stereo panning [-1.0, 1.0], clamping values exceeding the threshold.
+ */
+export function worldXToPan(worldX: number, maxDistanceMeters = 1600): number {
+  if (Number.isNaN(worldX)) return 0;
+  if (!Number.isFinite(worldX)) return worldX > 0 ? 1.0 : -1.0;
+  if (maxDistanceMeters <= 0) return 0;
+  const raw = worldX / maxDistanceMeters;
+  return Math.max(-1.0, Math.min(1.0, raw));
+}
+
 let ctx: AudioContext | null = null;
 const gains = {
   master: null as GainNode | null,
@@ -17,6 +29,23 @@ const gains = {
 };
 
 let ambientRunning = false;
+
+// Shared white noise buffer for procedural noise effects
+let cachedNoiseBuffer: AudioBuffer | null = null;
+
+const getNoiseBuffer = (context: AudioContext): AudioBuffer => {
+  if (cachedNoiseBuffer && cachedNoiseBuffer.sampleRate === context.sampleRate) {
+    return cachedNoiseBuffer;
+  }
+  const bufferSize = Math.floor(context.sampleRate * 2); // 2 seconds of reusable noise
+  const buffer = context.createBuffer(1, bufferSize, context.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < bufferSize; i++) {
+    data[i] = Math.random() * 2 - 1;
+  }
+  cachedNoiseBuffer = buffer;
+  return buffer;
+};
 
 const ensure = (): AudioContext => {
   if (!ctx && typeof window !== 'undefined') {
@@ -44,24 +73,44 @@ const ensure = (): AudioContext => {
   return ctx!;
 };
 
+const createPanner = (context: AudioContext, pan?: number): StereoPannerNode | null => {
+  if (pan === undefined || typeof context.createStereoPanner !== 'function') {
+    return null;
+  }
+  try {
+    const panner = context.createStereoPanner();
+    panner.pan.setValueAtTime(Math.max(-1, Math.min(1, pan)), context.currentTime);
+    return panner;
+  } catch {
+    return null;
+  }
+};
+
 const tone = (
   freq: number,
   type: OscillatorType,
   dur: number,
   targetGain: GainNode,
   peak = 0.5,
+  pan?: number,
 ): void => {
   const context = ensure();
   if (!context || !targetGain) return;
 
   const osc = context.createOscillator();
   const env = context.createGain();
+  const panner = createPanner(context, pan);
 
   osc.type = type;
   osc.frequency.setValueAtTime(freq, context.currentTime);
 
   osc.connect(env);
-  env.connect(targetGain);
+  if (panner) {
+    env.connect(panner);
+    panner.connect(targetGain);
+  } else {
+    env.connect(targetGain);
+  }
 
   const now = context.currentTime;
   env.gain.setValueAtTime(0, now);
@@ -77,17 +126,12 @@ const noise = (
   targetGain: GainNode,
   lowpassFreq = 800,
   peak = 0.4,
+  pan?: number,
 ): void => {
   const context = ensure();
   if (!context || !targetGain) return;
 
-  const bufferSize = Math.floor(context.sampleRate * dur);
-  const buffer = context.createBuffer(1, bufferSize, context.sampleRate);
-  const data = buffer.getChannelData(0);
-  for (let i = 0; i < bufferSize; i++) {
-    data[i] = Math.random() * 2 - 1;
-  }
-
+  const buffer = getNoiseBuffer(context);
   const noiseSource = context.createBufferSource();
   noiseSource.buffer = buffer;
 
@@ -96,6 +140,8 @@ const noise = (
   filter.frequency.setValueAtTime(lowpassFreq, context.currentTime);
 
   const env = context.createGain();
+  const panner = createPanner(context, pan);
+
   const now = context.currentTime;
   env.gain.setValueAtTime(0, now);
   env.gain.linearRampToValueAtTime(peak, now + 0.008);
@@ -103,7 +149,12 @@ const noise = (
 
   noiseSource.connect(filter);
   filter.connect(env);
-  env.connect(targetGain);
+  if (panner) {
+    env.connect(panner);
+    panner.connect(targetGain);
+  } else {
+    env.connect(targetGain);
+  }
 
   noiseSource.start(now);
   noiseSource.stop(now + dur + 0.02);
@@ -141,15 +192,17 @@ export const audio = {
   },
 
   // SFX vocabulary
-  harvestThud(): void {
+  harvestThud(worldX?: number): void {
     if (!ensure() || !gains.sfx) return;
-    noise(0.12, gains.sfx, 240, 0.5);
+    const pan = worldX !== undefined ? worldXToPan(worldX) : undefined;
+    noise(0.12, gains.sfx, 240, 0.5, pan);
   },
 
-  clink(): void {
+  clink(worldX?: number): void {
     if (!ensure() || !gains.sfx) return;
-    tone(1560, 'square', 0.05, gains.sfx, 0.14);
-    tone(2340, 'square', 0.03, gains.sfx, 0.08);
+    const pan = worldX !== undefined ? worldXToPan(worldX) : undefined;
+    tone(1560, 'square', 0.05, gains.sfx, 0.14, pan);
+    tone(2340, 'square', 0.03, gains.sfx, 0.08, pan);
   },
 
   chime(): void {
@@ -194,5 +247,61 @@ export const audio = {
     [261.63, 329.63, 392, 523.25, 659.25].forEach((f, i) =>
       setTimeout(() => tone(f, 'triangle', 0.9, gains.sfx!, 0.3), i * 160),
     );
+  },
+
+  /**
+   * Procedural recruit fanfare: brassy fifth chord fanfare with optional stereo panner.
+   */
+  recruitHorn(worldX?: number): void {
+    if (!ensure() || !gains.sfx) return;
+    const pan = worldX !== undefined ? worldXToPan(worldX) : undefined;
+    // Brassy fanfare: Root (220Hz), Fifth (330Hz), Octave (440Hz)
+    tone(220, 'sawtooth', 0.4, gains.sfx, 0.25, pan);
+    setTimeout(() => {
+      if (gains.sfx) tone(330, 'sawtooth', 0.45, gains.sfx, 0.28, pan);
+    }, 120);
+    setTimeout(() => {
+      if (gains.sfx) tone(440, 'triangle', 0.7, gains.sfx, 0.32, pan);
+    }, 240);
+  },
+
+  /**
+   * Procedural wage payment clink: high metallic coin resonance.
+   */
+  wageClink(worldX?: number): void {
+    if (!ensure() || !gains.sfx) return;
+    const pan = worldX !== undefined ? worldXToPan(worldX) : undefined;
+    tone(1760, 'square', 0.08, gains.sfx, 0.18, pan);
+    setTimeout(() => {
+      if (gains.sfx) tone(2637, 'sine', 0.12, gains.sfx, 0.15, pan);
+    }, 40);
+    setTimeout(() => {
+      if (gains.sfx) tone(3520, 'sine', 0.2, gains.sfx, 0.1, pan);
+    }, 90);
+  },
+
+  /**
+   * Procedural stimulant dosing shimmer: rising shimmering arpeggio.
+   */
+  stimulantShimmer(): void {
+    if (!ensure() || !gains.sfx) return;
+    const freqs = [587.33, 739.99, 880.0, 1174.66, 1479.98];
+    freqs.forEach((freq, idx) => {
+      setTimeout(() => {
+        if (gains.sfx) tone(freq, 'sine', 0.35, gains.sfx, 0.16);
+      }, idx * 45);
+    });
+  },
+
+  /**
+   * Procedural strike warning bell: dissonant tolling bell with long low decay.
+   */
+  strikeBell(worldX?: number): void {
+    if (!ensure() || !gains.sfx) return;
+    const pan = worldX !== undefined ? worldXToPan(worldX) : undefined;
+    // Dissonant interval (130Hz and 138.59Hz minor second beating)
+    tone(130, 'triangle', 1.8, gains.sfx, 0.35, pan);
+    tone(138.59, 'sine', 1.8, gains.sfx, 0.3, pan);
+    noise(0.08, gains.sfx, 450, 0.25, pan);
   },
 };

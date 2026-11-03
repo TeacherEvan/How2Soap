@@ -27,16 +27,30 @@ import {
 } from './inventory';
 import {
   createPaddock,
+  stepPaddockDay,
   type Paddock,
 } from './husbandry';
 import { applyHarvest } from './harvest';
 import { createSeededRng } from './rng';
 import { BIOME_DAG } from '../data/biomeNodes';
 import { ITEM_BY_ID } from '../data/items';
-import { FABRICATION_RECIPES, RECIPE_EFFECTS, METALLURGY_TOOLS } from './fabrication';
+import { FABRICATION_RECIPES, RECIPE_EFFECTS, METALLURGY_TOOLS, resolveToolItem } from './fabrication';
 import { satisfyVesselInputs, applyVesselConsumption, type VesselInputResult, VESSEL_INPUTS } from './vesselInputs';
 import { SIM_STEP_SECONDS, WORKER_HZ } from './time';
+import { SPECIES_BY_INDEX } from '../data/speciesRegistry';
 import { escalateConditions } from './conditions';
+import {
+  createInitialColonyState,
+  recruitColonist,
+  assignColonistJob,
+  administerStimulant,
+  setWageContract,
+  stepColony,
+  type ColonyState,
+  type ColonistArchetype,
+  type WageContract,
+} from './colony';
+import { restoreColonyFromSave } from './worldRestore';
 
 export interface FullSimState {
   world: WorldState;
@@ -68,9 +82,16 @@ type Command =
   | { type: 'SET_PAUSED'; paused: boolean }
   | { type: 'HARVEST_PART'; partId: string; speciesId: string; carriedMassKg: number; toolSlot: string; distanceMeters: number }
   | { type: 'FABRICATE'; recipeId: string }
-  | { type: 'EQUIP_TOOL'; slot: string; toolId: string }
+  | { type: 'EQUIP_TOOL'; slot: string; toolId?: string; itemId?: string }
   | { type: 'EAT_FOOD'; itemId: string }
-  | { type: 'APPLY_TREATMENT'; itemId: string };
+  | { type: 'APPLY_TREATMENT'; itemId: string }
+  | { type: 'FEED_PADDOCK'; massKg: number }
+  | { type: 'WATER_PADDOCK'; liters: number }
+  | { type: 'RECRUIT_COLONIST'; name: string; archetype: ColonistArchetype; wageContract: WageContract }
+  | { type: 'ASSIGN_COLONIST_JOB'; colonistId: string; speciesId: string; partId: string; workRequired?: number }
+  | { type: 'ADMINISTER_STIMULANT'; colonistId: string; stimulantId: string }
+  | { type: 'SET_WAGE_CONTRACT'; colonistId: string; wageContract: WageContract }
+  | { type: 'GRANT_TUTORIAL_REAGENTS'; items?: Array<{ itemId: string; count?: number; massKg?: number }>; vesselSpecies?: Array<{ speciesId: string; moles: number }>; vesselTempK?: number };
 
 interface WorkerCtx {
   postMessage(message: unknown): void;
@@ -83,6 +104,7 @@ let world: WorldState | null = null;
 let player: PlayerMetabolismState | null = null;
 let inventory: InventoryState | null = null;
 let paddock: Paddock | null = null;
+let colony: ColonyState = createInitialColonyState();
 let view: SharedWorldView | null = null;
 let paused = false;
 let timer: ReturnType<typeof setInterval> | null = null;
@@ -130,7 +152,8 @@ function postPlayerAndInventory(): void {
       hydrationPct: Math.round(player.hydrationPct),
       coreTempC: ((player.coreTempK - 273.15)).toFixed(1),
       clothingIclo: player.clothingIclo,
-      conditions: player.conditions,
+      conditions: { ...player.conditions, dead: player.dead },
+      dead: player.dead,
       day,
       ambientTempK: Math.round(world.ambientTempK * 100) / 100,
     },
@@ -142,7 +165,47 @@ function postPlayerAndInventory(): void {
       tools: inventory.tools,
       items: itemsOut,
     },
+    paddock: paddock
+      ? {
+          animalsCount: paddock.animals.length,
+          feedKg: paddock.storedFeedKg,
+          waterL: paddock.storedWaterL,
+          manureKg: paddock.accumulatedManureKg,
+        }
+      : undefined,
   });
+}
+
+function postColonySync(): void {
+  if (!colony) return;
+  ctx.postMessage({
+    type: 'COLONY_SYNC',
+    colony: {
+      colonists: colony.colonists,
+      ledger: colony.ledger,
+      desirePathGrid: Array.from(colony.desirePathGrid),
+      nextColonistId: colony.nextColonistId,
+      lastDecayTick: colony.lastDecayTick,
+    },
+  });
+}
+
+function checkAndEmitSpeciesObjectives(): void {
+  if (!world) return;
+  for (const vessel of world.vessels) {
+    for (let s = 0; s < vessel.moles.length; s++) {
+      const amount = vessel.moles[s] + (vessel.precipitated ? vessel.precipitated[s] : 0);
+      if (amount >= 0.005) {
+        const spec = SPECIES_BY_INDEX.get(s);
+        if (spec) {
+          ctx.postMessage({
+            type: 'OBJECTIVE',
+            event: { kind: 'species', targetId: (spec as any).id ?? spec.code, amount },
+          });
+        }
+      }
+    }
+  }
 }
 
 function advance(hours: number): WorldEvent[] {
@@ -159,6 +222,21 @@ function advance(hours: number): WorldEvent[] {
     // Escalate conditions each step (SIM_STEP_SECONDS hours per step)
     const condEvents = escalateConditions(player, SIM_STEP_SECONDS / 3600);
     for (const ev of condEvents) events.push({ vesselId: -1, message: ev.message });
+    if (inventory) {
+      stepColony(colony, SIM_STEP_SECONDS / 60, world.tick, inventory.campCache, BIOME_DAG);
+    }
+    if (world.tick > 0 && world.tick % 240 === 0 && paddock && paddock.animals.length > 0) {
+      const yields = stepPaddockDay(paddock);
+      if (yields.eggs > 0) {
+        const eggSlot = { itemId: 'FIELD_MUSHROOM', count: yields.eggs, massKg: yields.eggs * 0.05, label: 'Fresh Egg' };
+        if (!addItemToContainer(inventory?.bareHands ?? null as any, eggSlot)) {
+          if (!addItemToContainer(inventory?.backpack ?? null as any, eggSlot)) {
+            if (inventory?.campCache) addItemToContainer(inventory.campCache, eggSlot);
+          }
+        }
+      }
+      events.push({ vesselId: -1, message: `Paddock yields: ${yields.milkL.toFixed(1)} L milk, ${yields.butterfatGrams.toFixed(0)} g butterfat, ${yields.eggs} eggs, ${yields.manureKg.toFixed(2)} kg manure.` });
+    }
   }
   return events;
 }
@@ -174,9 +252,26 @@ function tick(): void {
   // Escalate conditions each tick
   const condEvents = escalateConditions(player, SIM_STEP_SECONDS / 3600);
   for (const ev of condEvents) events.push({ vesselId: -1, message: ev.message });
+  if (inventory) {
+    stepColony(colony, SIM_STEP_SECONDS / 60, world.tick, inventory.campCache, BIOME_DAG);
+  }
+  if (world.tick > 0 && world.tick % 240 === 0 && paddock && paddock.animals.length > 0) {
+    const yields = stepPaddockDay(paddock);
+    if (yields.eggs > 0) {
+      const eggSlot = { itemId: 'FIELD_MUSHROOM', count: yields.eggs, massKg: yields.eggs * 0.05, label: 'Fresh Egg' };
+      if (!addItemToContainer(inventory?.bareHands ?? null as any, eggSlot)) {
+        if (!addItemToContainer(inventory?.backpack ?? null as any, eggSlot)) {
+          if (inventory?.campCache) addItemToContainer(inventory.campCache, eggSlot);
+        }
+      }
+    }
+    events.push({ vesselId: -1, message: `Paddock yields: ${yields.milkL.toFixed(1)} L milk, ${yields.butterfatGrams.toFixed(0)} g butterfat, ${yields.eggs} eggs, ${yields.manureKg.toFixed(2)} kg manure.` });
+  }
+  checkAndEmitSpeciesObjectives();
   syncWorldToShared(world, view);
   if (events.length > 0) ctx.postMessage({ type: 'EVENTS', events });
   postPlayerAndInventory();
+  postColonySync();
 }
 
 ctx.onmessage = (event: MessageEvent<Command>) => {
@@ -193,11 +288,13 @@ ctx.onmessage = (event: MessageEvent<Command>) => {
       paddock = createPaddock();
       rngSeed = (Math.random() * 0xffffffff) >>> 0;
       rng = createSeededRng(rngSeed);
+      colony = createInitialColonyState();
 
       syncWorldToShared(world, view);
       if (timer === null) timer = setInterval(tick, 1000 / WORKER_HZ);
       ctx.postMessage({ type: 'READY' });
       postPlayerAndInventory();
+      postColonySync();
       break;
     }
     case 'LOAD_WORLD': {
@@ -228,16 +325,51 @@ ctx.onmessage = (event: MessageEvent<Command>) => {
       }
       player = createPlayerMetabolism(save.player?.clothingIclo ?? 0.05);
       Object.assign(player, save.player);
-      inventory = save.inventory ?? createInventoryState();
+      if (save.inventory && (save.inventory as any).bareHands && Array.isArray((save.inventory as any).bareHands.slots)) {
+        inventory = save.inventory;
+      } else if (save.inventory) {
+        inventory = createInventoryState();
+        const normalizeSlots = (rawSlots: any[], container: any) => {
+          if (!Array.isArray(rawSlots)) return;
+          for (const item of rawSlots) {
+            if (!item) continue;
+            const itemId = item.itemId || item.id;
+            if (!itemId) continue;
+            const count = item.count ?? 1;
+            const massKg = item.massKg ?? 0.1;
+            const quality = item.quality ?? 1.0;
+            for (let i = 0; i < container.slots.length; i++) {
+              if (!container.slots[i]) {
+                container.slots[i] = { itemId, count, massKg, quality };
+                break;
+              }
+            }
+          }
+        };
+        const rawInv = save.inventory as any;
+        normalizeSlots(rawInv.bareHands, inventory.bareHands);
+        normalizeSlots(rawInv.backpack, inventory.backpack);
+        normalizeSlots(rawInv.campCache, inventory.campCache);
+        if (rawInv.tools) {
+          Object.assign(inventory.tools, rawInv.tools);
+        }
+        if (rawInv.backpackUnlocked !== undefined) {
+          inventory.backpack.unlocked = !!rawInv.backpackUnlocked;
+        }
+      } else {
+        inventory = createInventoryState();
+      }
       rngSeed = save.rngSeed ?? ((Math.random() * 0xffffffff) >>> 0);
       rng = createSeededRng(rngSeed);
       paddock = save.paddock ?? createPaddock();
+      colony = restoreColonyFromSave(save);
 
       syncWorldToShared(world, view);
       if (timer === null) timer = setInterval(tick, 1000 / WORKER_HZ);
       ctx.postMessage({ type: 'READY' });
       postVessels();
       postPlayerAndInventory();
+      postColonySync();
       break;
     }
     case 'CREATE_VESSEL': {
@@ -405,8 +537,12 @@ ctx.onmessage = (event: MessageEvent<Command>) => {
     case 'EQUIP_TOOL': {
       if (!inventory) return;
       const slot = command.slot as import('./fabrication').ToolSlotKey;
-      const toolId = command.toolId;
-      const tool = METALLURGY_TOOLS[toolId as keyof typeof METALLURGY_TOOLS];
+      const toolId = command.itemId ?? command.toolId;
+      if (!toolId) {
+        ctx.postMessage({ type: 'EVENTS', events: [{ vesselId: -1, message: 'No tool ID specified to equip' }] });
+        return;
+      }
+      const tool = resolveToolItem(toolId);
       if (!tool) {
         ctx.postMessage({ type: 'EVENTS', events: [{ vesselId: -1, message: `Unknown tool: ${toolId}` }] });
         return;
@@ -416,7 +552,8 @@ ctx.onmessage = (event: MessageEvent<Command>) => {
         for (let i = 0; i < container.slots.length; i++) {
           const s = container.slots[i];
           if (s && s.itemId === toolId) {
-            container.slots[i] = null;
+            s.count--;
+            if (s.count <= 0) container.slots[i] = null;
             found = true;
             break;
           }
@@ -430,11 +567,15 @@ ctx.onmessage = (event: MessageEvent<Command>) => {
       const prev = inventory.tools[slot];
       if (prev) {
         const prevSlot = { itemId: prev.id, count: 1, massKg: 0.5, label: prev.name };
-        if (!addItemToContainer(inventory.bareHands, prevSlot)) addItemToContainer(inventory.backpack, prevSlot);
+        if (!addItemToContainer(inventory.bareHands, prevSlot)) {
+          if (!addItemToContainer(inventory.backpack, prevSlot)) {
+            addItemToContainer(inventory.campCache, prevSlot);
+          }
+        }
       }
       inventory.tools[slot] = tool;
       postPlayerAndInventory();
-      break;;
+      break;
     }
     case 'EAT_FOOD': {
       if (!player || !inventory) return;
@@ -444,12 +585,12 @@ ctx.onmessage = (event: MessageEvent<Command>) => {
         return;
       }
       let removed = false;
-      for (const container of [inventory.bareHands, inventory.backpack]) {
+      for (const container of [inventory.bareHands, inventory.backpack, inventory.campCache]) {
         for (let i = 0; i < container.slots.length; i++) {
           const s = container.slots[i];
           if (s && s.itemId === command.itemId) {
             s.count--;
-            if (s.count === 0) container.slots[i] = null;
+            if (s.count <= 0) container.slots[i] = null;
             removed = true;
             break;
           }
@@ -473,6 +614,41 @@ ctx.onmessage = (event: MessageEvent<Command>) => {
         ctx.postMessage({ type: 'EVENTS', events: [{ vesselId: -1, message: `Unknown item: ${command.itemId}` }] });
         return;
       }
+
+      // Check condition first before consuming valuable medical items
+      let needed = false;
+      if (command.itemId === 'SALINE_RINSE' || command.itemId === 'ETHANOL_DISINFECTANT') {
+        needed = !!player.conditions.woundContamination;
+      } else if (command.itemId === 'SALICYLIC_ACID_TINCTURE') {
+        needed = !!player.conditions.fever;
+      } else if (command.itemId === 'PENICILLIN_DOSE') {
+        needed = !!player.conditions.systemicInfection;
+      }
+
+      if (!needed) {
+        ctx.postMessage({ type: 'EVENTS', events: [{ vesselId: -1, message: `No active condition requiring ${item.name}.` }] });
+        return;
+      }
+
+      // Check item presence first across all containers before altering conditions
+      let removed = false;
+      for (const container of [inventory.bareHands, inventory.backpack, inventory.campCache]) {
+        for (let i = 0; i < container.slots.length; i++) {
+          const s = container.slots[i];
+          if (s && s.itemId === command.itemId) {
+            s.count--;
+            if (s.count <= 0) container.slots[i] = null;
+            removed = true;
+            break;
+          }
+        }
+        if (removed) break;
+      }
+      if (!removed) {
+        ctx.postMessage({ type: 'EVENTS', events: [{ vesselId: -1, message: `No ${item.name} available to treat with` }] });
+        return;
+      }
+
       let message = '';
       let treatKind = '';
       if (command.itemId === 'SALINE_RINSE' || command.itemId === 'ETHANOL_DISINFECTANT') {
@@ -503,19 +679,121 @@ ctx.onmessage = (event: MessageEvent<Command>) => {
       } else {
         message = `Cannot treat with ${item.name}.`;
       }
-      for (const container of [inventory.bareHands, inventory.backpack]) {
-        for (let i = 0; i < container.slots.length; i++) {
-          const s = container.slots[i];
-          if (s && s.itemId === command.itemId) {
-            s.count--;
-            if (s.count === 0) container.slots[i] = null;
-            break;
-          }
-        }
-      }
+
       ctx.postMessage({ type: 'EVENTS', events: [{ vesselId: -1, message }] });
       if (treatKind) ctx.postMessage({ type: 'OBJECTIVE', kind: 'treat', target: treatKind });
       postPlayerAndInventory();
+      break;
+    }
+    case 'FEED_PADDOCK': {
+      if (!paddock) return;
+      paddock.storedFeedKg += command.massKg;
+      ctx.postMessage({ type: 'EVENTS', events: [{ vesselId: -1, message: `Refilled paddock feeder (+${command.massKg} kg)` }] });
+      postPlayerAndInventory();
+      break;
+    }
+    case 'WATER_PADDOCK': {
+      if (!paddock) return;
+      paddock.storedWaterL += command.liters;
+      ctx.postMessage({ type: 'EVENTS', events: [{ vesselId: -1, message: `Refilled paddock water trough (+${command.liters} L)` }] });
+      postPlayerAndInventory();
+      break;
+    }
+    case 'RECRUIT_COLONIST': {
+      const currentTick = world ? world.tick : 0;
+      const c = recruitColonist(colony, command.name, command.archetype, command.wageContract, currentTick);
+      ctx.postMessage({ type: 'EVENTS', events: [{ vesselId: -1, message: `Recruited ${c.name} (${c.archetype})` }] });
+      postColonySync();
+      break;
+    }
+    case 'ASSIGN_COLONIST_JOB': {
+      const c = colony.colonists.find(col => col.id === command.colonistId);
+      if (c) {
+        assignColonistJob(c, command.speciesId, command.partId, command.workRequired);
+        ctx.postMessage({ type: 'EVENTS', events: [{ vesselId: -1, message: `Assigned ${c.name} to gather ${command.partId}` }] });
+        postColonySync();
+      }
+      break;
+    }
+    case 'ADMINISTER_STIMULANT': {
+      const c = colony.colonists.find(col => col.id === command.colonistId);
+      if (c && inventory) {
+        // Deduct stimulant item from inventory
+        let removed = false;
+        for (const container of [inventory.bareHands, inventory.backpack, inventory.campCache]) {
+          for (let i = 0; i < container.slots.length; i++) {
+            const s = container.slots[i];
+            if (s && s.itemId === command.stimulantId) {
+              s.count--;
+              if (s.count <= 0) container.slots[i] = null;
+              removed = true;
+              break;
+            }
+          }
+          if (removed) break;
+        }
+
+        if (!removed) {
+          ctx.postMessage({ type: 'EVENTS', events: [{ vesselId: -1, message: `No ${command.stimulantId} in inventory to administer` }] });
+          return;
+        }
+
+        const ok = administerStimulant(c, command.stimulantId);
+        if (ok) {
+          ctx.postMessage({ type: 'EVENTS', events: [{ vesselId: -1, message: `Administered ${command.stimulantId} to ${c.name}` }] });
+        } else {
+          ctx.postMessage({ type: 'EVENTS', events: [{ vesselId: -1, message: `Failed to administer stimulant ${command.stimulantId}` }] });
+        }
+        postPlayerAndInventory();
+        postColonySync();
+      }
+      break;
+    }
+    case 'SET_WAGE_CONTRACT': {
+      const c = colony.colonists.find(col => col.id === command.colonistId);
+      if (c) {
+        setWageContract(c, command.wageContract);
+        ctx.postMessage({ type: 'EVENTS', events: [{ vesselId: -1, message: `Updated wage contract for ${c.name}` }] });
+        postColonySync();
+      }
+      break;
+    }
+    case 'GRANT_TUTORIAL_REAGENTS': {
+      if (!inventory) return;
+      const cmd = command as any;
+      if (cmd.items && Array.isArray(cmd.items)) {
+        for (const it of cmd.items) {
+          const slot = { itemId: it.itemId, count: it.count ?? 1, massKg: it.massKg ?? 0.5, quality: 1.0, label: it.itemId };
+          if (!addItemToContainer(inventory.campCache, slot)) {
+            addItemToContainer(inventory.bareHands, slot);
+          }
+        }
+      }
+      if (world && cmd.vesselSpecies && Array.isArray(cmd.vesselSpecies)) {
+        const v0 = world.vessels[0];
+        if (v0) {
+          for (const sp of cmd.vesselSpecies) {
+            let specIdx: number | undefined;
+            for (const [idx, spec] of SPECIES_BY_INDEX.entries()) {
+              if (spec.code === sp.speciesId || (spec as any).id === sp.speciesId) {
+                specIdx = idx;
+                break;
+              }
+            }
+            if (specIdx !== undefined) {
+              v0.moles[specIdx] = (v0.moles[specIdx] ?? 0) + sp.moles;
+            }
+          }
+          if (cmd.vesselTempK) {
+            v0.temperatureK = cmd.vesselTempK;
+          }
+        }
+      }
+      if (world && view) {
+        syncWorldToShared(world, view);
+      }
+      postPlayerAndInventory();
+      ctx.postMessage({ type: 'EVENTS', events: [{ vesselId: -1, message: 'Granted tutorial lesson reagents to camp cache.' }] });
       break;
     }
     default:
