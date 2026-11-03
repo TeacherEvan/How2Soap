@@ -64,6 +64,9 @@ const state = {
     hydrationPct: 100,
     coreTempC: '37.0',
     clothingIclo: 0.05,
+    day: 1,
+    ambientTempK: 288.15,
+    conditions: { fever: false, systemicInfection: false, woundContamination: false },
   },
   inventory: {
     backpackUnlocked: false,
@@ -557,21 +560,41 @@ function startWorld(): void {
       $('reset').click();
     },
     onExportSave: async (): Promise<SerializedWorldSave> => {
+      const rngSeed = (Math.random() * 0xffffffff) >>> 0;
       return {
-        version: 1,
+        version: 2,
         timestamp: Date.now(),
         tick: state.snapshot ? state.snapshot.tick : 0,
-        day: 1,
-        ambientTempK: 288.15,
+        day: state.player.day ?? 1,
+        ambientTempK: state.player.ambientTempK ?? 288.15,
+        rngSeed,
         player: {
           glucoseKcal: state.player.glucoseKcal,
           adiposeKcal: state.player.adiposeKcal,
           hydrationPct: state.player.hydrationPct,
-          coreTempK: 310.15,
+          coreTempK: state.player.coreTempC ? parseFloat(state.player.coreTempC) + 273.15 : 310.15,
           clothingIclo: state.player.clothingIclo,
+          conditions: state.player.conditions,
+          dead: false,
+          woundOnsetSeconds: 0,
+          sepsisOnsetSeconds: 0,
         },
         inventory: state.inventory,
-        vessels: state.vessels,
+        vessels: state.vessels.map(v => ({
+          id: v.id,
+          material: v.material,
+          capacityL: v.capacityL,
+          closed: v.closed,
+          label: v.label,
+        })),
+        ever: state.ever ?? {},
+        renown: 0,
+        affinity: { apothecary: 0, soapwright: 0, forgewright: 0 },
+        chapter: 0,
+        fabricatedRecipes: [],
+        objectivesDone: [],
+        lettersDone: [],
+        epilogueSeen: false,
       };
     },
     onImportSave: (save: SerializedWorldSave) => {

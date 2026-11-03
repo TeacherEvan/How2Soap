@@ -36,6 +36,7 @@ import { ITEM_BY_ID } from '../data/items';
 import { FABRICATION_RECIPES, RECIPE_EFFECTS, METALLURGY_TOOLS } from './fabrication';
 import { satisfyVesselInputs, applyVesselConsumption, type VesselInputResult, VESSEL_INPUTS } from './vesselInputs';
 import { SIM_STEP_SECONDS, WORKER_HZ } from './time';
+import { escalateConditions } from './conditions';
 
 export interface FullSimState {
   world: WorldState;
@@ -155,6 +156,9 @@ function advance(hours: number): WorldEvent[] {
       dtSeconds: SIM_STEP_SECONDS,
       ambientTempK: world.ambientTempK,
     });
+    // Escalate conditions each step (SIM_STEP_SECONDS hours per step)
+    const condEvents = escalateConditions(player, SIM_STEP_SECONDS / 3600);
+    for (const ev of condEvents) events.push({ vesselId: -1, message: ev.message });
   }
   return events;
 }
@@ -167,6 +171,9 @@ function tick(): void {
     dtSeconds: SIM_STEP_SECONDS,
     ambientTempK: world.ambientTempK,
   });
+  // Escalate conditions each tick
+  const condEvents = escalateConditions(player, SIM_STEP_SECONDS / 3600);
+  for (const ev of condEvents) events.push({ vesselId: -1, message: ev.message });
   syncWorldToShared(world, view);
   if (events.length > 0) ctx.postMessage({ type: 'EVENTS', events });
   postPlayerAndInventory();

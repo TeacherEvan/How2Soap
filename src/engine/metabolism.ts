@@ -55,6 +55,7 @@ export function createPlayerMetabolism(initialIclo = 0.05): PlayerMetabolismStat
     coreTempK: METABOLIC_CONSTANTS.NOMINAL_CORE_TEMP_K,
     clothingIclo: initialIclo,
     isSleeping: false,
+    dead: false,
     conditions: {
       fever: false,
       systemicInfection: false,
@@ -95,7 +96,8 @@ export function stepPlayerMetabolism(
   // 2. Basal metabolic rate & pathological metabolic drain
   const bmrMultiplier = player.isSleeping ? 0.85 : 1.0;
   const infectionDrainKcal = player.conditions.systemicInfection ? 60.0 * dtHours : 0;
-  const bmrKcal = (METABOLIC_CONSTANTS.BMR_KCAL_PER_HOUR * dtHours * bmrMultiplier) + infectionDrainKcal;
+  const woundDrainKcal = player.conditions.woundContamination ? 10.0 * dtHours : 0;
+  const bmrKcal = (METABOLIC_CONSTANTS.BMR_KCAL_PER_HOUR * dtHours * bmrMultiplier) + infectionDrainKcal + woundDrainKcal;
 
   // 3. Environmental thermal dissipation (in Watts -> converted to kcal)
   // Heat loss = (T_core - T_ambient) / (0.155 * I_clo) in W/m2.
