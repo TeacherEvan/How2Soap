@@ -4,4 +4,8 @@ coverage/
 *.log
 .DS_Store
 .vercel
+.vscode/
+.superpowers/
+__pycache__/
+*.pyc
 scripts/make-splash/out/
