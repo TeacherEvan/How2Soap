@@ -64,7 +64,11 @@ export class LabBench3DCanvas {
       gl.bindVertexArray(brazierBuf.vao);
       const mHearth = mat4Model(0, -0.6, 0, 2.8, 0.5, 1.2);
       gl.uniformMatrix4fv(u.uModel, false, mHearth);
-      gl.uniform4f(u.uColor, 0.25, 0.26, 0.3, 1.0);
+      // If any vessel is heating, the brazier radiates an amber hearth pulse
+      const anyHeating = vessels.some((v) => v.heaterWatts > 0);
+      const timeSec = performance.now() / 1000;
+      const pulse = anyHeating ? 0.08 * Math.sin(timeSec * 4.5) : 0;
+      gl.uniform4f(u.uColor, 0.25 + (anyHeating ? 0.35 + pulse : 0), 0.26 + (anyHeating ? 0.12 : 0), 0.3, 1.0);
       gl.drawElements(gl.TRIANGLES, brazierBuf.indexCount, gl.UNSIGNED_SHORT, 0);
     }
 

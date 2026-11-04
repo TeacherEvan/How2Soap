@@ -16,6 +16,48 @@ import { bindBenchControls } from '../../app/actions';
 import type { WindowSpec } from '../WindowManager';
 
 let benchCanvas: import('../gl/LabBench3DCanvas').LabBench3DCanvas | null = null;
+const sparklineHistory: Array<{ tempK: number; ph: number; pressureKpa: number }> = [];
+
+function drawSparkline(canvas: HTMLCanvasElement): void {
+  const ctx = canvas.getContext('2d');
+  if (!ctx || sparklineHistory.length < 2) return;
+  const w = canvas.width;
+  const h = canvas.height;
+  ctx.clearRect(0, 0, w, h);
+
+  // Background grid line
+  ctx.strokeStyle = '#1b242e';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(0, h / 2);
+  ctx.lineTo(w, h);
+  ctx.stroke();
+
+  const len = sparklineHistory.length;
+  const dx = w / Math.max(29, len - 1);
+
+  // Draw Temp (mapped 250K - 450K)
+  ctx.strokeStyle = '#e07a5f';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  sparklineHistory.forEach((pt, idx) => {
+    const y = h - Math.max(2, Math.min(h - 2, ((pt.tempK - 273) / 120) * h));
+    if (idx === 0) ctx.moveTo(0, y);
+    else ctx.lineTo(idx * dx, y);
+  });
+  ctx.stroke();
+
+  // Draw Pressure (mapped 80 - 250 kPa)
+  ctx.strokeStyle = '#81b29a';
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  sparklineHistory.forEach((pt, idx) => {
+    const y = h - Math.max(2, Math.min(h - 2, ((pt.pressureKpa - 80) / 170) * h));
+    if (idx === 0) ctx.moveTo(0, y);
+    else ctx.lineTo(idx * dx, y);
+  });
+  ctx.stroke();
+}
 
 const BENCH_HTML = `
   <div class="bench-win">
@@ -59,6 +101,13 @@ const BENCH_HTML = `
         <div class="readout"><span>pH</span><strong class="bench-ph">—</strong></div>
         <div class="readout"><span>Pressure</span><strong class="bench-pressure">—</strong></div>
         <div class="readout"><span>Liquid</span><strong class="bench-volume">—</strong></div>
+      </div>
+      <div class="bench-sparkline-box">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.25rem;">
+          <span style="font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--muted)">Telemetry History (T / P / pH)</span>
+          <span class="sparkline-legend" style="font-size:0.68rem; color:#ecdfc8;"><span style="color:#e07a5f">■</span> Temp <span style="color:#81b29a">■</span> Press <span style="color:#f2cc8f">■</span> pH</span>
+        </div>
+        <canvas class="bench-sparkline-canvas" width="380" height="48" style="width:100%; height:48px; background:#10151b; border:1px solid #22303a; border-radius:6px; display:block;"></canvas>
       </div>
       <div class="contents">
         <h3>Contents</h3>
@@ -113,6 +162,12 @@ function renderBench(body: HTMLElement, snapshot: Snapshot): void {
   body.querySelector<HTMLElement>('.bench-ph')!.textContent = volume > 0.01 ? ph.toFixed(2) : '—';
   body.querySelector<HTMLElement>('.bench-pressure')!.textContent = `${pressure.toFixed(0)} kPa`;
   body.querySelector<HTMLElement>('.bench-volume')!.textContent = `${volume.toFixed(2)} L`;
+
+  // Update sparkline ring buffer (max 30 samples)
+  sparklineHistory.push({ tempK: temperatureK, ph, pressureKpa: pressure });
+  if (sparklineHistory.length > 30) sparklineHistory.shift();
+  const sparkCanvas = body.querySelector<HTMLCanvasElement>('.bench-sparkline-canvas');
+  if (sparkCanvas) drawSparkline(sparkCanvas);
 
   renderContentsTable(body, snapshot, index);
 

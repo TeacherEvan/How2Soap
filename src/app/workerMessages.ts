@@ -149,10 +149,12 @@ export function handleWorkerMessage(data: WorkerMessage, options?: { load?: unkn
     const active = state.crisis.active;
     if (active) {
       audio.strikeBell();
+      import('../ui/score').then(({ score }) => score.setTheme('crisis'));
       openCrisisModal(active, state.vessels.length, (choiceId: string) => {
         send({ type: 'CRISIS_CHOICE', crisisId: active.crisisId, choiceId });
       });
     } else {
+      import('../ui/score').then(({ score }) => score.setTheme('hearth'));
       closeCrisisModal();
     }
     return;
@@ -200,6 +202,7 @@ export function handleWorkerMessage(data: WorkerMessage, options?: { load?: unkn
     if (completedCh) {
       StoryMode.chapterComplete(completedCh, () => {
         if (state.progression.chapter >= CHAPTERS.length) {
+          import('../ui/score').then(({ score }) => score.setTheme('victory'));
           StoryMode.victory(
             {
               days: state.player.day ?? 1,

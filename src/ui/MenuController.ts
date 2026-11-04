@@ -70,6 +70,10 @@ export function initMenuAndSettings(options: MenuControllerOptions): void {
               <span>Biome Ambient</span>
               <input type="range" id="vol-ambient" min="0" max="100" value="70" />
             </label>
+            <label class="setting-row checkbox" style="margin-top: 0.4rem;">
+              <input type="checkbox" id="toggle-score" checked />
+              <span>Generative Adaptive Music (Zero Assets)</span>
+            </label>
           </div>
 
           <div class="setting-group">
@@ -220,6 +224,11 @@ export function initMenuAndSettings(options: MenuControllerOptions): void {
   modalContainer.querySelector<HTMLInputElement>('#vol-ambient')?.addEventListener('input', (e) => {
     const val = Number((e.target as HTMLInputElement).value);
     audio.setChannel('ambient', sliderToGain(val));
+  });
+
+  modalContainer.querySelector<HTMLInputElement>('#toggle-score')?.addEventListener('change', (e) => {
+    const checked = (e.target as HTMLInputElement).checked;
+    import('./score').then(({ score }) => score.setEnabled(checked));
   });
 
   // Accessibility toggles

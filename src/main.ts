@@ -32,8 +32,17 @@ import { handleWorkerMessage, type WorkerMessage } from './app/workerMessages';
 import { WindowManager } from './ui/WindowManager';
 import { initLauncher, openWindowById } from './app/launcher';
 
-// Unlock Web Audio context on user gesture
-document.addEventListener('pointerdown', () => audio.unlock(), { once: true });
+// Unlock Web Audio context on user gesture & start generative score
+document.addEventListener(
+  'pointerdown',
+  () => {
+    audio.unlock();
+    import('./ui/score').then(({ score }) => {
+      score.start();
+    });
+  },
+  { once: true },
+);
 
 // Global ESC listener for overlay and modal management
 document.addEventListener('keydown', (e: KeyboardEvent) => {
