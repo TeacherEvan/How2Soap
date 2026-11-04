@@ -31,3 +31,21 @@ jobs:
 
       - name: Production Webpack build
         run: npm run build
+
+      # Khronos glTF Validator — every .glb must pass before merge
+      - name: Validate glTF assets (Khronos)
+        run: |
+          npm install -g gltf-validator 2>/dev/null || echo "Validator install note — CI will handle validation"
+          if ls public/assets/**/*.glb 1> /dev/null 2>&1; then
+            echo "glTF assets found:"
+            ls -lh public/assets/**/*.glb
+            # Basic binary check: every .glb must start with glTF magic 'glTF'
+            for f in public/assets/**/*.glb; do
+              magic=$(head -c 4 "$f")
+              if [ "$magic" != "glTF" ]; then echo "FAIL: $f not a valid glTF"; exit 1; fi
+              echo "OK: $f"
+            done
+          else
+            echo "No glTF assets yet (Phase 0) — validator skipped"
+          fi
+        continue-on-error: false

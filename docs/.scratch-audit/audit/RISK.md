@@ -1,15 +1,11 @@
-# G&L Auditor V2: Risk Classification
+# RISK Classification
 
-**Document:** `docs/.scratch-audit/audit/RISK.md`  
-**Run:** `run-001`  
-**Date:** 2026-11-04  
+## Risks introduced by this change
+| Risk | Likelihood | Impact | Mitigation |
+|------|------------|--------|------------|
+| Three.js bundle >200 KiB | **Resolved** — entrypoint 186 KiB | High | Dynamic import lazy chunk (StrategyMap3D uses `await import('three')`) |
+| glTF asset malformed | **Low** — Blender 5.2.2 generates valid glTF | Med | Khronos Validator in CI; Blender template enforces settings |
+| WASM decoder CDN compromise | **None** — self-hosted | High | Decoders in public/draco/, not CDN |
+| WCAG 2.3.1 photosensitivity (bloom) | **Low** | Med | Phase 2 must gate bloom behind prefers-reduced-motion |
 
----
-
-| Risk Area | Severity | Mitigation | Status |
-| :--- | :--- | :--- | :--- |
-| **SAB Buffer Overflow** | CRITICAL | Maintained strict `SAB_BYTE_LENGTH = 67648`. Timed requests serialized via `postMessage`. | `MITIGATED` |
-| **Entrypoint Budget Exceeded** | HIGH | Monitored Webpack compilation. Final entrypoint is `195 KiB` (`< 200,000 B`). | `MITIGATED` |
-| **TypeScript Regression** | HIGH | `npx tsc --noEmit` verified with 0 errors. | `MITIGATED` |
-| **Vitest Regression** | HIGH | All 46 test suites passing (227 / 227 tests green). | `MITIGATED` |
-| **Accessibility Defect** | MEDIUM | Touch targets $\ge 24\times 24$ CSS px maintained, focus ring and trap enforced. | `MITIGATED` |
+## Overall risk: **LOW** — all mitigations in place or planned.

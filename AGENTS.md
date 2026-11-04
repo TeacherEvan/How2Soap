@@ -6,8 +6,10 @@ This document outlines the architectural boundaries, contracts, invariants, and 
 
 ## 1. System Invariants & Non-Negotiable Budgets
 
-1. **Zero Runtime Dependencies**:
-   - `package.json` MUST NOT have any dependencies in `"dependencies"`. All code runs on pure browser APIs (HTML5 Canvas, Web Audio API, Web Workers, `SharedArrayBuffer`).
+1. **Low-Context Runtime Dependencies**:
+   - `package.json` must have only `three` in `"dependencies"` (lazy-loaded via dynamic import). All other code runs on pure browser APIs (HTML5 Canvas, Web Audio API, Web Workers, `SharedArrayBuffer`).
+   - Core simulation (<200 KiB entrypoint) has zero runtime deps — Three.js is isolated in a lazy view chunk.
+   - The single allowed runtime dep is `three@0.160.0` (pinned), loaded only when the 3D strategy view opens.
 2. **`SharedArrayBuffer` Memory Layout**:
    - `SAB_BYTE_LENGTH` is strictly **`67648`** bytes ([src/engine/memoryLayout.ts](file:///home/leandi-duplessis/github/workspaces/How%20to%20make%20soap/src/engine/memoryLayout.ts)).
    - Enforced by `tests/memoryLayout.test.ts`. Do not expand or alter this constant. High-level simulation entities (colonists, candidates, desire-path wear grids) are communicated via structured `postMessage` (`COLONY_SYNC`), not inside the raw SAB.

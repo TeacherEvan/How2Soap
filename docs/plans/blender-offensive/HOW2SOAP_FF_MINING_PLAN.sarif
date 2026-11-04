@@ -1,0 +1,79 @@
+{
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "How2Soap FF-Mining Investigator",
+          "informationUri": "https://github.com/TeacherEvan/How2Soap",
+          "version": "1.0.0",
+          "rules": [
+            {
+              "id": "ZERO-DEPS-001",
+              "name": "zero-dependency-invariant",
+              "shortDescription": { "text": "package.json must not have runtime dependencies" },
+              "fullDescription": { "text": "AGENTS.md §1: package.json MUST NOT have any dependencies in \"dependencies\". Three.js addition requires amendment." }
+            },
+            {
+              "id": "BUNDLE-001",
+              "name": "entrypoint-size-budget",
+              "shortDescription": { "text": "Webpack entrypoint must be < 200,000 bytes" },
+              "fullDescription": { "text": "webpack.config.js performance.maxEntrypointSize = 200,000. Three.js must be lazy-loaded." }
+            },
+            {
+              "id": "WASM-001",
+              "name": "wasm-decoder-sri",
+              "shortDescription": { "text": "Draco/KTX2 WASM must be pinned and integrity-checked" },
+              "fullDescription": { "text": "glTF Draco/KTX2 decoders widen attack surface. Pin decoder version and integrity-check." }
+            },
+            {
+              "id": "GLTF-001",
+              "name": "gltf-validator-required",
+              "shortDescription": { "text": "All .glb assets must pass Khronos glTF Validator" },
+              "fullDescription": { "text": "Every Blender export must pass Khronos glTF Validator before merge. Add CI step." }
+            },
+            {
+              "id": "SAB-001",
+              "name": "sharedarraybuffer-size-lock",
+              "shortDescription": { "text": "SharedArrayBuffer must be exactly 67,648 bytes" },
+              "fullDescription": { "text": "SAB_BYTE_LENGTH = 67648. Colony entities via COLONY_SYNC, not SAB." }
+            }
+          ]
+        }
+      },
+      "results": [
+        {
+          "ruleId": "ZERO-DEPS-001",
+          "level": "warning",
+          "message": { "text": "Adding 'three' runtime dependency breaks AGENTS.md §1 zero-deps invariant. Requires amendment: 'Zero runtime deps for core sim; three isolated in lazy chunk.'" },
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "package.json" }, "region": { "startLine": 1 } } }]
+        },
+        {
+          "ruleId": "BUNDLE-001",
+          "level": "warning",
+          "message": { "text": "Three.js (~600 KiB minified) must be dynamic-import lazy chunk. Main entrypoint must stay <200 KiB." },
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "webpack.config.js" }, "region": { "startLine": 20 } } }]
+        },
+        {
+          "ruleId": "WASM-001",
+          "level": "error",
+          "message": { "text": "Draco/KTX2 WASM decoders must be version-pinned and SRI-checked. Self-host in public/draco/, do not load from CDN in production." },
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "public/draco/" }, "region": { "startLine": 1 } } }]
+        },
+        {
+          "ruleId": "GLTF-001",
+          "level": "warning",
+          "message": { "text": "No .glb assets exist yet. Phase 1 must add Khronos glTF Validator CI step for public/assets/**/*.glb." },
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": ".github/workflows/ci.yml" }, "region": { "startLine": 1 } } }]
+        },
+        {
+          "ruleId": "SAB-001",
+          "level": "none",
+          "message": { "text": "SAB_BYTE_LENGTH = 67648 verified. Colony entities via COLONY_SYNC — no change needed for 3D rendering." },
+          "locations": [{ "physicalLocation": { "artifactLocation": { "uri": "src/engine/memoryLayout.ts" }, "region": { "startLine": 1 } } }]
+        }
+      ]
+    }
+  ]
+}

@@ -1,48 +1,45 @@
-# G&L Auditor V2: Target Architecture & Areas Being Edited
+# ARCHITECTURE — How2Soap FF-Mining
 
-**Document:** `docs/.scratch-audit/ARCHITECTURE.md`  
-**Run:** `run-001`  
-**Date:** 2026-11-04  
+## Current → Target
 
----
+**Current:** 2D Canvas (StrategyMapCanvas astrolabe) + small WebGL preview (LabBench3DCanvas).
+**Target:** Three.js 3D isometric/top-down (50–60° pitch) with Blender-authored PBR assets; 2D canvas retained as fallback/minimap.
 
-## 1. Architectural Changes Overview
+### Areas Being Edited
 
-```mermaid
-flowchart TD
-  subgraph Presentation_Layer["Presentation Layer (DOM & Canvases)"]
-    HTML["public/index.html<br/>Refined Shell & Vitals"]
-    CSS["src/styles.css & windows.css<br/>Strict Clamping & No-Clipping Layout"]
-    WM["src/ui/WindowManager.ts<br/>clampToViewport() & Safe Offsets"]
-    TUT["src/ui/TutorialController.ts<br/>#tutorial-spotlight-ring State Machine"]
-    WB["src/ui/WorkbenchCanvas.ts<br/>Interactive Soap Kettle Mini-Game"]
-    REQ_UI["src/ui/TimedRequestsPanel.ts<br/>3 Concurrent Urgent Request Slots"]
-  end
+| Area | Current | Target | File(s) |
+|------|---------|--------|---------|
+| 3D Viewport | 2D canvas (astrolabe) | Three.js WebGL, 50° pitch, diurnal Sun/Sky, bloom/DoF | `src/ui/StrategyMapCanvas.ts` → `src/ui/StrategyMap3D.ts` (new) |
+| Asset Pipeline | Hand-built low-poly (lowPolyMeshes) | Blender → glTF 2.0 → GLTFLoader | `public/assets/` (new), `blender/` (new) |
+| Colony Rendering | 2D canvas dots | InstancedMesh colonists (1 draw call/100), 4-bone rigs | `src/ui/StrategyMap3D.ts`, `src/engine/colony.ts` (no sim change) |
+| Construction UI | Workbench tabs | Civ district/quarter + tech trees + yield overlay | `src/app/panels.ts`, `src/ui/` (new panels) |
+| Build Config | webpack <200 KiB | Same + Three.js lazy chunk | `webpack.config.js`, `package.json` |
 
-  subgraph Engine_Layer["Simulation & Worker Layer"]
-    WORKER["src/engine/sim.worker.ts<br/>Timed Request Expiry & Fulfill Logic"]
-    REQ_ENG["src/engine/timedRequests.ts<br/>Tick Countdown, Urgency Tiers & Rewards"]
-    SYNC["postMessage(REQUEST_SYNC)<br/>Structured Clone (0-byte SAB impact)"]
-  end
+### Interfaces / Dependencies
+- **Worker → UI:** `COLONY_SYNC` postMessage (existing) + snapshot (existing SAB) — no new worker→UI protocol for 3D view
+- **UI → Worker:** New `WorkerCommand` types (PLACE_DISTRICT, SLOT_BUILDING, BUILD_WONDER, RESEARCH, DESIGNATE_MINE, SET_BILL) added to `sim.worker.ts` (compile-time exhaustive dispatch — add to type union)
+- **Three.js → Worker:** Renderer reads `state.snapshot` (existing) — no direct worker coupling
+- **Blender → Three.js:** `.glb` files in `public/assets/` via `asset/resource`; Draco/KTX2 decoders self-hosted
 
-  REQ_ENG --> WORKER
-  WORKER --> SYNC
-  SYNC --> REQ_UI
-  WM --> CSS
-  TUT --> CSS
+### Data / Control Flow
+```
+Blender (.blend) → export_glb.py → .glb (validated) → public/assets/
+  → Three.js GLTFLoader → scene objects
+  → renderer reads state.snapshot (SAB, 10 Hz) for positions/yields
+  → User click/modify → WorkerCommand → sim.worker.ts → COLONY_SYNC → snapshot update → renderer re-renders
 ```
 
----
+### Security Boundaries
+- **glTF parser (Three.js GLTFLoader):** Pin `three@0.160.0`; validate all `.glb` with Khronos Validator in CI; Draco WASM SRI-pinned; decoders self-hosted (not CDN)
+- **Worker commands:** Compile-time exhaustive; unknown commands surfaced as in-game events (never silent — existing pattern)
+- **SAB:** 67,648 bytes unchanged; colony via postMessage (existing)
 
-## 2. Areas Being Edited
-
-| File | Nature of Edit | Invariant Protection |
-| :--- | :--- | :--- |
-| `src/styles.css` | Box sizing, border clipping fixes, safe insets, spotlight overlay styling. | No external CSS, responsive down to 1280x720. |
-| `src/ui/windows/windows.css` | Window dimensions, safe margin, responsive sheets. | WCAG 2.2 touch target compliance. |
-| `src/ui/WindowManager.ts` | Add `clampToViewport` for floating & modal window bounds. | Non-breaking API. |
-| `src/data/items.ts` | Add `simpleDesc` and enhance clarity while preserving all canonical item IDs. | Integrity check in `tests/items.test.ts` passes. |
-| `src/ui/TutorialController.ts` | Dynamic element spotlight `#tutorial-spotlight-ring` tracking target bounding rect. | Backward compatible with existing curriculum. |
-| `src/engine/timedRequests.ts` | Engine for 3 concurrent timed town requests (new module). | Pure TypeScript, zero npm deps. |
-| `src/engine/sim.worker.ts` | Handle `FULFILL_REQUEST` and emit `REQUEST_SYNC` on tick loop. | `SAB_BYTE_LENGTH` unchanged at 67648 B. |
-| `src/app/workerMessages.ts` | Dispatch `REQUEST_SYNC` and update UI state. | Strict type assertions. |
+### AC Mapping
+| AC | Architecture element |
+|----|---------------------|
+| AC-001 | AGENTS.md amendment; package.json + three; CI Validator step; dynamic import |
+| AC-002 | Blender template; 6 glTF assets; GLTFLoader + DRACOLoader; renderer.info budget |
+| AC-003 | StrategyMap3D.ts: 50° pitch, OrbitControls, diurnal Sun/Sky, bloom/DoF (gated) |
+| AC-004 | InstancedMesh colonists; desire-path decal (32×32 wear grid → canvas texture); DESIGNATE_MINE |
+| AC-005 | Civ UI panels; WorkerCommands; adjacency/delta arrows; tech tree modal |
+| AC-006 | 30+ glTF assets; LOD chains; building atlas; PWA sw.js glob |

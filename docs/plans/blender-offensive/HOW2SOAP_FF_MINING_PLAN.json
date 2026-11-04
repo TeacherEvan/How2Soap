@@ -1,0 +1,126 @@
+{
+  "project": "How2Soap — FF-Style Top-Down Mining & Building Strategy",
+  "timestamp": "2026-11-04T23:38:00Z",
+  "mode": "project-manager",
+  "strategy": "full-sweep",
+  "target": "/home/leandi-duplessis/github/workspaces/How to make soap/",
+  "github": "https://github.com/TeacherEvan/How2Soap.git",
+  "commit": "a5d0189",
+  "mission": {
+    "stated": "Emergent chemistry & survival engine — make soap from scratch. Zero runtime deps. PWA offline. 5-tier tech progression. Deterministic 10 Hz Web Worker sim + 67,648-byte SAB SeqLock @ 60 FPS.",
+    "actual": "2D-canvas dominant with small WebGL preview pane (LabBench3DCanvas). 6,862 LOC across engine/app/ui. 194 passing tests. <200 KiB entrypoint. 2D astrolabe strategy map.",
+    "gap": "FF/Civ mining strategy requires 3D isometric rendering at 50-60° pitch, Blender-authored PBR assets, Civ-style district/quarter construction UI, colony labor economy feeding that UI. None exist yet — genre conversion, not refactor."
+  },
+  "dependencies": [
+    { "name": "webpack", "version": "5.99.9", "latest": "5.x stable", "status": "current", "tier": 1 },
+    { "name": "typescript", "version": "5.4.5", "latest": "5.x", "status": "current", "tier": 1 },
+    { "name": "vitest", "version": "3.2.4", "latest": "3.x", "status": "current", "tier": 1 },
+    { "name": "three", "version": "0.160.0 (proposed)", "latest": "0.160+", "status": "proposed — BREAKS zero-deps invariant", "tier": 1 }
+  ],
+  "optimality": {
+    "algorithm": "Existing sim solid — Seqlock + SAB + Web Worker @ 10 Hz correct. No O(n²) in core paths. desire-path 32×32 grid = 1,024 bytes, trivial.",
+    "complexity": "Colony Boids n×n but n capped by tavern recruitment economics. No change needed.",
+    "resources": "Zero-deps invariant will break if Three.js added. Options: (1) Blender→sprites→Canvas2D keeps AGENTS.md, (2) Three.js breaks AGENTS.md but full 3D, (3) Hybrid custom WebGL / lazy Three.js keeps main <200 KiB.",
+    "alternatives": ["Option 1: Blender → sprites → Canvas2D (keeps zero-deps, loses dynamic lighting)", "Option 2: Blender → glTF → Three.js (full 3D, breaks zero-deps)", "Option 3: Hybrid (custom WebGL / lazy Three.js) — recommended"],
+    "scalability": "SAB 67,648 B + worker @ 10 Hz scales to 10× colonists / 10× biome nodes. Rendering: 150k tris / 200 draw calls @ 60 fps comfortable with InstancedMesh."
+  },
+  "recommendations": [
+    {
+      "priority": "high",
+      "title": "Amend AGENTS.md §1 — zero-deps for core sim, three in lazy chunk",
+      "why": "Three.js is needed for glTF 2.0 loading and 3D FF/Civ visuals. Current §1 forbids runtime deps.",
+      "what": "Change §1 to: 'Zero runtime deps for core sim; three isolated in lazy view chunk (dynamic import).'",
+      "endpoint": "AGENTS.md line 1 — edit before Phase 0",
+      "interactiveControl": "CI gate: verify main entrypoint still <200 KiB after change",
+      "effort": "1 hour (prep) + CI verification",
+      "acceptance": "npx tsc --noEmit passes; npm run build entrypoint <200 KiB; three in separate chunk",
+      "source": "Tier 1: docs.blender.org glTF 2.0 + Three.js docs"
+    },
+    {
+      "priority": "high",
+      "title": "Blender asset pipeline — 6 initial glTF assets via Khronos Validator",
+      "why": "FF-style mining game needs Blender-authored PBR assets. Validator ensures Tier-1 glTF 2.0 compliance.",
+      "what": "Author grass-tile, tree, rock, house, mine-shaft, colonist glTF in Blender 3.6/4.2 LTS; export binary .glb with Draco (terrain) / no Draco (props); validate with Khronos Validator.",
+      "endpoint": "blender --background --python blender/export_glb.py -- --asset building --lod 0 → public/assets/buildings/*.glb",
+      "interactiveControl": "Blender MCP get_scene_info + screenshot verification per asset",
+      "effort": "2–3 days",
+      "acceptance": "All 6 .glb pass Khronos Validator; renderer.info tri counts match budgets; 60 fps for 100-instance scene",
+      "source": "Tier 1: docs.blender.org/manual/en/4.2/addons/import_export/scene_gltf2.html"
+    },
+    {
+      "priority": "high",
+      "title": "Civ VII District/Quarter construction UI with adjacency arrows",
+      "why": "Core strategy loop from Civ VII: place District → slot 2 Buildings = Quarter. UI shows adjacency bonuses, overbuilding penalties, specialist slots.",
+      "what": "Left build panel/contextual menu + top resource bar + placement mode with predicted-yield delta arrows. WorkerCommands: PLACE_DISTRICT, SLOT_BUILDING, BUILD_WONDER, RESEARCH, DESIGNATE_MINE, SET_BILL.",
+      "endpoint": "WorkerCommand: { type: 'PLACE_DISTRICT', district: 'MINE', tile: {x,y} }; { type: 'SLOT_BUILDING', quarterId, slot, building }; { type: 'BUILD_WONDER', wonder: 'GRAND_SMELTER', tile }",
+      "interactiveControl": "Left panel hover updates yields; 'place me here' ghost; green/red delta arrows; yield overlay toggle #btn-yield-overlay",
+      "effort": "4–5 days (Phase 4)",
+      "acceptance": "Build District → Quarter flow works end-to-end (place Mine → slot Smelter + Hauler → Quarter yields recalc); adjacency arrows correct; tech tree unlocks gate recipes",
+      "source": "Tier 2: civilization.2k.com/civ-vii/game-guide/gameplay/developing-settlements"
+    },
+    {
+      "priority": "medium",
+      "title": "FF 2.5D camera: 50–60° pitch, 35–50mm FOV, tilt-shift DoF, bloom",
+      "why": "FF Pixel Remaster / Crystal Chronicles use 50–60° pitch diorama (not 90° top-down). Dynamic camera breaks HD-2D illusion.",
+      "what": "Three.js OrbitControls (rotate/zoom, no 90° top-down); 1× warm Sun + Sky Texture ambient + emissive torch points + AgX/Bloom (UnrealBloomPass); tilt-shift DoF top/bottom. Gate bloom behind prefers-reduced-motion.",
+      "endpoint": "Three.js PerspectiveCamera (50° pitch, 40mm) + EffectComposer + UnrealBloomPass + BokehPass (DoF)",
+      "interactiveControl": "Settings toggle for bloom/DoF; prefers-reduced-motion disables both; WCAG 2.3.1 photosensitivity guard (no flash >3×/s)",
+      "effort": "3–4 days (Phase 2)",
+      "acceptance": "60 fps @ ≤150k tris / ≤200 draw calls; reduced-motion disables DoF/bloom; keyboard nav preserved",
+      "source": "Tier 2: 80.lv Crystal Chronicles interview (Toshiyuki Itahana) + Digital Foundry tilt-shift breakdown"
+    },
+    {
+      "priority": "medium",
+      "title": "3D colony labor: InstancedMesh + desire-path wear + RimWorld work tab",
+      "why": "Colony is the gameplay heart. Desire paths (+20% speed on worn trails) + Boids steering + wage/morale system must render in 3D without killing fps.",
+      "what": "InstancedMesh for colonists (1 draw call/100 workers); 4-bone rigs; 32×32 wear grid → darkened path decal overlay; RimWorld F1 Work tab (1–4 priorities); click-drag Mine rectangle designator.",
+      "endpoint": "WorkerCommand: { type: 'DESIGNATE_MINE', rect: {x0,y0,x1,y1} }; F1 priorities grid (colonists×work-types, 1–4)",
+      "interactiveControl": "Colonist cards bottom HUD (click select, right-click manual order); Mine/Haul/Cut/Hunt designators; Bills tab repeat crafting",
+      "effort": "3–5 days (Phase 3)",
+      "acceptance": "50 colonists pathing @ 60 fps; desire-path wear renders; mine-drag works; wage/strike triggers via COLONY_SYNC",
+      "source": "Tier 2: rimworldwiki.com/wiki/Work + wiki.factorio.com/Crafting"
+    },
+    {
+      "priority": "medium",
+      "title": "Render performance guard: ≤150k tris / ≤200 draw calls + LOD chain",
+      "why": "Draw calls dominate web fps. Without instancing/material sharing, 3D scene craters.",
+      "what": "Polygon budgets per asset (terrain 100–500 tris, building 300–1,500, hero 1,500–4,000, character 800–3,000); InstancedMesh for trees/rocks/units; THREE.LOD for buildings; texture atlas 512²–1024²; Draco for terrain, none for small props.",
+      "endpoint": "THREE.LOD at 40 m (lod.addLevel(high, 0); lod.addLevel(low, 40))",
+      "interactiveControl": "Dev overlay: renderer.info (tris + draw calls) visible in dev mode",
+      "effort": "Ongoing from Phase 1",
+      "acceptance": "60 fps with 100 colonists + 30 buildings + 500 props; dev overlay reports within budget",
+      "source": "Tier 1: Khronos glTF 2.0 spec + Three.js InstancedMesh/LOD docs"
+    },
+    {
+      "priority": "low",
+      "title": "Khronos glTF Validator in CI for all .glb assets",
+      "why": "Every Blender export must pass Tier-1 glTF 2.0 validation before merge.",
+      "what": "Add CI step: Khronos glTF Validator over public/assets/**/*.glb; fail build on errors.",
+      "endpoint": ".github/workflows/ci.yml — new job step after tsc",
+      "interactiveControl": "CI badge turns red on validation failure with validator log output",
+      "effort": "2 hours",
+      "acceptance": "CI passes on current assets; fails on intentionally broken glTF",
+      "source": "Tier 1: github.com/KhronosGroup/glTF-Validator"
+    },
+    {
+      "priority": "low",
+      "title": "Blender MCP pipeline scripts (Node Wrangler, Normals, Principled)",
+      "why": "Blender manual confirms glTF exporter needs single Principled BSDF per material; Node Wrangler auto-wires PBR.",
+      "what": "Create blender/export_glb.py (apply modifiers, apply scale, JPEG images, Draco/mehsOpt); blender/setup_pbr.py (Node Wrangler: Principled Texture Setup from filenames)",
+      "endpoint": "blender --background --python blender/export_glb.py -- --asset terrain --draco on",
+      "interactiveControl": "Script logs conformance: applied modifiers ✓, applied scale ✓, images JPEG ✓, KHR_materials_unlit for flat props ✓",
+      "effort": "3–4 hours",
+      "acceptance": "Script produces .glb that passes Khronos Validator first try",
+      "source": "Tier 1: docs.blender.org/manual/en/latest/addons/node_wrangler.html + scene_gltf2.html"
+    }
+  ],
+  "diagrams": {
+    "backend": "docs/backend-architecture.mmd",
+    "frontend": "docs/frontend-architecture.mmd",
+    "research": "docs/research-findings.mmd",
+    "entire": "docs/entire-project.mmd"
+  },
+  "escalation": {
+    "revision_log": "Pass 1 scope-only → Pass 2 11-section plan + 10 endpoints + 4 formats + Tier-1 verification. 3 parallel subagents, strategy full-sweep."
+  }
+}

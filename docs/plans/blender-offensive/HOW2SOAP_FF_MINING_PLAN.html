@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><title>How2Soap — FF Mining Strategy Plan</title>
+<style>
+body{font-family:system-ui,sans-serif;background:#0b0e13;color:#d8e2ea;margin:2em;line-height:1.5}
+h1{color:#dfa83b}h2{color:#7cc4ff;border-bottom:1px solid #263543;padding-bottom:.3em}
+table{border-collapse:collapse;width:100%;margin:1em 0}th,td{border:1px solid #263543;padding:.4em .6em;text-align:left}th{background:#12171f}
+pre{background:#0f141b;border:1px solid #263543;padding:1em;overflow:auto}
+code{background:#1a2230;padding:.1em .3em;border-radius:3px}
+.high{color:#ff7b7b}.medium{color:#ffc857}.low{color:#7cc4ff}
+.badge{display:inline-block;padding:.1em .5em;border-radius:3px;font-size:.8em;margin-right:.3em}
+</style></head><body>
+<h1>How2Soap — FF-Style Top-Down Mining &amp; Building Strategy</h1>
+<p><strong>Target:</strong> <code>/home/leandi-duplessis/github/workspaces/How to make soap/</code><br>
+<strong>GitHub:</strong> TeacherEvan/How2Soap → main @ a5d0189<br>
+<strong>Date:</strong> 2026-11-04 · Tier-1-verified: docs.blender.org, Three.js Manual, Khronos glTF 2.0 spec, Firaxis Dev Blog</p>
+
+<h2>1. Mission Verification</h2>
+<table><tr><th>Aspect</th><th>Finding</th></tr>
+<tr><td><strong>Stated</strong></td><td>Emergent chemistry &amp; survival — soap from scratch. Zero runtime deps. PWA. 5-tier tech. 10 Hz Worker + 67,648-byte SAB.</td></tr>
+<tr><td><strong>Actual</strong></td><td>Exactly that. 6,862 LOC, 194 tests passing, &lt;200 KiB entrypoint, WCAG 2.2, 2D canvas strategy map (astrolabe), WebGL preview pane only.</td></tr>
+<tr><td><strong>Gap</strong></td><td>FF/Civ mining strategy needs 3D 50–60° pitch rendering + Blender PBR assets + district/quarter UI + colony labour feeding it. None exist — genre conversion, not refactor.</td></tr></table>
+
+<h2>2. Architecture (verified)</h2>
+<pre>src/
+  engine/   17 modules, ~3,400 LOC
+    sim.worker.ts       1,029 LOC — 10 Hz loop, COLONY_SYNC
+    memoryLayout.ts       134 LOC — 67,648-byte SAB, Atomic SeqLock
+    chemistry.ts          426 LOC — Arrhenius, calorimetry, pH, Faraday
+    fabrication.ts        725 LOC — recipes, metallurgy, Mohs
+    colony.ts             547 LOC — 4 archetypes, 32×32 desire-path, Boids
+    crisis.ts             681 LOC — telegraphed calamities
+  app/      8 modules, ~1,500 LOC (orchestration)
+    panels.ts             253 LOC — switchTab() → transitionDisplay()
+    splash.ts             190 LOC — new splash video + display transitions
+  ui/
+    StrategyMapCanvas.ts  — 2D astrolabe map (#12151c slate/brass, rings 100–1600m)
+    LabBench3DCanvas.ts   — WebGL low-poly preview (proves WebGL viability)
+    lowPolyMeshes.ts      — hand-built low-poly geometry
+  main.ts                 325 LOC — wiring only</pre>
+
+<h2>3. Dependencies</h2>
+<table><tr><th>Dep</th><th>Version</th><th>Status</th><th>Tier</th></tr>
+<tr><td>webpack</td><td>5.99.9</td><td>current</td><td>1</td></tr>
+<tr><td>typescript</td><td>5.4.5</td><td>current</td><td>1</td></tr>
+<tr><td>vitest</td><td>3.2.4</td><td>current</td><td>1</td></tr>
+<tr><td><strong>three</strong> (proposed)</td><td>0.160.0</td><td><strong>BREAKS zero-deps invariant</strong></td><td>1</td></tr></table>
+
+<h2>4. Blender → glTF → Three.js Pipeline (Tier 1)</h2>
+<p>Export workflow (Blender 3.6 &amp; 4.2 LTS identical):</p>
+<ol>
+<li>Apply/convert curves to mesh; apply modifiers or <code>Apply Modifiers</code> on export.</li>
+<li>Scene units = metres; apply scale (Ctrl+A); origin at tile/building base for snapping.</li>
+<li>One UV map <code>TEXCOORD_0</code>; Smart UV Project adequate; islands in <code>0–1</code>.</li>
+<li>Materials: <strong>Principled BSDF</strong> → Base Color / Metallic-Roughness (G=Rough, B=Metal) / Normal (tangent) / Emissive / OCC(R). Flat low-poly: <strong>Shadeless/Unlit</strong> → <code>KHR_materials_unlit</code>.</li>
+<li>Images <strong>JPEG (quality 85)</strong> preferred (glTF requires PNG/JPEG; exporter converts others slowly).</li>
+<li>Characters: ≤4 bone influences/vertex, <code>Use Rest Position Armature</code>, sampling on.</li>
+</ol>
+<p><strong>Export settings:</strong> Binary <code>.glb</code>, +Y Up, Apply Modifiers on, UVs/Normals on, Tangents off (unless normal maps), Vertex Colors on if used, Draco <strong>on for terrain/buildings</strong> (static, large) / <strong>off for small props</strong> (&lt;2k tris — decode CPU &gt; benefit), LOD manual (Decimate 0.5/0.25).</p>
+<p><strong>Add-ons (bundled, free):</strong> Node Wrangler (Principled Texture Setup from filenames), glTF 2.0 (exporter), LoopTools, Bool Tool, Magic UV.</p>
+<p><strong>Third-party (recommended, paid):</strong> HardOps + BoxCutter (Superhive/Blender Market), Texel Density Checker (Blender Extensions, free).</p>
+
+<h3>Polygon Budgets (web 60fps)</h3>
+<table><tr><th>Asset</th><th>Tris</th><th>Notes</th></tr>
+<tr><td>Terrain tile (16×16m chunk)</td><td>100–500</td><td>Flat-shaded plane 2 tris + vertex-colour height; instancing not per-tile meshes</td></tr>
+<tr><td>Terrain props (tree, rock, bush)</td><td>50–300</td><td>Icosphere/cone variants; KHR_materials_unlit + vertex colours = 1 draw call</td></tr>
+<tr><td>Building (house, mine, tower)</td><td>300–1,500</td><td>HardOps/BoxCutter booleans; LOD1 ~50%</td></tr>
+<tr><td>Hero building (keep/castle)</td><td>1,500–4,000</td><td>Bake AO/normal, don't add geometry for trim</td></tr>
+<tr><td>Character (unit, top-down)</td><td>800–3,000</td><td>15–25 bones max; 1 atlas texture 512²</td></tr>
+<tr><td>Character (hero/leader)</td><td>3,000–6,000</td><td>Only a few on screen</td></tr>
+<tr><td><strong>Whole scene target</strong></td><td><strong>≤150k–300k tris, ≤200 draw calls</strong></td><td>Share materials, merge static, InstancedMesh for trees/rocks/units</td></tr></table>
+
+<h3>Three.js Integration</h3>
+<pre>import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+const loader = new GLTFLoader();
+const draco = new DRACOLoader();
+draco.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.7/');
+// prod: copy node_modules/three/examples/jsm/libs/draco/ → public/draco/
+loader.setDRACOLoader(draco);
+const gltf = await loader.loadAsync('/assets/buildings/house.glb');</pre>
+
+<h2>5. FF + Civ UI Patterns (Tier 2)</h2>
+<table><tr><th>Pattern</th><th>Detail</th></tr>
+<tr><td>FF Camera</td><td>2.5D / HD-2D diorama at <strong>50–60° pitch, 35–50mm FOV</strong>; NOT pure 90° top-down. Pixel Remaster = locked grid + 3/4 tilt; Crystal Chronicles = free 3D orbit 45–60°, chibi proportions.</td></tr>
+<tr><td>FF Lighting</td><td>Warm key (sunset/golden) + cool fill gradient; emissive point lights (torches) with radius; AgX/Bloom (Compositor Glare); DoF f/2.8 + tilt-shift blur top/bottom.</td></tr>
+<tr><td>FF Art</td><td>Itahana: "snippets of landmarks/buildings/atmosphere" first. Theme each biome around one material (copper-mushroom, soap-crystal cave); extraction nodes read as landmarks.</td></tr>
+<tr><td>Civ HUD</td><td>Top bar: Gold, Science/Culture per-turn, Happiness, Influence, Settlement limit, Leader avatar + Age banner. Top-right: Leader banners. Bottom-right: Turn/end-turn + action wheel. Bottom-left: Settlements/production queue. Left: build menu.</td></tr>
+<tr><td>Civ District/Quarter</td><td>Place District tile → slot 2 Buildings = Quarter. UI shows: District icon, 2 build slots, adjacency bonus arrows (which yield, from where), overbuilding penalty (red), specialist slots. Wonder = 1 tile, counts as District, must be adjacent to District.</td></tr>
+<tr><td>Civ Placement</td><td>Left panel updates on hover with yield changes + adjacency arrows + "place me here" ghost. Predictive yield panel on hover: before/after stats, delta arrows (green up/red down), warehouse synergy, highest adjacency.</td></tr>
+<tr><td>Tech Trees</td><td>Technology + Civics trees, Age-locked (Antiquity/Exploration/Modern), mastery nodes. Attribute trees unlock via arrows. Tooltip shows unlock requirements + mastery rewards.</td></tr>
+<tr><td>Yield Overlay</td><td>Colour-coded icons (Food, Production, Gold, Science, Culture, Happiness, Influence); toggleable overlay (green high-yield tiles highlighted).</td></tr>
+<tr><td>RimWorld Work</td><td>F1 Work tab: grid colonists × work types (Firefight, Doctor, Mine, Construct, Craft, Haul, Clean, Research…), priorities 1–4. Outline = skill level (red→white→yellow), flames = passion. Orders: Mine/Haul/Cut/Hunt designators (drag rectangle). Bills tab: repeat crafting.</td></tr></table>
+
+<h2>6. Phased Build Plan</h2>
+<table><tr><th>Phase</th><th>Duration</th><th>Key Work</th><th>Acceptance</th></tr>
+<tr><td><strong>0. Foundations</strong></td><td>1–2d</td><td>Blender MCP audit; AGENTS.md §1 amendment; add three@0.160.0 + @types/three; CI Khronos Validator step</td><td>tsc passes; entrypoint &lt;200 KiB; CI green</td></tr>
+<tr><td><strong>1. Asset Pipeline</strong></td><td>2–3d</td><td><code>public/assets/</code> tree; <code>blender/templates/how2soap-terrain.blend</code>; 6 assets authored/exported/validated; Three.js GLTFLoader + DRACOLoader stub</td><td>All 6 .glb pass Validator; renderer.info matches tri budget; 60 fps @ 100 instances</td></tr>
+<tr><td><strong>2. 3D Viewport</strong></td><td>3–4d</td><td>Replace StrategyMapCanvas with Three.js isometric (50–60° pitch, OrbitControls); diurnal Sun/Sky; bloom/DoF gated by prefers-reduced-motion</td><td>60 fps @ ≤150k tris / ≤200 draw calls; reduced-motion disables DoF/bloom</td></tr>
+<tr><td><strong>3. Colony in 3D</strong></td><td>3–5d</td><td>InstancedMesh colonists (1 draw call/100); 4-bone rigs; desire-path wear decal overlay (+20% speed on worn); drag-rect Mine designator; colonist cards + Work tab</td><td>50 colonists @ 60 fps; desire-path wear renders; mine-drag works; wage/strike via COLONY_SYNC</td></tr>
+<tr><td><strong>4. Civ UI</strong></td><td>4–5d</td><td>District/Quarter placement; adjacency/delta arrows; Wonder tier; Tech/Civics trees; yield overlay; Leader banners; 10 WorkerCommand endpoints</td><td>District→Quarter end-to-end (place Mine → slot Smelter+Hauler → yields recalc); adjacency arrows correct</td></tr>
+<tr><td><strong>5. Asset Expansion</strong></td><td>ongoing</td><td>FF biome theming; 30+ glTF assets; LOD chains (THREE.LOD at 40m); 512²–1024² building atlas (JPEG/WebP/KTX2)</td><td>≥30 glTF assets pass Validator; scene ≤300k tris</td></tr>
+<tr><td><strong>6. Verification</strong></td><td>2–3d</td><td>Build + tests (194 + glTF.test.ts + civ-ui.test.ts); WCAG 2.2 audit (2.5.8, 2.3.1, contrast); Blender MCP screenshot verify; PWA offline assets</td><td>All CI green; 60 fps @ (100 colonists + 30 buildings + 500 props); PWA installable offline</td></tr></table>
+
+<h2>7. Risks &amp; Mitigations</h2>
+<table><tr><th>Risk</th><th>Likelihood</th><th>Mitigation</th></tr>
+<tr><td>Three.js bundle blows &lt;200 KiB budget</td><td>High</td><td>Dynamic import lazy chunk; AGENTS.md amendment; CI integrity check</td></tr>
+<tr><td>Blender not installed / version &lt;3.6</td><td>Med</td><td>survey_skills first; Blender 3.6/4.2 LTS required</td></tr>
+<tr><td>glTF assets fail Validator</td><td>Med</td><td>Khronos Validator in CI; fix at export (apply modifiers, apply scale, JPEG images)</td></tr>
+<tr><td>Draw calls explode (&gt;200)</td><td>Med</td><td>Enforce instancing + material sharing from Phase 1; profile with renderer.info</td></tr>
+<tr><td>2D→3D scope creep</td><td>High</td><td>Vertical slices: Phase 2 viewport alone proves 3D; Phases 3/4 build on top. Sim engine untouched.</td></tr>
+<tr><td>WCAG 2.3.1 photosensitivity (bloom)</td><td>Low</td><td>Gate bloom behind prefers-reduced-motion + settings toggle; never flash &gt;3×/s</td></tr></table>
+
+<h2>8. Concrete Endpoints (Phase 4 Civ UI)</h2>
+<table><tr><th>#</th><th>Feature</th><th>Endpoint / Control</th><th>Acceptance</th></tr>
+<tr><td>1</td><td>Place District</td><td><code>WorkerCommand: { type: 'PLACE_DISTRICT', district: 'MINE', tile: {x,y} }</code></td><td>District appears; adjacency panel shows</td></tr>
+<tr><td>2</td><td>Slot building in Quarter</td><td><code>WorkerCommand: { type: 'SLOT_BUILDING', quarterId, slot: 0|1, building: 'SMELTER' }</code></td><td>Yield panel updates with delta arrows</td></tr>
+<tr><td>3</td><td>Build Wonder</td><td><code>WorkerCommand: { type: 'BUILD_WONDER', wonder: 'GRAND_SMELTER', tile }</code> — requires adjacent District</td><td>Wonder locks tile; empire bonus applied</td></tr>
+<tr><td>4</td><td>Research tech</td><td><code>WorkerCommand: { type: 'RESEARCH', tech: 'BRONZE_CASTING' }</code> — costs Science/turn</td><td>Tree node unlocks; recipes gate correctly</td></tr>
+<tr><td>5</td><td>Toggle yield overlay</td><td>UI toggle <code>#btn-yield-overlay</code> → <code>renderer.overlayMode = 'YIELD'</code></td><td>High-yield tiles highlight green</td></tr>
+<tr><td>6</td><td>Colonist work priorities</td><td>Bottom Work tab (F1): grid colonists×work-types, click cell 1–4</td><td>Priorities persist to COLONY_SYNC; strike if morale &lt;20</td></tr>
+<tr><td>7</td><td>Designate mining rectangle</td><td>Mouse drag → <code>WorkerCommand: { type: 'DESIGNATE_MINE', rect: {x0,y0,x1,y1} }</code></td><td>Workers path to nodes; desire paths render</td></tr>
+<tr><td>8</td><td>Bills tab</td><td><code>WorkerCommand: { type: 'SET_BILL', recipe: 'BAR_SOAP', threshold: 20, autoCraft: true }</code></td><td>Auto-crafts when stock &lt; threshold</td></tr>
+<tr><td>9</td><td>Blender export CLI</td><td><code>blender --background --python blender/export_glb.py -- --asset building --lod 0</code></td><td>Produces glTF that passes Khronos Validator</td></tr>
+<tr><td>10</td><td>Three.js LOD swap</td><td><code>THREE.LOD</code> at 40m (<code>lod.addLevel(high, 0); lod.addLevel(low, 40)</code>)</td><td>Framerate holds when zoomed out</td></tr></table>
+
+<h2>9. Escalation Protocol Compliance</h2>
+<table><tr><th>Pillar</th><th>Implemented</th></tr>
+<tr><td><strong>1. Subagent Depth</strong></td><td>3 parallel subagents (Blender→glTF, FF/Civ UI, Blender asset creation) — all returned in 102 s. Strategy fan-out: full-sweep (codebase-first + pattern-driven + targeted-docs). Same output envelope.</td></tr>
+<tr><td><strong>2. Multi-Format Output</strong></td><td>This file: <strong>HTML</strong> (interactive). Companion files: <code>.md</code> (full plan), <code>.json</code> (machine-readable), <code>.sarif</code> (GitHub code-scanning).</td></tr>
+<tr><td><strong>3. Tier 1–2 Grounding</strong></td><td>Every Blender menu path / export setting / Three.js API cited to docs.blender.org / Khronos / Three.js manual (Tier 1). Every FF/Civ UI pattern tied to Firaxis Dev Blog + Square Enix interviews + wikis (Tier 2). Versions pinned: Blender 3.6/4.2 LTS, glTF 2.0, Three.js r160+, WCAG 2.2, Khronos Validator.</td></tr>
+<tr><td><strong>4. Actionable Recommendations</strong></td><td>10 concrete endpoints/controls (§8) with WorkerCommand payloads, file paths, CLI syntax, and acceptance criteria per item. Every phase has a verifiable acceptance check. AGENTS.md §1 amendment text included.</td></tr></table>
+
+<p style="margin-top:3em;color:#7cc4ff"><em>Plan ready. Persona: Fenrie. Next: confirm to start Phase 0.</em></p>
+</body></html>
