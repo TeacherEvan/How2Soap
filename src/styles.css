@@ -1563,3 +1563,14 @@ body.reduced-motion *, body.reduced-motion *::before, body.reduced-motion *::aft
     transition: none;
   }
 }
+
+/* Reactions summary (inline glance) & Chemical Workbench window */
+.reactions-summary { display: flex; flex-direction: column; gap: 0.6rem; padding: 0.4rem 0.2rem; }
+.rs-head { display: flex; justify-content: space-between; align-items: center; gap: 0.6rem; }
+.rs-chips { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5rem; }
+.rs-chip { background: #10151b; border: 1px solid #22303a; border-radius: 8px; padding: 0.4rem 0.55rem; }
+.rs-chip span { display: block; font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); }
+.rs-chip strong { font-size: 0.95rem; color: #ecdfc8; }
+@media (max-width: 720px) {
+  .rs-chips { grid-template-columns: repeat(2, 1fr); }
+}

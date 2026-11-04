@@ -1,7 +1,7 @@
 /**
  * Vessel list, workbench table, quest checklist and event log views.
  */
-import { getSpecies, SPECIES, MAX_DEFINED_SPECIES } from '../data/speciesRegistry';
+import { SPECIES } from '../data/speciesRegistry';
 import { TELEMETRY } from '../engine/memoryLayout';
 import {
   state,
@@ -15,15 +15,12 @@ import {
   vesselList,
   vesselTitle,
   vesselSub,
-  rTemp,
-  rPh,
-  rPressure,
-  rVolume,
-  contentsBody,
+  rsTemp,
+  rsPh,
+  rsPressure,
+  rsVolume,
   questList,
   logList,
-  targetSelect,
-  $,
 } from './dom';
 
 export function renderVessels(): void {
@@ -58,43 +55,40 @@ function nextVesselId(): number {
 }
 
 export function updateTargets(): void {
-  const current = targetSelect.value;
-  targetSelect.replaceChildren();
-  const condenserSelect = $<HTMLSelectElement>('condenser-target-select');
-  if (condenserSelect) {
-    const curCond = condenserSelect.value;
-    condenserSelect.replaceChildren();
-    const noneOpt = document.createElement('option');
-    noneOpt.value = '-1';
-    noneOpt.textContent = 'None (Vented)';
-    condenserSelect.append(noneOpt);
+  const syncSelect = (selector: string): HTMLSelectElement | null => {
+    const select = document.querySelector<HTMLSelectElement>(selector);
+    if (!select) return null;
+    const current = select.value;
+    select.replaceChildren();
+    if (selector.includes('condenser')) {
+      const noneOpt = document.createElement('option');
+      noneOpt.value = '-1';
+      noneOpt.textContent = 'None (Vented)';
+      select.append(noneOpt);
+    }
     state.vessels.forEach((vessel) => {
       if (vessel.id === state.vessels[selectedIndex()]?.id) return;
       const option = document.createElement('option');
       option.value = String(vessel.id);
       option.textContent = `→ ${vessel.label}`;
-      condenserSelect.append(option);
+      select.append(option);
     });
-    condenserSelect.value = curCond || '-1';
-  }
-
-  state.vessels.forEach((vessel) => {
-    if (vessel.id === state.vessels[selectedIndex()]?.id) return;
-    const option = document.createElement('option');
-    option.value = String(vessel.id);
-    option.textContent = `→ ${vessel.label}`;
-    targetSelect.append(option);
-  });
-  if (Array.from(targetSelect.options).some((option) => option.value === current)) {
-    targetSelect.value = current;
-  }
+    if (Array.from(select.options).some((o) => o.value === current)) select.value = current;
+    return select;
+  };
+  syncSelect('.target-select');
+  syncSelect('.condenser-target-select');
 }
 
-export function renderWorkbench(snapshot: Snapshot): void {
+export function renderReactionsSummary(snapshot: Snapshot): void {
   const vessel = state.vessels[selectedIndex()];
   if (!vessel) {
     vesselTitle.textContent = 'No vessel';
     vesselSub.textContent = '';
+    rsTemp.textContent = '—';
+    rsPh.textContent = '—';
+    rsPressure.textContent = '—';
+    rsVolume.textContent = '—';
     return;
   }
   const index = selectedIndex();
@@ -106,52 +100,10 @@ export function renderWorkbench(snapshot: Snapshot): void {
 
   vesselTitle.textContent = vessel.label;
   vesselSub.textContent = `${MATERIAL_LABEL[vessel.material] ?? vessel.material} · ${vessel.closed ? 'closed headspace' : 'open'}`;
-  rTemp.textContent = `${temperatureK.toFixed(1)} K / ${(temperatureK - 273.15).toFixed(1)} °C`;
-  rPh.textContent = volume > 0.01 ? ph.toFixed(2) : '—';
-  rPressure.textContent = `${pressure.toFixed(0)} kPa`;
-  rVolume.textContent = `${volume.toFixed(2)} L`;
-
-  const rows: string[] = [];
-  for (let speciesIdx = 0; speciesIdx < MAX_DEFINED_SPECIES; speciesIdx += 1) {
-    let species;
-    try {
-      species = getSpecies(speciesIdx);
-    } catch {
-      continue;
-    }
-    const moles = speciesMoles(snapshot, index, speciesIdx);
-    if (moles <= 1e-6) continue;
-    rows.push(
-      `<tr><td><span class="formula">${species.code}</span><span class="name">${species.name}</span></td>` +
-        `<td>${moles.toFixed(4)}</td><td>${(moles * species.molarMass).toFixed(2)}</td>` +
-        `<td class="phase">${species.standardPhase.toLowerCase()}</td></tr>`,
-    );
-  }
-  contentsBody.innerHTML = rows.length
-    ? rows.join('')
-    : '<tr><td colspan="4" class="empty">Empty vessel.</td></tr>';
-
-  if (state.bench3d) {
-    const vesselStates = state.vessels.map((v, i) => {
-      const b = i * 8;
-      return {
-        id: v.id,
-        material: v.material as any,
-        capacityL: v.capacityL,
-        headspaceClosed: v.closed,
-        temperatureK: snapshot.telemetry[b + TELEMETRY.TEMP_K],
-        moles: new Float64Array(MAX_DEFINED_SPECIES),
-        precipitated: new Float64Array(MAX_DEFINED_SPECIES),
-        heaterWatts: snapshot.telemetry[b + TELEMETRY.HEATER_W],
-        condenserTargetVesselId: -1,
-        pressureKPa: snapshot.telemetry[b + TELEMETRY.PRESSURE_KPA],
-        ruptured: false,
-        appliedVolts: 0,
-        cellResistanceOhm: 10,
-      };
-    });
-    state.bench3d.render(vesselStates, vessel.id);
-  }
+  rsTemp.textContent = `${temperatureK.toFixed(1)} K`;
+  rsPh.textContent = volume > 0.01 ? ph.toFixed(2) : '—';
+  rsPressure.textContent = `${pressure.toFixed(0)} kPa`;
+  rsVolume.textContent = `${volume.toFixed(2)} L`;
 }
 
 export function renderQuest(snapshot: Snapshot): void {

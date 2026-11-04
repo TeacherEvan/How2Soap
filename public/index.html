@@ -71,61 +71,26 @@
 
         <!-- Panel 3: Center Tabbed Workbench -->
         <section class="panel workbench">
+          <div class="window-launcher" id="window-launcher" role="toolbar" aria-label="Open feature windows"></div>
           <div id="workbench-tabs-container"></div>
 
           <!-- Tab 1: Chemical Reactions -->
           <div id="tab-reactions-content" class="tab-pane active">
-            <div class="workbench-head">
-              <div>
-                <h2 id="vessel-title">No vessel</h2>
-                <p id="vessel-sub" class="sub"></p>
+            <div class="reactions-summary">
+              <div class="rs-head">
+                <div>
+                  <h2 id="vessel-title">No vessel</h2>
+                  <p id="vessel-sub" class="sub"></p>
+                </div>
+                <button id="btn-open-reactions" class="accent" type="button" title="Open the full Chemical Workbench (key 1)">⤢ Workbench</button>
               </div>
-              <div class="readouts">
-                <div class="readout"><span>Temperature</span><strong id="r-temp">—</strong></div>
-                <div class="readout"><span>pH</span><strong id="r-ph">—</strong></div>
-                <div class="readout"><span>Pressure</span><strong id="r-pressure">—</strong></div>
-                <div class="readout"><span>Liquid</span><strong id="r-volume">—</strong></div>
+              <div class="rs-chips" aria-live="polite">
+                <div class="rs-chip"><span>Temperature</span><strong id="rs-temp">—</strong></div>
+                <div class="rs-chip"><span>pH</span><strong id="rs-ph">—</strong></div>
+                <div class="rs-chip"><span>Pressure</span><strong id="rs-pressure">—</strong></div>
+                <div class="rs-chip"><span>Liquid</span><strong id="rs-volume">—</strong></div>
               </div>
-            </div>
-
-            <div class="actions">
-              <button data-action="water">+ 1 L water</button>
-              <button data-action="ash">+ 200 g hardwood ash</button>
-              <button data-action="tallow">+ 200 g raw fat</button>
-              <button data-action="salt">+ 50 g halite</button>
-              <button data-action="heat" class="accent">Toggle 400 W heater</button>
-              <button data-action="decant">Decant 1 L →</button>
-              <button data-action="skim">Skim soap curds →</button>
-              <select id="target" class="target" aria-label="Target vessel"></select>
-            </div>
-
-            <div class="advanced-vessel-controls" style="margin-top:0.8rem; padding:0.6rem; background:rgba(0,0,0,0.2); border-radius:6px; font-size:0.8rem; display:flex; flex-wrap:wrap; gap:0.8rem; align-items:center;">
-              <div style="display:flex; align-items:center; gap:0.4rem;">
-                <label for="heater-slider"><strong>Heater:</strong> <span id="val-heater-w">0</span> W</label>
-                <input type="range" id="heater-slider" min="0" max="1200" step="50" value="0" style="width:100px;">
-                <span id="heater-teq-preview" style="color:var(--text-muted, #9eb4c2); font-size:0.75rem;">(Eq: ~288 K)</span>
-              </div>
-              <div style="display:flex; align-items:center; gap:0.4rem;">
-                <label for="volts-slider"><strong>Voltaic Pile:</strong> <span id="val-volts">0.0</span> V</label>
-                <input type="range" id="volts-slider" min="0" max="13.2" step="0.6" value="0" style="width:90px;">
-              </div>
-              <div style="display:flex; align-items:center; gap:0.4rem;">
-                <label for="condenser-target-select"><strong>Distill To:</strong></label>
-                <select id="condenser-target-select" class="target" style="padding:0.2rem 0.4rem;">
-                  <option value="-1">None (Vented)</option>
-                </select>
-              </div>
-              <div style="display:flex; align-items:center; gap:0.4rem;">
-                <button id="btn-toggle-lid" class="ghost" style="padding:0.2rem 0.5rem; font-size:0.75rem;">Lid: Open</button>
-              </div>
-            </div>
-
-            <div class="contents">
-              <h3>Contents</h3>
-              <table>
-                <thead><tr><th>Species</th><th>mol</th><th>grams</th><th>Phase</th></tr></thead>
-                <tbody id="contents-body"><tr><td colspan="4" class="empty">Empty vessel.</td></tr></tbody>
-              </table>
+              <p class="hint">Full bench controls live in the Workbench window — vessels, furnace, voltaic pile, condenser routing, contents.</p>
             </div>
           </div>
 

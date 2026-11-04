@@ -4,8 +4,7 @@
  * in src/app/workerMessages.ts. Keep this file lean: wire-ups, actions, boot.
  */
 import './styles.css';
-import { SAB_BYTE_LENGTH, SharedWorldView, TELEMETRY } from './engine/memoryLayout';
-import { SPECIES } from './data/speciesRegistry';
+import { SAB_BYTE_LENGTH, SharedWorldView } from './engine/memoryLayout';
 import { StrategyMapCanvas } from './ui/StrategyMapCanvas';
 import { initMenuAndSettings } from './ui/MenuController';
 import type { SerializedWorldSave } from './engine/persistence';
@@ -15,24 +14,23 @@ import { CHAPTERS } from './data/story';
 import { globalOverlayStack } from './ui/overlayStack';
 import { audio } from './ui/audio';
 import { migrateSave } from './engine/persistence';
-import { predictEquilibriumTempK } from './engine/chemistry';
 import { simulateWatchForecast } from './engine/telegraph';
 import { levelFromRenown, initialProgression } from './engine/progression';
-import { state, send, selectedIndex, formatClock } from './app/state';
+import { state, send, formatClock } from './app/state';
 import {
   $,
   isoBadge,
   clock,
   pauseButton,
-  targetSelect,
   tabStrategy,
-  tabReactions,
 } from './app/dom';
-import { renderLog, renderVessels, renderQuest, renderWorkbench } from './app/views';
+import { renderLog, renderVessels, renderQuest, renderReactionsSummary } from './app/views';
 import { switchTab, updatePlayerUI, renderBiomeExplorerTree } from './app/panels';
 import { AUTO_SAVE_KEY, buildSaveSnapshot, bindAutoSaveOnHide } from './app/autosave';
 import { launchSplash } from './app/splash';
 import { handleWorkerMessage, type WorkerMessage } from './app/workerMessages';
+import { WindowManager } from './ui/WindowManager';
+import { initLauncher, openWindowById } from './app/launcher';
 
 // Unlock Web Audio context on user gesture
 document.addEventListener('pointerdown', () => audio.unlock(), { once: true });
@@ -66,8 +64,9 @@ function frame(): void {
         clock.textContent = formatClock(snapshot);
         if (snapshot.tick !== lastRenderedTick) {
           lastRenderedTick = snapshot.tick;
+          WindowManager.broadcastSnapshot(snapshot);
           if (state.activeTab === 'REACTIONS') {
-            renderWorkbench(snapshot);
+            renderReactionsSummary(snapshot);
           }
           renderQuest(snapshot);
         }
@@ -136,19 +135,6 @@ function startWorld(options?: { load?: SerializedWorldSave }): void {
     state.strategyMap.destroy();
     state.strategyMap = null;
   }
-  if (!state.bench3d && tabReactions) {
-    import('./ui/gl/LabBench3DCanvas').then(({ LabBench3DCanvas }) => {
-      state.bench3d = new LabBench3DCanvas(tabReactions, {
-        onSelectVessel: (vesselId) => {
-          const idx = state.vessels.findIndex((v) => v.id === vesselId);
-          if (idx !== -1) {
-            state.selected = idx;
-            renderVessels();
-          }
-        },
-      });
-    });
-  }
   state.strategyMap = new StrategyMapCanvas(tabStrategy, {
     onRecruit: (recruit) => {
       audio.recruitHorn();
@@ -212,94 +198,8 @@ function startWorld(options?: { load?: SerializedWorldSave }): void {
 }
 
 function bindActions(): void {
-  document.querySelectorAll<HTMLButtonElement>('[data-action]').forEach((button) => {
-    button.addEventListener('click', () => {
-      const vessel = state.vessels[selectedIndex()];
-      if (!vessel) return;
-      const action = button.dataset.action;
-      if (action === 'water') send({ type: 'ADD_WATER', vesselId: vessel.id, litres: 1 });
-      if (action === 'ash') send({ type: 'ADD_ASH', vesselId: vessel.id, grams: 200 });
-      if (action === 'tallow')
-        send({
-          type: 'ADD_SPECIES',
-          vesselId: vessel.id,
-          speciesIdx: SPECIES.TRISTEARIN,
-          moles: 150 / 891.5,
-        });
-      if (action === 'salt')
-        send({
-          type: 'ADD_SPECIES',
-          vesselId: vessel.id,
-          speciesIdx: SPECIES.NACL,
-          moles: 50 / 58.44,
-        });
-      if (action === 'heat') {
-        const current = state.snapshot
-          ? state.snapshot.telemetry[selectedIndex() * 8 + TELEMETRY.HEATER_W]
-          : 0;
-        send({ type: 'SET_HEATER', vesselId: vessel.id, watts: current > 0 ? 0 : 400 });
-        button.classList.toggle('active', current === 0);
-      }
-      if (action === 'decant') {
-        const targetId = Number(targetSelect.value);
-        if (targetId) send({ type: 'DECANT', fromId: vessel.id, toId: targetId, litres: 1 });
-      }
-      if (action === 'skim') {
-        const targetId = Number(targetSelect.value);
-        if (targetId) send({ type: 'SKIM', fromId: vessel.id, toId: targetId, speciesIdx: SPECIES.NA_STEARATE });
-      }
-    });
-  });
-
-  const heaterSlider = $<HTMLInputElement>('heater-slider');
-  const valHeaterW = $('val-heater-w');
-  const heaterTeqPreview = $('heater-teq-preview');
-  if (heaterSlider) {
-    heaterSlider.addEventListener('input', () => {
-      const vessel = state.vessels[selectedIndex()];
-      if (!vessel) return;
-      const watts = Number(heaterSlider.value);
-      if (valHeaterW) valHeaterW.textContent = String(watts);
-      const ambK = state.player.ambientTempK ?? 288.15;
-      const estTeq = Math.round(predictEquilibriumTempK(vessel.material as any, watts, ambK));
-      if (heaterTeqPreview) heaterTeqPreview.textContent = `(Eq: ~${estTeq} K)`;
-      send({ type: 'SET_HEATER', vesselId: vessel.id, watts });
-    });
-  }
-
-  const voltsSlider = $<HTMLInputElement>('volts-slider');
-  const valVolts = $('val-volts');
-  if (voltsSlider) {
-    voltsSlider.addEventListener('input', () => {
-      const vessel = state.vessels[selectedIndex()];
-      if (!vessel) return;
-      const volts = Number(voltsSlider.value);
-      if (valVolts) valVolts.textContent = volts.toFixed(1);
-      send({ type: 'SET_VOLTS', vesselId: vessel.id, volts });
-    });
-  }
-
-  const condenserTargetSelect = $<HTMLSelectElement>('condenser-target-select');
-  if (condenserTargetSelect) {
-    condenserTargetSelect.addEventListener('change', () => {
-      const vessel = state.vessels[selectedIndex()];
-      if (!vessel) return;
-      // Worker expects `targetId` (see sim.worker.ts SET_CONDENSER).
-      const targetId = Number(condenserTargetSelect.value);
-      send({ type: 'SET_CONDENSER', vesselId: vessel.id, targetId });
-    });
-  }
-
-  const btnToggleLid = $<HTMLButtonElement>('btn-toggle-lid');
-  if (btnToggleLid) {
-    btnToggleLid.addEventListener('click', () => {
-      const vessel = state.vessels[selectedIndex()];
-      if (!vessel) return;
-      vessel.closed = !vessel.closed;
-      btnToggleLid.textContent = vessel.closed ? 'Lid: Sealed' : 'Lid: Open';
-      send({ type: 'SET_CLOSED', vesselId: vessel.id, closed: vessel.closed });
-    });
-  }
+  // Bench controls (quick-adds, heater/volts/condenser/lid) live in the Chemical
+  // Workbench window — see src/app/actions.ts and src/ui/windows/ReactionsWindow.ts.
 
   pauseButton.addEventListener('click', () => {
     state.paused = !state.paused;
@@ -398,6 +298,15 @@ function bootFlow(): void {
   StoryMode.prologue(() => {
     startWorld();
   });
+}
+
+initLauncher();
+// QA deep-link: ?window=reactions|fabrication|paddocks|biome opens that window after boot.
+const deepLinkWindow = new URLSearchParams(window.location.search).get('window');
+if (deepLinkWindow) {
+  window.setTimeout(() => {
+    void openWindowById(deepLinkWindow);
+  }, 1200);
 }
 
 bindAutoSaveOnHide();

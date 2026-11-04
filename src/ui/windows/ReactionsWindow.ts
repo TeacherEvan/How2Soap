@@ -1,0 +1,178 @@
+/**
+ * Chemical Workbench window — the full bench, full width.
+ * 3D diorama + telemetry + furnace/voltaic controls + contents table.
+ */
+import { getSpecies, MAX_DEFINED_SPECIES } from '../../data/speciesRegistry';
+import { TELEMETRY } from '../../engine/memoryLayout';
+import {
+  state,
+  selectedIndex,
+  speciesMoles,
+  MATERIAL_LABEL,
+  type Snapshot,
+} from '../../app/state';
+import { updateTargets } from '../../app/views';
+import { bindBenchControls } from '../../app/actions';
+import type { WindowSpec } from '../WindowManager';
+
+let benchCanvas: import('../gl/LabBench3DCanvas').LabBench3DCanvas | null = null;
+
+const BENCH_HTML = `
+  <div class="bench-win">
+    <div class="bench-win-left">
+      <p class="bench-vessel-label" aria-live="polite"></p>
+      <div class="bench-3d-host" aria-label="3D vessel diorama — click a vessel to select it"></div>
+      <div class="bench-quick mono" aria-label="Quick reagents">
+        <button data-action="water" type="button">+ 1 L water</button>
+        <button data-action="ash" type="button">+ 200 g ash</button>
+        <button data-action="tallow" type="button">+ 200 g fat</button>
+        <button data-action="salt" type="button">+ 50 g halite</button>
+        <button data-action="heat" class="accent" type="button">Toggle 400 W</button>
+        <button data-action="decant" type="button">Decant 1 L →</button>
+        <button data-action="skim" type="button">Skim curds →</button>
+        <select class="target-select" aria-label="Target vessel"></select>
+      </div>
+      <div class="advanced-vessel-controls bench-controls">
+        <div class="bench-control-row">
+          <label><strong>Heater:</strong> <span class="val-heater-w">0</span> W</label>
+          <input type="range" class="heater-slider" min="0" max="1200" step="50" value="0" style="width:110px" aria-label="Heater power in watts">
+          <span class="heater-teq-preview">(Eq: ~288 K)</span>
+        </div>
+        <div class="bench-control-row">
+          <label><strong>Voltaic Pile:</strong> <span class="val-volts">0.0</span> V</label>
+          <input type="range" class="volts-slider" min="0" max="13.2" step="0.6" value="0" style="width:90px" aria-label="Electrolysis voltage">
+        </div>
+        <div class="bench-control-row">
+          <label for="condenser-window-select"><strong>Distill To:</strong></label>
+          <select class="condenser-target-select" id="condenser-window-select" aria-label="Condenser target vessel">
+            <option value="-1">None (Vented)</option>
+          </select>
+        </div>
+        <div class="bench-control-row">
+          <button class="ghost btn-toggle-lid" type="button">Lid: Open</button>
+        </div>
+      </div>
+    </div>
+    <div class="bench-win-right">
+      <div class="readout-grid">
+        <div class="readout"><span>Temperature</span><strong class="bench-temp">—</strong></div>
+        <div class="readout"><span>pH</span><strong class="bench-ph">—</strong></div>
+        <div class="readout"><span>Pressure</span><strong class="bench-pressure">—</strong></div>
+        <div class="readout"><span>Liquid</span><strong class="bench-volume">—</strong></div>
+      </div>
+      <div class="contents">
+        <h3>Contents</h3>
+        <table>
+          <thead><tr><th>Species</th><th>mol</th><th>grams</th><th>Phase</th></tr></thead>
+          <tbody class="contents-body"><tr><td colspan="4" class="empty">Empty vessel.</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+`;
+
+function renderContentsTable(body: HTMLElement, snapshot: Snapshot, vesselIndex: number): void {
+  const rows: string[] = [];
+  for (let speciesIdx = 0; speciesIdx < MAX_DEFINED_SPECIES; speciesIdx += 1) {
+    let species;
+    try {
+      species = getSpecies(speciesIdx);
+    } catch {
+      continue;
+    }
+    const moles = speciesMoles(snapshot, vesselIndex, speciesIdx);
+    if (moles <= 1e-6) continue;
+    rows.push(
+      `<tr><td><span class="formula">${species.code}</span><span class="name">${species.name}</span></td>` +
+        `<td>${moles.toFixed(4)}</td><td>${(moles * species.molarMass).toFixed(2)}</td>` +
+        `<td class="phase">${species.standardPhase.toLowerCase()}</td></tr>`,
+    );
+  }
+  const tbody = body.querySelector<HTMLElement>('.contents-body')!;
+  tbody.innerHTML = rows.length
+    ? rows.join('')
+    : '<tr><td colspan="4" class="empty">Empty vessel.</td></tr>';
+}
+
+function renderBench(body: HTMLElement, snapshot: Snapshot): void {
+  const vessel = state.vessels[selectedIndex()];
+  const label = body.querySelector<HTMLElement>('.bench-vessel-label')!;
+  if (!vessel) {
+    label.textContent = 'No vessel — add a bucket from the vessels list.';
+    return;
+  }
+  const index = selectedIndex();
+  const base = index * 8;
+  const temperatureK = snapshot.telemetry[base + TELEMETRY.TEMP_K];
+  const ph = snapshot.telemetry[base + TELEMETRY.PH];
+  const pressure = snapshot.telemetry[base + TELEMETRY.PRESSURE_KPA];
+  const volume = snapshot.telemetry[base + TELEMETRY.VOLUME_L];
+
+  label.textContent = `${vessel.label} — ${MATERIAL_LABEL[vessel.material] ?? vessel.material} · ${vessel.closed ? 'closed headspace' : 'open'}`;
+  body.querySelector<HTMLElement>('.bench-temp')!.textContent = `${temperatureK.toFixed(1)} K / ${(temperatureK - 273.15).toFixed(1)} °C`;
+  body.querySelector<HTMLElement>('.bench-ph')!.textContent = volume > 0.01 ? ph.toFixed(2) : '—';
+  body.querySelector<HTMLElement>('.bench-pressure')!.textContent = `${pressure.toFixed(0)} kPa`;
+  body.querySelector<HTMLElement>('.bench-volume')!.textContent = `${volume.toFixed(2)} L`;
+
+  renderContentsTable(body, snapshot, index);
+
+  if (benchCanvas) {
+    const vesselStates = state.vessels.map((v, i) => {
+      const b = i * 8;
+      return {
+        id: v.id,
+        material: v.material as any,
+        capacityL: v.capacityL,
+        headspaceClosed: v.closed,
+        temperatureK: snapshot.telemetry[b + TELEMETRY.TEMP_K],
+        moles: new Float64Array(MAX_DEFINED_SPECIES),
+        precipitated: new Float64Array(MAX_DEFINED_SPECIES),
+        heaterWatts: snapshot.telemetry[b + TELEMETRY.HEATER_W],
+        condenserTargetVesselId: v.id === vessel.id ? -1 : -1,
+        pressureKPa: snapshot.telemetry[b + TELEMETRY.PRESSURE_KPA],
+        ruptured: false,
+        appliedVolts: 0,
+        cellResistanceOhm: 10,
+      };
+    });
+    benchCanvas.render(vesselStates, vessel.id);
+  }
+}
+
+export const spec: WindowSpec = {
+  id: 'reactions',
+  title: 'Chemical Workbench',
+  icon: '🔬',
+  size: 'full',
+  mount(body: HTMLElement) {
+    body.innerHTML = BENCH_HTML;
+    bindBenchControls(body);
+    updateTargets();
+
+    // Instantiate the 3D diorama inside the window — lazy-loaded chunk.
+    const host = body.querySelector<HTMLElement>('.bench-3d-host')!;
+    import('../gl/LabBench3DCanvas').then(({ LabBench3DCanvas }) => {
+      benchCanvas = new LabBench3DCanvas(host, {
+        onSelectVessel: (vesselId: number) => {
+          const idx = state.vessels.findIndex((v) => v.id === vesselId);
+          if (idx !== -1) {
+            state.selected = idx;
+          }
+        },
+      });
+      state.bench3d = benchCanvas as never;
+      if (state.snapshot) renderBench(body, state.snapshot);
+    });
+
+    if (state.snapshot) {
+      renderBench(body, state.snapshot);
+    }
+  },
+  unmount() {
+    benchCanvas = null;
+    state.bench3d = null;
+  },
+  onSnapshot(snapshot, body) {
+    renderBench(body, snapshot);
+  },
+};

@@ -15,6 +15,7 @@ import { levelFromRenown } from '../engine/progression';
 import { calculateHarvestTotalCostKcal, type HarvestablePart, type BiomeSpeciesNode } from '../data/biomeNodes';
 import { audio } from '../ui/audio';
 import { state, selectedIndex, send } from './state';
+import { openWindowById } from './launcher';
 import {
   pGlucose,
   pTemp,
@@ -118,6 +119,16 @@ export function renderBiomeExplorerTree(): void {
       );
     },
   );
+
+  const dossierBtn = document.createElement('button');
+  dossierBtn.className = 'ghost biome-dossier-btn';
+  dossierBtn.type = 'button';
+  dossierBtn.textContent = '⤢ Open Biome Dossier (4)';
+  dossierBtn.title = 'Full-screen Biome Explorer with species dossiers and yields';
+  dossierBtn.addEventListener('click', () => {
+    void openWindowById('biome');
+  });
+  biomePanel.appendChild(dossierBtn);
 }
 
 export function updatePlayerUI(): void {
