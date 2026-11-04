@@ -1,4 +1,4 @@
-# The Grand Crucible (How2Soap) — A Turn-Based Alchemical Survival Odyssey
+# How2Soap — Emergent Chemistry & Survival Engine
 
 [![CI](https://github.com/TeacherEvan/How2Soap/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/TeacherEvan/How2Soap)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -7,7 +7,7 @@
 [![Bundle: 182 KB entry](https://img.shields.io/badge/Entrypoint-182%20KB%20%2F%20200%20KB-success.svg)](https://webpack.js.org/)
 [![PWA: Offline-ready](https://img.shields.io/badge/PWA-Installable%20%2B%20Offline-blue.svg)](manifest.webmanifest)
 
-An emergent thermodynamics, physical chemistry, and primitive survival simulation — **The Grand Crucible** is a turn-based alchemical survival odyssey: real chemistry, real consequences, one watch at a time. Zero external runtime dependencies. Features zero-copy Web Worker multithreading using atomic `SeqLock` shared memory, Arrhenius kinetics, calorimetry, latent heat phase transitions, electroneutrality pH calculations, Faraday electrolysis, and a full 5-tier technological progression from primitive fire to molten salt electrolysis. Installable as a PWA — fully playable offline.
+An emergent thermodynamics, physical chemistry, and primitive survival simulation engine built with zero external runtime dependencies. Features zero-copy Web Worker multithreading using atomic `SeqLock` shared memory, Arrhenius kinetics, calorimetry, latent heat phase transitions, electroneutrality pH calculations, Faraday electrolysis, and a full 5-tier technological progression from primitive fire to molten salt electrolysis. Installable as a PWA — fully playable offline.
 
 ---
 
@@ -63,9 +63,9 @@ An emergent thermodynamics, physical chemistry, and primitive survival simulatio
 
 ---
 
-## 📜 What's New: The Grand Crucible
+## 📜 What's New: The Grand Crucible Chronicle
 
-- **Grand Crucible Rebrand + PWA** (2026-11-04): Unified name across package, shell and docs; installable PWA (offline-first service worker, Web Manifest, CSP, OG tags); shell markup moved from JS strings into `index.html`; `main.ts` slimmed 1,194→359 LOC via the new `src/app/` orchestration layer; worker command dispatch is now compile-time exhaustive with unknown commands surfaced as in-game events (never silent); fixed two live command-protocol defects (dead "Charge to Vessel" button, condenser target never reaching the worker); `world.ts`/`sim.worker.ts` spine covered by 15 new test assertions; zero silent `catch {}` blocks remain in the tree.
+- **PWA + architecture** (2026-11-04): Installable PWA (offline-first service worker, Web Manifest, CSP, OG tags); shell markup moved from JS strings into `index.html`; `main.ts` slimmed 1,194→359 LOC via the new `src/app/` orchestration layer; worker command dispatch is now compile-time exhaustive with unknown commands surfaced as in-game events (never silent); fixed two live command-protocol defects (dead "Charge to Vessel" button, condenser target never reaching the worker); `world.ts`/`sim.worker.ts` spine covered by 17 new test assertions; crisis turns engine (telegraphed calamities, seeded determinism) wired into the worker; zero silent `catch {}` blocks remain in the tree.
 
 - **Story & Chapter Progression**: 6 narrative chapters (from *The First Fire* to *The Lightning in the Bottle*) with Council of Solitude correspondence letters, dynamic Renown ranking (Apprentice through Grand Magister), and three distinct artisan affinities (*Apothecary*, *Soapwright*, *Forgewright*).
 - **Survival Mechanics & Pathology**: Dual-compartment human metabolic burn, wild hunt animal wound risk, infection latency, septic fever, hypothermia, starvation death conditions, and clinical treatment applications.
@@ -77,7 +77,7 @@ An emergent thermodynamics, physical chemistry, and primitive survival simulatio
 ## 📦 Project Structure
 
 ```
-grand-crucible/  (working title How2Soap)
+How2Soap/
 ├── docs/plans/             # Master specification & architectural designs
 ├── public/                 # Shell markup, PWA manifest + service worker, icons, static assets
 │   ├── index.html          # Static game shell (no JS-string HTML), CSP + OG meta

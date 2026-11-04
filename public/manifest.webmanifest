@@ -1,7 +1,7 @@
 {
-  "name": "The Grand Crucible",
-  "short_name": "Crucible",
-  "description": "A turn-based alchemical survival odyssey — master real chemistry from raw fire to pure potassium.",
+  "name": "How2Soap",
+  "short_name": "How2Soap",
+  "description": "Emergent chemistry and survival engine — make soap from scratch.",
   "id": "/",
   "start_url": "/",
   "scope": "/",

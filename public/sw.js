@@ -1,10 +1,10 @@
 /**
- * The Grand Crucible — offline-first service worker.
+ * How2Soap — offline-first service worker.
  * Hashed webpack assets (/static/*) are immutable: serve cache-first.
  * Navigations use network-first so deploys roll out immediately;
  * the cached shell keeps the game fully playable offline.
  */
-const VERSION = 'grand-crucible-v1';
+const VERSION = 'how2soap-v1';
 const SHELL = ['/', '/index.html', '/favicon.svg', '/manifest.webmanifest'];
 
 self.addEventListener('install', (event) => {

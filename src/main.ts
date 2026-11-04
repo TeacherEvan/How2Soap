@@ -1,5 +1,5 @@
 /**
- * The Grand Crucible — entry point & orchestration only.
+ * How2Soap — entry point & orchestration only.
  * Views live in src/app/views.ts, panels in src/app/panels.ts, worker dispatch
  * in src/app/workerMessages.ts. Keep this file lean: wire-ups, actions, boot.
  */

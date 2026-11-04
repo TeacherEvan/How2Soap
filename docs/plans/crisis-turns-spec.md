@@ -7,7 +7,7 @@
 
 ## 1. Design intent
 
-Into the Breach taught that **visible consequences + bounded choices** make turns tense. Sea of Stars taught that a crisis lands hardest inside story context. The Grand Crucible's turn-based rhythm is the *watch* (Rest 1 h / Sleep 8 h) — already telegraphed via `simulateWatchForecast`. Crisis turns extend the same language to danger: **you always see it coming two watches out, and every choice is a chemical, metabolic, or logistical trade.**
+Into the Breach taught that **visible consequences + bounded choices** make turns tense. Sea of Stars taught that a crisis lands hardest inside story context. How2Soap's turn-based rhythm is the *watch* (Rest 1 h / Sleep 8 h) — already telegraphed via `simulateWatchForecast`. Crisis turns extend the same language to danger: **you always see it coming two watches out, and every choice is a chemical, metabolic, or logistical trade.**
 
 **Non-goals (v1.0):** no real-time QTE; no fail-state auto-wipe (a bad choice costs resources, not the run — Apprentice/Alchemist tiers exist for lethality); no RNG-feel-bad (every roll is seeded and shown as odds in the choice detail).
 

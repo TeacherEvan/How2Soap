@@ -1,8 +1,8 @@
 {
-  "name": "grand-crucible",
-  "version": "0.2.0",
+  "name": "how2soap",
+  "version": "0.1.0",
   "private": true,
-  "description": "The Grand Crucible — turn-based alchemical survival odyssey (How2Soap)",
+  "description": "Emergent chemistry & survival engine - make soap from scratch",
   "scripts": {
     "dev": "webpack serve --config webpack.config.js --mode development",
     "start": "webpack serve --config webpack.config.js --mode development",

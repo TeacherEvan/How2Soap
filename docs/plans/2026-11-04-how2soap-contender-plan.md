@@ -1,4 +1,4 @@
-# The Grand Crucible — A Complete, Exceptional Game
+# How2Soap — A Complete, Exceptional Game
 
 **Supersedes:** v1/v2 (awards-shaped drafts) · **Date:** 2026-11-04 · **North Star, in your words:** the level of quality implied by "top ten turn-based indie contender" — applied as a *craft bar for every decision*, not as a competition to enter.
 
@@ -6,7 +6,7 @@
 
 ## 1. What this game is (identity, unchanged)
 
-> A turn-based alchemical survival odyssey where every potion is earned through real chemistry.
+> Emergent chemistry, real consequences — make soap from scratch, one watch at a time.
 
 Sea of Stars' campaign craft · Into the Breach's telegraph legibility · master's-degree chemistry under the hood. Engine: SAB + SeqLock worker, Arrhenius kinetics, electroneutrality pH, Faraday electrolysis, 5-tier progression, colony labor layer, 6-chapter campaign, Now Phase 1 complete (PWA, src/app orchestration, worker protocol honesty, 194/194 tests, 0 silent catches).
 
