@@ -5,6 +5,7 @@
 import splashMp4 from '../media/how2soap-intro.mp4';
 import splashWebm from '../media/how2soap-intro.webm';
 import splashPoster from '../media/how2soap-poster.png';
+import { audio } from '../ui/audio';
 
 /**
  * Launch the intro splash on every startup. The world boots underneath it;
@@ -18,6 +19,9 @@ export function launchSplash(): void {
   const overlay = document.createElement('div');
   overlay.className = 'splash-overlay';
   overlay.setAttribute('aria-hidden', 'true');
+
+  const viewport = document.createElement('div');
+  viewport.className = 'splash-viewport';
 
   const video = document.createElement('video');
   video.className = 'splash-video';
@@ -34,25 +38,45 @@ export function launchSplash(): void {
   webmSource.type = 'video/webm';
   video.append(mp4Source, webmSource);
 
+  // Astrolabe lens vignette & scanline overlay
+  const lens = document.createElement('div');
+  lens.className = 'splash-lens';
+
+  // Corner brackets (tactile reticle pips)
+  const reticleTL = document.createElement('div');
+  reticleTL.className = 'splash-bracket splash-bracket-tl';
+  const reticleTR = document.createElement('div');
+  reticleTR.className = 'splash-bracket splash-bracket-tr';
+  const reticleBL = document.createElement('div');
+  reticleBL.className = 'splash-bracket splash-bracket-bl';
+  const reticleBR = document.createElement('div');
+  reticleBR.className = 'splash-bracket splash-bracket-br';
+
   const hint = document.createElement('div');
   hint.className = 'splash-hint';
-  hint.textContent = 'Click anywhere to skip';
+  hint.innerHTML = '<kbd class="splash-key">ESC / SPACE</kbd><span class="splash-hint-label">Click anywhere to skip</span>';
 
-  overlay.append(video, hint);
+  viewport.append(video, lens, reticleTL, reticleTR, reticleBL, reticleBR);
+  overlay.append(viewport, hint);
   document.body.appendChild(overlay);
 
   let dismissed = false;
   const dismiss = (): void => {
     if (dismissed) return;
     dismissed = true;
-    document.removeEventListener('keydown', dismiss);
+    audio.uiHeavyVent();
+    document.removeEventListener('keydown', onKeyDown);
     overlay.classList.add('splash-fade');
-    window.setTimeout(() => overlay.remove(), 650);
+    window.setTimeout(() => overlay.remove(), 700);
+  };
+
+  const onKeyDown = (_e: KeyboardEvent): void => {
+    dismiss();
   };
 
   overlay.addEventListener('click', dismiss);
   video.addEventListener('ended', dismiss);
-  document.addEventListener('keydown', dismiss);
+  document.addEventListener('keydown', onKeyDown);
 
   video.play().catch(() => {
     // Autoplay with audio blocked: retry muted rather than dropping the splash.

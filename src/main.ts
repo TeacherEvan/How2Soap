@@ -6,7 +6,6 @@
 import './styles.css';
 import { SAB_BYTE_LENGTH, SharedWorldView } from './engine/memoryLayout';
 import { StrategyMapCanvas } from './ui/StrategyMapCanvas';
-import { initMenuAndSettings } from './ui/MenuController';
 import type { SerializedWorldSave } from './engine/persistence';
 import { showToast } from './ui/Toast';
 import { StoryMode } from './ui/StoryMode';
@@ -114,29 +113,31 @@ function startWorld(options?: { load?: SerializedWorldSave }): void {
   // Initial Biome DAG rendering
   renderBiomeExplorerTree();
 
-  // Settings & Compendium Modal
-  initMenuAndSettings({
-    onNewGame: () => {
-      $('reset').click();
-    },
-    onExportSave: async (): Promise<SerializedWorldSave> => {
-      return buildSaveSnapshot();
-    },
-    onImportSave: (save: SerializedWorldSave) => {
-      const migrated = migrateSave(save);
-      state.progression.renown = migrated.renown ?? 0;
-      state.progression.chapter = migrated.chapter ?? 0;
-      state.progression.fabricatedRecipes = migrated.fabricatedRecipes ?? [];
-      state.progression.objectivesDone = migrated.objectivesDone ?? [];
-      state.progression.lettersDone = migrated.lettersDone ?? [];
-      state.progression.affinity = migrated.affinity ?? state.progression.affinity;
-      state.progression.ever = migrated.ever ?? {};
+  // Settings & Compendium Modal (Lazy loaded to preserve entrypoint budget)
+  import('./ui/MenuController').then(({ initMenuAndSettings }) => {
+    initMenuAndSettings({
+      onNewGame: () => {
+        $('reset').click();
+      },
+      onExportSave: async (): Promise<SerializedWorldSave> => {
+        return buildSaveSnapshot();
+      },
+      onImportSave: (save: SerializedWorldSave) => {
+        const migrated = migrateSave(save);
+        state.progression.renown = migrated.renown ?? 0;
+        state.progression.chapter = migrated.chapter ?? 0;
+        state.progression.fabricatedRecipes = migrated.fabricatedRecipes ?? [];
+        state.progression.objectivesDone = migrated.objectivesDone ?? [];
+        state.progression.lettersDone = migrated.lettersDone ?? [];
+        state.progression.affinity = migrated.affinity ?? state.progression.affinity;
+        state.progression.ever = migrated.ever ?? {};
 
-      startWorld({ load: migrated });
-      showToast(`Save restored — Day ${migrated.day ?? 1}`, 'success');
-      state.log.push(`Imported game save from Day ${migrated.day}, Tick ${migrated.tick}`);
-      renderLog();
-    },
+        startWorld({ load: migrated });
+        showToast(`Save restored — Day ${migrated.day ?? 1}`, 'success');
+        state.log.push(`Imported game save from Day ${migrated.day}, Tick ${migrated.tick}`);
+        renderLog();
+      },
+    });
   });
 
   // Instantiate Strategy Map Canvas & Labor Command Dock

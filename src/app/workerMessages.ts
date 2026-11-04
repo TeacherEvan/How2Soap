@@ -186,11 +186,12 @@ export function handleWorkerMessage(data: WorkerMessage, options?: { load?: unkn
   );
 
   for (const objId of res.objectives) {
-    audio.chime();
+    audio.uiMetalPing();
     showToast(`Objective completed: ${objId} (+25 Renown)`, 'success');
   }
   for (const letId of res.letters) {
     audio.stamp();
+    audio.uiMetalPing();
     showToast(`Council letter received: ${letId}!`, 'renown');
   }
   for (const lu of res.levelUps) {

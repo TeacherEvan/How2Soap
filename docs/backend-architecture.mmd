@@ -1,0 +1,17 @@
+architecture-beta
+    accTitle: How to Make Soap Simulation Engine
+    accDescr: Architecture diagram representing the Web Worker simulation, SharedArrayBuffer, and main thread orchestration.
+
+    group worker(cloud)["Web Worker (sim.worker.ts)"]
+        service engine in worker[Simulation Engine]
+        service chem in worker[Arrhenius Chemistry & SID pH]
+        service colony in worker[Colony Steering & Labor]
+        service sab in worker[SharedArrayBuffer (67648 B)]
+
+    group main(cloud)["Main UI Thread"]
+        service app in main[State & WindowManager]
+        service canvas in main[WebGL & 2D Canvas]
+        service audio in main[Web Audio Engine]
+
+    main:app -- worker:engine
+    worker:sab -- main:app

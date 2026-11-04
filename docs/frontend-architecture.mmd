@@ -1,0 +1,14 @@
+flowchart TD
+    accTitle: Frontend UI & Windowing Architecture
+    accDescr: Structure of the UI Layer showing WindowManager, canvases, HUD, and reactive subscriptions.
+
+    WM[WindowManager] --> BW[BiomeWindow]
+    WM --> RW[ReactionsWindow]
+    WM --> FW[FabricationWindow]
+    WM --> PW[PaddocksWindow]
+    WM --> JW[JournalPanel]
+
+    App[State & Dispatcher] --> HUD[HUD & Renown Bar]
+    App --> Bench[LabBench3DCanvas WebGL]
+    App --> Map[StrategyMapCanvas 2D]
+    App --> Audio[Web Audio Spatial Stereo Engine]

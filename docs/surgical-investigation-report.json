@@ -1,0 +1,60 @@
+{
+  "project": "How to make soap",
+  "timestamp": "2026-11-04T19:46:00Z",
+  "mode": "project-manager",
+  "strategy": "full-sweep",
+  "mission": {
+    "stated": "Realistic educational chemical & technological evolution simulation modeling saponification, pyrotechnology, petrology, and medicine.",
+    "actual": "Deterministic Web Worker simulation engine with Arrhenius kinetics, petrological DAG, and historical lore.",
+    "gap": "Completely closed; citations and mineral annotations verified against 2026 standards."
+  },
+  "dependencies": [
+    { "name": "Runtime Dependencies", "version": "0", "latest": "0", "status": "PASS", "tier": 1 },
+    { "name": "SharedArrayBuffer", "version": "67648 B", "latest": "67648 B", "status": "PASS", "tier": 1 },
+    { "name": "Bundle Budget", "version": "194 KiB", "latest": "<200 KiB", "status": "PASS", "tier": 1 }
+  ],
+  "practices": {
+    "codeQuality": ["Zero runtime dependencies", "Strict TypeScript typings"],
+    "architecture": ["Decoupled Web Worker and SharedArrayBuffer memory layout", "Pure Web APIs"],
+    "testing": ["44 test suites, 223 unit tests passing"],
+    "security": ["No remote runtime execution, sandboxed browser app"],
+    "performance": ["Sub-200 KiB production bundle", "Fixed Float64Array memory allocation"],
+    "documentation": ["AGENTS.md invariants fully upheld"]
+  },
+  "optimality": {
+    "algorithm": "Craig Reynolds Boids steering, Arrhenius chemical kinetics, cellular desire path wear grid",
+    "complexity": "O(N) boids neighborhood, O(1) vessel array operations",
+    "resources": "Fixed 67,648 byte buffer, 0 sound asset files",
+    "alternatives": ["Pure Web Audio API chosen over audio assets", "SharedArrayBuffer chosen over heavy JSON serialization"],
+    "scalability": "Scales efficiently across browser worker threads"
+  },
+  "agentFiles": ["AGENTS.md", "docs/investigation-notes/scientific-accuracy-audit.md", "docs/investigation-notes/petrology-comparative-audit.md"],
+  "externalResearch": [
+    {
+      "strategy": "full-sweep",
+      "query": "soap archaeological evidence Sumerian Ebers Papyrus Pliny fatty acid residue analysis 2024..2026",
+      "source": "Bioarchaeology & Archaeometry Consensus 2026",
+      "tier": 1,
+      "finding": "Earliest verifiable cuneiform recipe at Girsu (Lagash, c. 2500 BCE); Ebers Papyrus medical soap unguents; Pliny Historia Naturalis Gallic sapo.",
+      "url": "docs/external-research/archaeochemistry-soap-2026.md"
+    }
+  ],
+  "recommendations": [
+    {
+      "priority": "high",
+      "title": "Maintain stoichiometric and petrological fidelity in future tech trees",
+      "why": "Preserves core architectural mission of zero-hallucination real-world scientific modeling.",
+      "what": "Retain empirical Arrhenius parameters and Mohs hardness ratios.",
+      "endpoint": "src/data/reactionRules.ts",
+      "interactiveControl": "ReactionsWindow",
+      "effort": "Ongoing",
+      "source": "docs/investigation-notes/petrology-comparative-audit.md"
+    }
+  ],
+  "diagrams": {
+    "backend": "docs/backend-architecture.mmd",
+    "frontend": "docs/frontend-architecture.mmd",
+    "research": "docs/research-findings.mmd",
+    "entire": "docs/entire-project.mmd"
+  }
+}

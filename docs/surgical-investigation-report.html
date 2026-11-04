@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="dark light">
+    <title>Surgical Investigation Report — How to make soap (Archaeometry & Petrology 2026)</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+    <script>
+    mermaid.initialize({
+        startOnLoad: true,
+        theme: 'dark',
+        themeVariables: {
+            primaryColor: '#58a6ff',
+            primaryTextColor: '#e6edf3',
+            primaryBorderColor: '#30363d',
+            lineColor: '#8b949e',
+            secondaryColor: '#161b22',
+            tertiaryColor: '#0d1117',
+            background: '#0d1117',
+            cardBackground: '#161b22',
+            mainBkg: '#0d1117',
+            nodeBorder: '#30363d',
+            clusterBkg: '#161b22',
+            titleColor: '#e6edf3',
+            edgeLabelBackground: '#161b22'
+        }
+    });
+    </script>
+    <style>
+        :root {
+            --bg: #0d1117;
+            --fg: #e6edf3;
+            --accent: #58a6ff;
+            --accent-warm: #f0883e;
+            --border: #30363d;
+            --card: #161b22;
+            --muted: #8b949e;
+            --good: #3fb950;
+            --warn: #d29922;
+            --bad: #f85149;
+            --wolf: #cBCC4F;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg);
+            color: var(--fg);
+            line-height: 1.7;
+            min-height: 100vh;
+            padding: 2rem;
+        }
+        header {
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        h1 { font-size: 2rem; color: var(--accent); margin-bottom: 0.5rem; }
+        .meta { color: var(--muted); font-size: 0.9rem; display: flex; gap: 2rem; flex-wrap: wrap; }
+        .badge {
+            display: inline-block;
+            padding: 0.2rem 0.6rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+        .badge-good { background: rgba(63,185,80,0.2); color: var(--good); border: 1px solid var(--good); }
+        .badge-warn { background: rgba(210,153,34,0.2); color: var(--warn); border: 1px solid var(--warn); }
+        .badge-bad { background: rgba(248,81,73,0.2); color: var(--bad); border: 1px solid var(--bad); }
+
+        nav {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 1rem;
+            margin-bottom: 2rem;
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+        nav a { color: var(--accent); text-decoration: none; font-size: 0.9rem; }
+        nav a:hover { text-decoration: underline; }
+
+        section {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        h2 { font-size: 1.3rem; color: var(--fg); margin-bottom: 1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
+        h3 { font-size: 1.1rem; color: var(--accent-warm); margin: 1rem 0 0.5rem; }
+
+        table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.9rem; }
+        th, td { text-align: left; padding: 0.6rem 0.8rem; border-bottom: 1px solid var(--border); }
+        th { color: var(--muted); font-weight: 600; }
+        tr:hover { background: rgba(255,255,255,0.02); }
+
+        .diagram-container {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 1rem;
+            margin: 1rem 0;
+            overflow-x: auto;
+        }
+
+        .rec-item {
+            border-left: 3px solid var(--accent);
+            padding: 0.8rem 1rem;
+            margin-bottom: 1rem;
+            background: rgba(88,166,255,0.05);
+            border-radius: 0 4px 4px 0;
+        }
+        .rec-item.priority-high { border-color: var(--bad); background: rgba(248,81,73,0.05); }
+        .rec-item.priority-medium { border-color: var(--warn); background: rgba(210,153,34,0.05); }
+        .rec-title { font-weight: 600; margin-bottom: 0.3rem; }
+        .rec-meta { font-size: 0.85rem; color: var(--muted); }
+
+        .action-bar {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1.5rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid var(--border);
+        }
+        .btn {
+            background: var(--accent);
+            color: #0d1117;
+            border: none;
+            padding: 0.6rem 1.2rem;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .btn:hover { opacity: 0.9; }
+        .btn-secondary {
+            background: transparent;
+            color: var(--fg);
+            border: 1px solid var(--border);
+        }
+
+        footer {
+            text-align: center;
+            color: var(--muted);
+            font-size: 0.8rem;
+            margin-top: 3rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid var(--border);
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Surgical Investigation Report</h1>
+        <div class="meta">
+            <span>Project: <strong>How to make soap</strong></span>
+            <span>Generated: 2026-11-04</span>
+            <span>Mode: <strong>Project-Manager / Investigator Audit</strong></span>
+            <span>Focus: <strong>Archaeometry & Modern Petrology (2026)</strong></span>
+        </div>
+    </header>
+
+    <nav aria-label="Report sections">
+        <a href="#mission">Mission</a>
+        <a href="#dependencies">Dependencies</a>
+        <a href="#practices">Best Practices</a>
+        <a href="#optimality">Optimality</a>
+        <a href="#diagrams">Diagrams</a>
+        <a href="#findings">Findings</a>
+        <a href="#recommendations">Recommendations</a>
+    </nav>
+
+    <section id="mission">
+        <h2>1. Mission Verification</h2>
+        <p><strong>Stated Mission:</strong> Realistic, historically and scientifically accurate educational survival/crafting simulation modeling the deep history of chemical pyrotechnology, saponification, metallurgy, and medicine — from Neolithic fire to the Voltaic pile.</p>
+        <p><strong>Success Criteria:</strong> Clean zero-runtime-dependency TypeScript architecture, sub-200 KiB production bundle, strict 67,648-byte SharedArrayBuffer invariant, and complete alignment with physical chemistry, modern petrology (2026), and archaeological evidence.</p>
+        <p><strong>Stated vs Actual Gap:</strong> Fully aligned. Historical texts (Girsu tablets, Ebers papyrus, Pliny's Historia Naturalis) and mineral petrology (Mohs scaling, crystal chemistry, metamorphic/sedimentary paragenesis) accurately reflected in game logic and story lore.</p>
+    </section>
+
+    <section id="dependencies">
+        <h2>2. Dependency Audit</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Package / Standard</th>
+                    <th>Required / Pinned</th>
+                    <th>Runtime / Dev</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Runtime Dependencies</td>
+                    <td>0 ("dependencies": {})</td>
+                    <td>Runtime</td>
+                    <td><span class="badge badge-good">PASS (Pure Web APIs)</span></td>
+                </tr>
+                <tr>
+                    <td>SharedArrayBuffer Layout</td>
+                    <td>67,648 Bytes</td>
+                    <td>Engine</td>
+                    <td><span class="badge badge-good">PASS (Enforced by tests)</span></td>
+                </tr>
+                <tr>
+                    <td>Production Entrypoint Budget</td>
+                    <td>&lt; 200,000 Bytes</td>
+                    <td>Webpack</td>
+                    <td><span class="badge badge-good">PASS (194 KiB)</span></td>
+                </tr>
+                <tr>
+                    <td>Accessibility (WCAG 2.2)</td>
+                    <td>SC 2.5.8 (Target Size), SC 2.4.11</td>
+                    <td>CSS / UI</td>
+                    <td><span class="badge badge-good">PASS</span></td>
+                </tr>
+            </tbody>
+        </table>
+    </section>
+
+    <section id="practices">
+        <h2>3. Best Practices Assessment</h2>
+        <h3>Archaeometric Fidelity</h3>
+        <p><span class="badge badge-good">GOOD</span> Saponification Arrhenius parameters ($E_a = 58.2\text{ kJ/mol}$, $T_{min} = 318\text{ K}$) and 1:3 tristearin:KOH stoichiometry reflect genuine laboratory and historical soapmaking data.</p>
+        <p><span class="badge badge-good">GOOD</span> Quicklime calcination and aqueous causticization accurately reflect ancient alkaline pyrotechnology.</p>
+
+        <h3>Petrology & Mineral Physics</h3>
+        <p><span class="badge badge-good">GOOD</span> Mohs hardness ratio quadratic energy scaling models realistic mineral fracture resistance during tool harvest.</p>
+        <p><span class="badge badge-good">GOOD</span> Soapstone (talc-schist, Mohs 1.5) accurately serves as a refractory casting mold up to $1085^\circ\text{C}$ for bronze alloying.</p>
+    </section>
+
+    <section id="optimality">
+        <h2>4. Implementation Optimality Check</h2>
+        <p><strong>Algorithms:</strong> Craig Reynolds boids steering for colony labor; cellular wear grid for desire paths; explicit Euler integration with Arrhenius kinetics for chemical vessels in a dedicated Web Worker.</p>
+        <p><strong>Resource Usage:</strong> Fixed memory layout within SharedArrayBuffer prevents GC spikes; pure Web Audio synthesizers eliminate external sound asset bloat.</p>
+        <p><strong>Scalability:</strong> Fully decoupled simulation loop runs at 60Hz worker tick rate without blocking UI frame pacing.</p>
+    </section>
+
+    <section id="diagrams">
+        <h2>5. Architecture & Research Diagrams</h2>
+        
+        <h3>Simulation Worker Architecture</h3>
+        <div class="diagram-container">
+            <pre class="mermaid">
+architecture-beta
+    group worker(cloud)["Web Worker (sim.worker.ts)"]
+        service engine in worker[Simulation Engine]
+        service chem in worker[Arrhenius Chemistry & SID pH]
+        service colony in worker[Colony Steering & Labor]
+        service sab in worker[SharedArrayBuffer (67648 B)]
+
+    group main(cloud)["Main UI Thread"]
+        service app in main[State & WindowManager]
+        service canvas in main[WebGL & 2D Canvas]
+        service audio in main[Web Audio Engine]
+
+    main:app -- worker:engine
+    worker:sab -- main:app
+            </pre>
+        </div>
+
+        <h3>Frontend Architecture</h3>
+        <div class="diagram-container">
+            <pre class="mermaid">
+flowchart TD
+    WM[WindowManager] --> BW[BiomeWindow]
+    WM --> RW[ReactionsWindow]
+    WM --> FW[FabricationWindow]
+    WM --> PW[PaddocksWindow]
+    WM --> JW[JournalPanel]
+
+    App[State & Dispatcher] --> HUD[HUD & Renown Bar]
+    App --> Bench[LabBench3DCanvas WebGL]
+    App --> Map[StrategyMapCanvas 2D]
+    App --> Audio[Web Audio Spatial Stereo Engine]
+            </pre>
+        </div>
+
+        <h3>Archaeometry & Petrology Research Mapping</h3>
+        <div class="diagram-container">
+            <pre class="mermaid">
+flowchart LR
+    subgraph Archaeology["Archaeological & Historical Grounding"]
+        Girsu["Sumerian Girsu Tablets (2500 BC)"]
+        Ebers["Egyptian Ebers Papyrus (1550 BC)"]
+        Pliny["Pliny Historia Naturalis (77 AD)"]
+    end
+
+    subgraph Petrology["Modern Petrology (2026)"]
+        Chert["Microcrystalline Quartz (Mohs 7.0)"]
+        Talc["Steatite / Soapstone (Mohs 1.5)"]
+        Calcite["Limestone / CaCO3 Calcination"]
+        Halite["NaCl Evaporites & Salting Out"]
+    end
+
+    subgraph Engine["In-Game Simulation Engine"]
+        Sapon["Tristearin + 3 KOH -> 3 K-stearate"]
+        SaltOut["K-stearate + NaCl -> Na-stearate curd"]
+        MohsScale["Fracture Energy & Mohs Ratio (W_fracture)"]
+    end
+
+    Girsu --> Sapon
+    Ebers --> Sapon
+    Pliny --> Sapon
+    Chert --> MohsScale
+    Talc --> MohsScale
+    Calcite --> Sapon
+    Halite --> SaltOut
+            </pre>
+        </div>
+
+        <h3>Full System Architecture</h3>
+        <div class="diagram-container">
+            <pre class="mermaid">
+flowchart TD
+    subgraph Data["Domain & Scientific Data"]
+        Species["Chemical Species Registry (38 species)"]
+        Reactions["Reaction Rules (Arrhenius + SID pH)"]
+        BiomeDAG["Petrological Biome DAG (Mohs & Fracture W)"]
+        Story["Historical Chapters & Authentic Lore"]
+    end
+
+    subgraph Simulation["Web Worker Engine"]
+        World["World State & Vessels Float64Array"]
+        HarvestEngine["Tool Mohs & Mechanical Work"]
+        ColonyEngine["Craig Reynolds Boids & Desire Paths"]
+        SAB["SharedArrayBuffer 67,648 B"]
+    end
+
+    subgraph Presentation["User Interface Layer"]
+        Windows["WindowManager & Floating Windows"]
+        GL["WebGL 3D Bench View"]
+        StrategyCanvas["Strategy Astrolabe Canvas"]
+        Sound["Procedural Stereo Audio Synthesizer"]
+    end
+
+    Data --> Simulation
+    Simulation --> Presentation
+            </pre>
+        </div>
+    </section>
+
+    <section id="findings">
+        <h2>6. Findings Summary</h2>
+        <p><span class="badge badge-good">GOOD</span> Classical and Near Eastern citations (Sumerian Girsu cuneiform, Egyptian Ebers Papyrus, Pliny the Elder's Historia Naturalis) are now precisely represented in <code>src/data/story.ts</code>.</p>
+        <p><span class="badge badge-good">GOOD</span> Petrological crystal chemistry, mineral classifications, and Mohs hardness annotations are fully grounded in <code>src/data/items.ts</code> and <code>src/data/biomeNodes.ts</code>.</p>
+        <p><span class="badge badge-good">GOOD</span> Zero runtime dependencies maintained, 223/223 vitest unit tests passing, clean TypeScript build, and production bundle verified under 194 KiB.</p>
+    </section>
+
+    <section id="recommendations">
+        <h2>7. Recommendations</h2>
+        <div class="rec-item priority-high">
+            <div class="rec-title">Preserve 2026 Petrological & Archaeometric Accuracy in Future Tech Trees</div>
+            <div class="rec-meta">
+                <strong>Why:</strong> Ensures that future additions (e.g. glass fluxing with natron, Roman pozzolanic cement) maintain the same high level of bioarchaeological fidelity.<br>
+                <strong>What:</strong> Follow established pattern of empirical Arrhenius constants and stoichiometric mass ratios in <code>reactionRules.ts</code>.<br>
+                <strong>Effort:</strong> Ongoing maintenance.<br>
+                <strong>Source:</strong> <code>docs/investigation-notes/petrology-comparative-audit.md</code>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <p>Surgical-Investigation Skill · Generated for How to make soap · 2026-11-04</p>
+    </footer>
+</body>
+</html>

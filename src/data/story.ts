@@ -55,10 +55,10 @@ export const CHAPTERS: readonly ChapterDef[] = [
   },
   {
     id: 'ch2',
-    era: 'c. 2500 BC · Nineveh → 30 BC · the Tiber',
+    era: 'c. 2500 BC · Girsu & Nineveh → 30 BC · the Tiber',
     title: "The Soapwright's Secret",
     epigraph: '“Ash is not the end of fire. It is the beginning of clean hands.” — Magister Hennig',
-    body: 'The Babylonians knew it written in clay tablets; the Romans washed their wealth in it. Potash from the hearth, fat from the hunt, salt from the earth — three humble things that made the world tolerable. Make the soap. The world will notice.',
+    body: 'The Sumerian scribes of Girsu inscribed it on clay cylinders: ash of alkali plants steeped with fat to scour raw fleece. The Egyptians of the Ebers Papyrus turned oils and alkaline salts into healing unguents, and Roman Gaul cured hair and skin with sapo. Potash from the hearth, fat from the hunt, salt from the earth — three humble things that made the world tolerable. Make the soap. The world will notice.',
     objectives: [
       { id: 'ch2_caO', kind: 'species', target: 'CAO', text: 'Slaked quicklime (CaO) in water' },
       { id: 'ch2_lye', kind: 'species', target: 'KOH', text: 'Settle clear lye (> 0.1 mol KOH)' },
@@ -165,7 +165,7 @@ export const LETTERS: readonly LetterDef[] = [
     era: '77 AD',
     chapter: 2,
     from: 'Pliny the Elder',
-    excerpt: 'Hisha Naturalis: sapones, a thing the Gauls knew.',
+    excerpt: 'Historia Naturalis: sapo, Galliarum inventum rutilandis capillis.',
     task: { id: 'l_pliny_t', kind: 'species', target: 'K_STEARATE', text: 'Saponify fat into true soap' },
     rewardRenown: 70,
     rewardAffinity: { soapwright: 25 },

@@ -1,3 +1,4 @@
+import './tutorial.css';
 import {
   TUTORIAL_LESSONS,
   type TutorialTierId,

@@ -304,4 +304,33 @@ export const audio = {
     tone(138.59, 'sine', 1.8, gains.sfx, 0.3, pan);
     noise(0.08, gains.sfx, 450, 0.25, pan);
   },
+
+  /**
+   * Tactile solenoid latch click for physical button depressions & toggles.
+   */
+  uiLatchClick(pitch = 1.0): void {
+    if (!ensure() || !gains.sfx) return;
+    tone(2400 * pitch, 'square', 0.015, gains.sfx, 0.12);
+    setTimeout(() => {
+      if (gains.sfx) tone(4800 * pitch, 'sine', 0.02, gains.sfx, 0.08);
+    }, 8);
+  },
+
+  /**
+   * Heavy mechanical pneumatic air-vent/hiss for window opening and aperture transitions.
+   */
+  uiHeavyVent(): void {
+    if (!ensure() || !gains.sfx) return;
+    noise(0.18, gains.sfx, 650, 0.2);
+    tone(140, 'triangle', 0.22, gains.sfx, 0.15);
+  },
+
+  /**
+   * Resonant alchemical bell ping for discoveries and completed crafts.
+   */
+  uiMetalPing(): void {
+    if (!ensure() || !gains.sfx) return;
+    tone(1046.5, 'sine', 0.45, gains.sfx, 0.22);
+    tone(2093, 'triangle', 0.35, gains.sfx, 0.14);
+  },
 };

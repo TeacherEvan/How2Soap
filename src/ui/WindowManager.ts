@@ -8,6 +8,7 @@
  * 720px. Windows are lazy-loaded by the launcher, never in the eager bundle.
  */
 import { globalOverlayStack } from './overlayStack';
+import { audio } from './audio';
 
 export type WindowSize = 'full' | 'wide' | 'narrow';
 
@@ -45,6 +46,7 @@ const openWindows = new Map<string, OpenWindow>();
 function closeWindow(id: string): void {
   const entry = openWindows.get(id);
   if (!entry) return;
+  audio.uiLatchClick(0.85);
   try {
     entry.spec.unmount?.();
   } finally {
@@ -115,6 +117,7 @@ export const WindowManager = {
     root.addEventListener('keydown', (event: KeyboardEvent) => trapFocus(root, event));
 
     document.body.append(backdrop, root);
+    audio.uiHeavyVent();
 
     const restoreFocusTo = document.activeElement;
     const overlayEntry = { id: `window:${spec.id}`, close: () => closeWindow(spec.id), remove: () => closeWindow(spec.id) };

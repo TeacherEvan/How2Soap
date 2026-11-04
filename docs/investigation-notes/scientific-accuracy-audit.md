@@ -1,0 +1,12 @@
+# Surgical Investigation Notes: Scientific & Archaeological Accuracy (2026 Audit)
+
+## Findings Matrix
+
+| Dimension | Codebase State | Modern Archaeological / Scientific Standard (2026) | Alignment Rating | Action Required |
+|-----------|----------------|----------------------------------------------------|------------------|-----------------|
+| **Reaction Kinetics & Stoichiometry** | `reactionRules.ts`: `saponification` has $E_a = 58.2\text{ kJ/mol}$, $T_{min} = 318\text{ K}$, stoichiometric $1:3$ ratio tristearin:KOH. | True experimental Arrhenius parameters for triglyceride saponification ($E_a \approx 55-65\text{ kJ/mol}$, requires molten fat $T > 45^\circ\text{C}$). | **EXCELLENT (GOOD)** | None. Kinetics are chemically sound. |
+| **Alkali Leaching & Causticization** | Wood ash leaches $\text{K}_2\text{CO}_3$, causticized with $\text{Ca(OH)}_2$ to $\text{KOH}$ with $\text{CaCO}_3$ precipitate. | Validated ancient pyrotechnology: ash leaching yields weak potash, but quicklime causticization was known in antiquity to sharpen lye into true hydroxide. | **EXCELLENT (GOOD)** | Retain model; perfectly reflects ancient caustic lye preparation. |
+| **Salting Out Mechanics** | `salting_out` converts $\text{K-stearate} + \text{NaCl} \to \text{Na-stearate}\downarrow + \text{KCl}$. | Historically matches the medieval/Marseille grain-soap breakthrough transforming potash soft soap into moldable hard bars. | **EXCELLENT (GOOD)** | Retain. |
+| **Historical Texts & Epigraphy** | `src/data/story.ts` references Pliny the Elder letter with typographical error `"Hisha Naturalis"` instead of `"Historia Naturalis"`. | Pliny the Elder wrote *Naturalis Historia* (or *Historia Naturalis*). Typo "Hisha" in `l_pliny` requires correction. | **DEFECT (WARN)** | Fix typo to *Historia Naturalis*. |
+| **Sumerian & Egyptian Provenance** | Chapter 2 mentions "Babylonians knew it written in clay tablets", but earliest known tablets are Sumerian (Girsu/Lagash, c. 2500-2800 BCE) and Egyptian Ebers Papyrus (c. 1550 BCE). | Modern 2026 bioarchaeology confirms the Girsu cuneiform recipe and Ebers Papyrus medical soap ointment. | **IMPROVEMENT (WARN)** | Enrich Chapter 2 and letter lore with specific Sumerian (Girsu) cuneiform and Ebers Papyrus textual grounding. |
+| **Item Descriptions** | `BAR_SOAP` description: "Molded tallow bar soap; cleanses contamination and boosts colony morale." | Tallow soap verified by GC-MS fatty acid profiles (C16:0 and C18:0 signatures). | **GOOD** | Mention sodium stearate curation. |

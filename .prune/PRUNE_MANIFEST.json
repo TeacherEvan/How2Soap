@@ -1,0 +1,2582 @@
+{
+  "timestamp": "2026-11-04T08:55:13.153Z",
+  "target_path": "/home/leandi-duplessis/github/workspaces/How to make soap",
+  "git_commit": "8f56672",
+  "selected_files": [
+    {
+      "path": ".gitignore",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "AGENTS.md",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "README.md",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "package.json",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "vercel.json",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": ".vscode/settings.json",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "public/favicon.svg",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "public/manifest.webmanifest",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "public/sw.js",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "src/styles.css",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "docs/.scratch-audit/ARCHITECTURE.md",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "docs/.scratch-audit/CODEBASE-STATE.md",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "docs/.scratch-audit/REQUIREMENTS.md",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "docs/.scratch-audit/TODO.md",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "docs/.scratch-audit/TRACEABILITY.md",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "docs/.scratch-audit/debrief.md",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "docs/audits/how2soap-surgical-audit-2026-11-03.md",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "docs/plans/2026-11-03-story-and-progression-design.md",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "docs/plans/2026-11-03-story-and-progression-implementation-plan.md",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "docs/plans/2026-11-04-feature-windows-design.md",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "docs/plans/2026-11-04-how2soap-contender-plan.md",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "docs/plans/Architectural Design.txt",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "docs/plans/chemistry_survival_game_master_specification.md",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "docs/plans/crisis-turns-spec.md",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "docs/plans/implementation_plan.md",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "docs/plans/implementation_plan2.md",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "docs/plans/implementation_plan3.md",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "docs/plans/implementation_plan5.md",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "public/icons/apple-touch-icon.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "public/icons/icon-192.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "public/icons/icon-512.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-3d-assets/generate_diorama_meshes.py",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/README.md",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/make_splash.py",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "src/app/actions.ts",
+      "action": "keep",
+      "confidence": 0.4,
+      "reason": "Low confidence (40%) — manual only"
+    },
+    {
+      "path": "src/app/autosave.ts",
+      "action": "keep",
+      "confidence": 0.4,
+      "reason": "Low confidence (40%) — manual only"
+    },
+    {
+      "path": "src/app/dom.ts",
+      "action": "keep",
+      "confidence": 0.4,
+      "reason": "Low confidence (40%) — manual only"
+    },
+    {
+      "path": "src/app/launcher.ts",
+      "action": "keep",
+      "confidence": 0.4,
+      "reason": "Low confidence (40%) — manual only"
+    },
+    {
+      "path": "src/app/panels.ts",
+      "action": "keep",
+      "confidence": 0.4,
+      "reason": "Low confidence (40%) — manual only"
+    },
+    {
+      "path": "src/app/splash.ts",
+      "action": "keep",
+      "confidence": 0.4,
+      "reason": "Low confidence (40%) — manual only"
+    },
+    {
+      "path": "src/app/state.ts",
+      "action": "keep",
+      "confidence": 0.4,
+      "reason": "Low confidence (40%) — manual only"
+    },
+    {
+      "path": "src/app/views.ts",
+      "action": "keep",
+      "confidence": 0.4,
+      "reason": "Low confidence (40%) — manual only"
+    },
+    {
+      "path": "src/app/workerMessages.ts",
+      "action": "keep",
+      "confidence": 0.4,
+      "reason": "Low confidence (40%) — manual only"
+    },
+    {
+      "path": "src/data/biomeNodes.ts",
+      "action": "keep",
+      "confidence": 0.4,
+      "reason": "Low confidence (40%) — manual only"
+    },
+    {
+      "path": "src/data/items.ts",
+      "action": "keep",
+      "confidence": 0.4,
+      "reason": "Low confidence (40%) — manual only"
+    },
+    {
+      "path": "src/data/reactionRules.ts",
+      "action": "keep",
+      "confidence": 0.4,
+      "reason": "Low confidence (40%) — manual only"
+    },
+    {
+      "path": "src/data/speciesRegistry.ts",
+      "action": "keep",
+      "confidence": 0.4,
+      "reason": "Low confidence (40%) — manual only"
+    },
+    {
+      "path": "src/data/story.ts",
+      "action": "keep",
+      "confidence": 0.4,
+      "reason": "Low confidence (40%) — manual only"
+    },
+    {
+      "path": "src/engine/chemistry.ts",
+      "action": "keep",
+      "confidence": 0.4,
+      "reason": "Low confidence (40%) — manual only"
+    },
+    {
+      "path": "src/engine/colony.ts",
+      "action": "keep",
+      "confidence": 0.4,
+      "reason": "Low confidence (40%) — manual only"
+    },
+    {
+      "path": "src/engine/conditions.ts",
+      "action": "keep",
+      "confidence": 0.4,
+      "reason": "Low confidence (40%) — manual only"
+    },
+    {
+      "path": "src/engine/crisis.ts",
+      "action": "keep",
+      "confidence": 0.4,
+      "reason": "Low confidence (40%) — manual only"
+    },
+    {
+      "path": "src/engine/fabrication.ts",
+      "action": "keep",
+      "confidence": 0.4,
+      "reason": "Low confidence (40%) — manual only"
+    },
+    {
+      "path": "src/engine/harvest.ts",
+      "action": "keep",
+      "confidence": 0.4,
+      "reason": "Low confidence (40%) — manual only"
+    },
+    {
+      "path": "src/engine/husbandry.ts",
+      "action": "keep",
+      "confidence": 0.4,
+      "reason": "Low confidence (40%) — manual only"
+    },
+    {
+      "path": "src/engine/inventory.ts",
+      "action": "keep",
+      "confidence": 0.4,
+      "reason": "Low confidence (40%) — manual only"
+    },
+    {
+      "path": "src/engine/mandates.ts",
+      "action": "keep",
+      "confidence": 0.4,
+      "reason": "Low confidence (40%) — manual only"
+    },
+    {
+      "path": "src/engine/memoryLayout.ts",
+      "action": "keep",
+      "confidence": 0.4,
+      "reason": "Low confidence (40%) — manual only"
+    },
+    {
+      "path": "src/engine/metabolism.ts",
+      "action": "keep",
+      "confidence": 0.4,
+      "reason": "Low confidence (40%) — manual only"
+    },
+    {
+      "path": "src/engine/persistence.ts",
+      "action": "keep",
+      "confidence": 0.4,
+      "reason": "Low confidence (40%) — manual only"
+    },
+    {
+      "path": "src/engine/progression.ts",
+      "action": "keep",
+      "confidence": 0.4,
+      "reason": "Low confidence (40%) — manual only"
+    },
+    {
+      "path": "src/engine/rng.ts",
+      "action": "keep",
+      "confidence": 0.4,
+      "reason": "Low confidence (40%) — manual only"
+    },
+    {
+      "path": "src/engine/saveSignature.ts",
+      "action": "keep",
+      "confidence": 0.4,
+      "reason": "Low confidence (40%) — manual only"
+    },
+    {
+      "path": "src/engine/sim.worker.ts",
+      "action": "keep",
+      "confidence": 0.4,
+      "reason": "Low confidence (40%) — manual only"
+    },
+    {
+      "path": "src/engine/telegraph.ts",
+      "action": "keep",
+      "confidence": 0.4,
+      "reason": "Low confidence (40%) — manual only"
+    },
+    {
+      "path": "src/engine/time.ts",
+      "action": "keep",
+      "confidence": 0.4,
+      "reason": "Low confidence (40%) — manual only"
+    },
+    {
+      "path": "src/engine/vesselInputs.ts",
+      "action": "keep",
+      "confidence": 0.4,
+      "reason": "Low confidence (40%) — manual only"
+    },
+    {
+      "path": "src/engine/world.ts",
+      "action": "keep",
+      "confidence": 0.4,
+      "reason": "Low confidence (40%) — manual only"
+    },
+    {
+      "path": "src/engine/worldRestore.ts",
+      "action": "keep",
+      "confidence": 0.4,
+      "reason": "Low confidence (40%) — manual only"
+    },
+    {
+      "path": "src/media/how2soap-intro.mp4",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "src/media/how2soap-intro.webm",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "src/media/how2soap-poster.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "src/types/assets.d.ts",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "src/ui/BiomeTreePanel.ts",
+      "action": "keep",
+      "confidence": 0.4,
+      "reason": "Low confidence (40%) — manual only"
+    },
+    {
+      "path": "src/ui/CrisisModal.ts",
+      "action": "keep",
+      "confidence": 0.4,
+      "reason": "Low confidence (40%) — manual only"
+    },
+    {
+      "path": "src/ui/JournalPanel.ts",
+      "action": "keep",
+      "confidence": 0.4,
+      "reason": "Low confidence (40%) — manual only"
+    },
+    {
+      "path": "src/ui/MenuController.ts",
+      "action": "keep",
+      "confidence": 0.4,
+      "reason": "Low confidence (40%) — manual only"
+    },
+    {
+      "path": "src/ui/StoryMode.ts",
+      "action": "keep",
+      "confidence": 0.4,
+      "reason": "Low confidence (40%) — manual only"
+    },
+    {
+      "path": "src/ui/StrategyMapCanvas.ts",
+      "action": "keep",
+      "confidence": 0.4,
+      "reason": "Low confidence (40%) — manual only"
+    },
+    {
+      "path": "src/ui/Toast.ts",
+      "action": "keep",
+      "confidence": 0.4,
+      "reason": "Low confidence (40%) — manual only"
+    },
+    {
+      "path": "src/ui/ToolAndInventoryPanel.ts",
+      "action": "keep",
+      "confidence": 0.4,
+      "reason": "Low confidence (40%) — manual only"
+    },
+    {
+      "path": "src/ui/TutorialController.ts",
+      "action": "keep",
+      "confidence": 0.4,
+      "reason": "Low confidence (40%) — manual only"
+    },
+    {
+      "path": "src/ui/WindowManager.ts",
+      "action": "keep",
+      "confidence": 0.4,
+      "reason": "Low confidence (40%) — manual only"
+    },
+    {
+      "path": "src/ui/WorkbenchCanvas.ts",
+      "action": "keep",
+      "confidence": 0.4,
+      "reason": "Low confidence (40%) — manual only"
+    },
+    {
+      "path": "src/ui/audio.ts",
+      "action": "keep",
+      "confidence": 0.4,
+      "reason": "Low confidence (40%) — manual only"
+    },
+    {
+      "path": "src/ui/fabricationModel.ts",
+      "action": "keep",
+      "confidence": 0.4,
+      "reason": "Low confidence (40%) — manual only"
+    },
+    {
+      "path": "src/ui/icons.ts",
+      "action": "keep",
+      "confidence": 0.4,
+      "reason": "Low confidence (40%) — manual only"
+    },
+    {
+      "path": "src/ui/kinetics.ts",
+      "action": "keep",
+      "confidence": 0.4,
+      "reason": "Low confidence (40%) — manual only"
+    },
+    {
+      "path": "src/ui/mapMath.ts",
+      "action": "keep",
+      "confidence": 0.4,
+      "reason": "Low confidence (40%) — manual only"
+    },
+    {
+      "path": "src/ui/overlayStack.ts",
+      "action": "keep",
+      "confidence": 0.4,
+      "reason": "Low confidence (40%) — manual only"
+    },
+    {
+      "path": "src/ui/paddockModel.ts",
+      "action": "keep",
+      "confidence": 0.4,
+      "reason": "Low confidence (40%) — manual only"
+    },
+    {
+      "path": "src/ui/panelModels.ts",
+      "action": "keep",
+      "confidence": 0.4,
+      "reason": "Low confidence (40%) — manual only"
+    },
+    {
+      "path": "src/ui/score.ts",
+      "action": "keep",
+      "confidence": 0.4,
+      "reason": "Low confidence (40%) — manual only"
+    },
+    {
+      "path": "src/ui/tutorial.css",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "src/ui/tutorialCurriculum.ts",
+      "action": "keep",
+      "confidence": 0.4,
+      "reason": "Low confidence (40%) — manual only"
+    },
+    {
+      "path": ".superpowers/sdd/2026-11-03-story-and-progression-implementation-plan/plan-header.md",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": ".superpowers/sdd/2026-11-03-story-and-progression-implementation-plan/progress.md",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": ".superpowers/sdd/2026-11-03-story-and-progression-implementation-plan/task-1-brief.md",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": ".superpowers/sdd/2026-11-03-story-and-progression-implementation-plan/task-1-report.md",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": ".superpowers/sdd/2026-11-03-story-and-progression-implementation-plan/task-1-review-package.md",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": ".superpowers/sdd/2026-11-03-story-and-progression-implementation-plan/task-10-brief.md",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": ".superpowers/sdd/2026-11-03-story-and-progression-implementation-plan/task-11-brief.md",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": ".superpowers/sdd/2026-11-03-story-and-progression-implementation-plan/task-12-brief.md",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": ".superpowers/sdd/2026-11-03-story-and-progression-implementation-plan/task-13-brief.md",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": ".superpowers/sdd/2026-11-03-story-and-progression-implementation-plan/task-14-brief.md",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": ".superpowers/sdd/2026-11-03-story-and-progression-implementation-plan/task-15-brief.md",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": ".superpowers/sdd/2026-11-03-story-and-progression-implementation-plan/task-2-brief.md",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": ".superpowers/sdd/2026-11-03-story-and-progression-implementation-plan/task-2-report.md",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": ".superpowers/sdd/2026-11-03-story-and-progression-implementation-plan/task-2-review-package.md",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": ".superpowers/sdd/2026-11-03-story-and-progression-implementation-plan/task-3-brief.md",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": ".superpowers/sdd/2026-11-03-story-and-progression-implementation-plan/task-3-report.md",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": ".superpowers/sdd/2026-11-03-story-and-progression-implementation-plan/task-3-review-package.md",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": ".superpowers/sdd/2026-11-03-story-and-progression-implementation-plan/task-4-brief.md",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": ".superpowers/sdd/2026-11-03-story-and-progression-implementation-plan/task-4-report.md",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": ".superpowers/sdd/2026-11-03-story-and-progression-implementation-plan/task-4-review-package.md",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": ".superpowers/sdd/2026-11-03-story-and-progression-implementation-plan/task-5-brief.md",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": ".superpowers/sdd/2026-11-03-story-and-progression-implementation-plan/task-6-brief.md",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": ".superpowers/sdd/2026-11-03-story-and-progression-implementation-plan/task-7-brief.md",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": ".superpowers/sdd/2026-11-03-story-and-progression-implementation-plan/task-8-brief.md",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": ".superpowers/sdd/2026-11-03-story-and-progression-implementation-plan/task-9-brief.md",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "docs/.scratch-audit/audit/SECURITY.md",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "docs/.scratch-audit/runtime/events.jsonl",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "docs/.scratch-audit/runtime/manifest.json",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "docs/.scratch-audit/runtime/state.json",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/__pycache__/make_splash.cpython-315.pyc",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/analysis_f0012.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/analysis_f0066.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/analysis_f0116.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/analysis_f0160.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/analysis_f0195.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/analysis_f0220.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/analysis_f0255.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/how2soap-intro.mp4",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/how2soap-intro.webm",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/intro.wav",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/poster.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "src/assets/tutorial/blender_elements_crucible.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "src/assets/tutorial/blender_mines_geology.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "src/assets/tutorial/blender_terrain_map.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "src/assets/tutorial/blender_tutorial_tiers.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "src/ui/gl/LabBench3DCanvas.ts",
+      "action": "keep",
+      "confidence": 0.4,
+      "reason": "Low confidence (40%) — manual only"
+    },
+    {
+      "path": "src/ui/gl/lowPolyMeshes.ts",
+      "action": "keep",
+      "confidence": 0.4,
+      "reason": "Low confidence (40%) — manual only"
+    },
+    {
+      "path": "src/ui/gl/miniGl.ts",
+      "action": "keep",
+      "confidence": 0.4,
+      "reason": "Low confidence (40%) — manual only"
+    },
+    {
+      "path": "src/ui/windows/BiomeWindow.ts",
+      "action": "keep",
+      "confidence": 0.4,
+      "reason": "Low confidence (40%) — manual only"
+    },
+    {
+      "path": "src/ui/windows/FabricationWindow.ts",
+      "action": "keep",
+      "confidence": 0.4,
+      "reason": "Low confidence (40%) — manual only"
+    },
+    {
+      "path": "src/ui/windows/PaddocksWindow.ts",
+      "action": "keep",
+      "confidence": 0.4,
+      "reason": "Low confidence (40%) — manual only"
+    },
+    {
+      "path": "src/ui/windows/ReactionsWindow.ts",
+      "action": "keep",
+      "confidence": 0.4,
+      "reason": "Low confidence (40%) — manual only"
+    },
+    {
+      "path": "src/ui/windows/windows.css",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "docs/.scratch-audit/audit/logs/retry-CONSISTENCY_GATE.jsonl",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0000.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0001.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0002.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0003.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0004.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0005.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0006.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0007.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0008.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0009.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0010.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0011.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0012.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0013.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0014.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0015.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0016.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0017.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0018.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0019.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0020.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0021.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0022.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0023.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0024.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0025.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0026.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0027.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0028.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0029.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0030.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0031.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0032.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0033.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0034.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0035.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0036.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0037.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0038.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0039.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0040.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0041.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0042.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0043.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0044.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0045.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0046.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0047.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0048.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0049.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0050.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0051.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0052.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0053.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0054.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0055.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0056.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0057.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0058.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0059.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0060.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0061.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0062.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0063.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0064.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0065.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0066.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0067.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0068.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0069.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0070.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0071.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0072.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0073.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0074.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0075.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0076.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0077.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0078.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0079.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0080.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0081.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0082.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0083.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0084.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0085.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0086.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0087.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0088.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0089.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0090.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0091.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0092.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0093.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0094.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0095.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0096.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0097.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0098.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0099.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0100.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0101.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0102.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0103.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0104.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0105.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0106.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0107.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0108.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0109.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0110.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0111.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0112.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0113.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0114.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0115.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0116.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0117.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0118.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0119.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0120.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0121.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0122.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0123.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0124.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0125.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0126.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0127.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0128.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0129.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0130.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0131.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0132.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0133.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0134.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0135.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0136.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0137.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0138.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0139.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0140.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0141.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0142.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0143.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0144.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0145.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0146.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0147.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0148.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0149.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0150.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0151.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0152.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0153.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0154.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0155.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0156.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0157.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0158.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0159.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0160.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0161.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0162.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0163.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0164.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0165.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0166.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0167.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0168.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0169.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0170.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0171.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0172.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0173.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0174.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0175.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0176.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0177.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0178.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0179.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0180.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0181.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0182.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0183.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0184.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0185.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0186.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0187.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0188.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0189.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0190.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0191.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0192.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0193.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0194.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0195.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0196.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0197.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0198.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0199.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0200.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0201.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0202.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0203.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0204.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0205.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0206.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0207.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0208.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0209.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0210.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0211.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0212.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0213.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0214.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0215.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0216.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0217.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0218.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0219.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0220.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0221.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0222.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0223.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0224.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0225.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0226.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0227.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0228.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0229.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0230.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0231.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0232.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0233.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0234.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0235.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0236.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0237.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0238.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0239.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0240.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0241.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0242.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0243.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0244.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0245.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0246.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0247.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0248.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0249.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0250.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0251.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0252.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0253.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0254.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0255.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0256.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0257.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0258.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0259.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0260.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0261.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0262.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0263.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0264.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0265.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0266.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0267.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0268.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    },
+    {
+      "path": "scripts/make-splash/out/frames/f0269.png",
+      "action": "keep",
+      "confidence": 0,
+      "reason": "Low confidence (0%) — manual only"
+    }
+  ],
+  "protected_skipped": [
+    "package-lock.json",
+    "tsconfig.json",
+    "webpack.config.js",
+    "public/index.html",
+    "src/main.ts",
+    "tests/audioAndAccessibility.test.ts",
+    "tests/audioGain.test.ts",
+    "tests/autosaveSignature.test.ts",
+    "tests/biomeNodes.test.ts",
+    "tests/chemistry.test.ts",
+    "tests/colony.test.ts",
+    "tests/colonyPersistence.test.ts",
+    "tests/conditions.test.ts",
+    "tests/crisis.test.ts",
+    "tests/fabricateConsume.test.ts",
+    "tests/fabricationAndInventory.test.ts",
+    "tests/fabricationModel.test.ts",
+    "tests/fullTechProgression.test.ts",
+    "tests/harvest.test.ts",
+    "tests/husbandry.test.ts",
+    "tests/icons.test.ts",
+    "tests/items.test.ts",
+    "tests/journalModel.test.ts",
+    "tests/memoryLayout.test.ts",
+    "tests/metabolism.test.ts",
+    "tests/metallurgy.test.ts",
+    "tests/overlayStack.test.ts",
+    "tests/paddockModel.test.ts",
+    "tests/persistence.test.ts",
+    "tests/persistenceV2.test.ts",
+    "tests/pharmaceuticals.test.ts",
+    "tests/progression.test.ts",
+    "tests/rng.test.ts",
+    "tests/score.test.ts",
+    "tests/soapWalkthrough.test.ts",
+    "tests/stimulantsAndCoordinates.test.ts",
+    "tests/storyCompleteness.test.ts",
+    "tests/strategyMapCanvas.test.ts",
+    "tests/surgicalAuditAndTutorial.test.ts",
+    "tests/telegraphAndMandates.test.ts",
+    "tests/time.test.ts",
+    "tests/treatmentModel.test.ts",
+    "tests/vesselInputs.test.ts",
+    "tests/voltaicPile.test.ts",
+    "tests/webglAndMeshes.test.ts",
+    "tests/workerCommandsBugfix.test.ts",
+    "tests/workerDispatch.test.ts",
+    "tests/worldRestore.test.ts",
+    "tests/worldRoundtrip.test.ts"
+  ],
+  "estimated_reclamation": {
+    "bytes": 0,
+    "files": 0,
+    "ci_seconds": 0
+  },
+  "safety": {
+    "dry_run": true,
+    "stash_created": false,
+    "rollback_script": ""
+  }
+}

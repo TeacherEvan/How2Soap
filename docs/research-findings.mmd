@@ -1,0 +1,30 @@
+flowchart LR
+    accTitle: Research Findings & Archaeometry Alignment
+    accDescr: Mapping of historical texts and petrology to the in-game chemistry and lithology engine.
+
+    subgraph Archaeology["Archaeological & Historical Grounding"]
+        Girsu["Sumerian Girsu Tablets (2500 BC)"]
+        Ebers["Egyptian Ebers Papyrus (1550 BC)"]
+        Pliny["Pliny Historia Naturalis (77 AD)"]
+    end
+
+    subgraph Petrology["Modern Petrology (2026)"]
+        Chert["Microcrystalline Quartz (Mohs 7.0)"]
+        Talc["Steatite / Soapstone (Mohs 1.5)"]
+        Calcite["Limestone / CaCO3 Calcination"]
+        Halite["NaCl Evaporites & Salting Out"]
+    end
+
+    subgraph Engine["In-Game Simulation Engine"]
+        Sapon["Tristearin + 3 KOH -> 3 K-stearate"]
+        SaltOut["K-stearate + NaCl -> Na-stearate curd"]
+        MohsScale["Fracture Energy & Mohs Ratio (W_fracture)"]
+    end
+
+    Girsu --> Sapon
+    Ebers --> Sapon
+    Pliny --> Sapon
+    Chert --> MohsScale
+    Talc --> MohsScale
+    Calcite --> Sapon
+    Halite --> SaltOut

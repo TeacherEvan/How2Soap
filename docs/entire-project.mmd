@@ -1,0 +1,27 @@
+flowchart TD
+    accTitle: Entire How to Make Soap Project Architecture
+    accDescr: End-to-end integration diagram connecting game loop, Web Worker chemistry, petrological harvest system, colony steering, and UI.
+
+    subgraph Data["Domain & Scientific Data"]
+        Species["Chemical Species Registry (38 species)"]
+        Reactions["Reaction Rules (Arrhenius + SID pH)"]
+        BiomeDAG["Petrological Biome DAG (Mohs & Fracture W)"]
+        Story["Historical Chapters & Authentic Lore"]
+    end
+
+    subgraph Simulation["Web Worker Engine"]
+        World["World State & Vessels Float64Array"]
+        HarvestEngine["Tool Mohs & Mechanical Work"]
+        ColonyEngine["Craig Reynolds Boids & Desire Paths"]
+        SAB["SharedArrayBuffer 67,648 B"]
+    end
+
+    subgraph Presentation["User Interface Layer"]
+        Windows["WindowManager & Floating Windows"]
+        GL["WebGL 3D Bench View"]
+        StrategyCanvas["Strategy Astrolabe Canvas"]
+        Sound["Procedural Stereo Audio Synthesizer"]
+    end
+
+    Data --> Simulation
+    Simulation --> Presentation
