@@ -46,7 +46,7 @@ export const TUTORIAL_LESSONS: TutorialLesson[] = [
     formulaHtml: `Glucose burn: <code>dG/dt = BMR + Work(kcal)</code> · Normal core temp: <code>37.0 °C</code>`,
     actionHint: 'Go to Biome Explorer and harvest pine or oak deadfall branches.',
     practiceGrant: {
-      items: [{ itemId: 'PINE_DEADFALL', count: 4, massKg: 2.0 }],
+      items: [{ itemId: 'PINE_DEADFALL_WOOD', count: 4, massKg: 2.0 }],
     },
     isComplete: (ctx) => {
       const items = ctx.state?.inventory?.items ?? [];
@@ -66,7 +66,7 @@ export const TUTORIAL_LESSONS: TutorialLesson[] = [
     formulaHtml: `Ash dissolution: <code>K2CO3(s) &rarr; 2 K+(aq) + CO3^2-(aq)</code> · <code>pH &gt; 11.0</code>`,
     actionHint: 'Switch to Workbench, add Water and Ash to Vessel #0.',
     practiceGrant: {
-      items: [{ itemId: 'HARDWOOD_ASH', count: 4, massKg: 1.0 }],
+      items: [{ itemId: 'WHITE_OAK_BARK', count: 4, massKg: 1.0 }],
       vesselSpecies: [{ speciesId: 'K2CO3', moles: 0.8 }],
     },
     isComplete: (ctx) => {
@@ -88,7 +88,7 @@ export const TUTORIAL_LESSONS: TutorialLesson[] = [
     formulaHtml: `Causticization: <code>K2CO3 + Ca(OH)2 &rarr; 2 KOH + CaCO3&darr;</code>`,
     actionHint: 'Add quicklime/CaO to Vessel #0 to causticize the lye solution.',
     practiceGrant: {
-      items: [{ itemId: 'QUICKLIME', count: 2, massKg: 0.5 }],
+      items: [{ itemId: 'LIMESTONE_ROCK', count: 2, massKg: 0.5 }],
       vesselSpecies: [{ speciesId: 'KOH', moles: 1.5 }],
     },
     isComplete: (ctx) => {
@@ -110,10 +110,10 @@ export const TUTORIAL_LESSONS: TutorialLesson[] = [
     formulaHtml: `Saponification: <code>Triglyceride + 3 OH- &rarr; Glycerol + 3 Soap-</code>`,
     actionHint: 'Add rendered tallow to Vessel #0 and turn on the heating mantle.',
     practiceGrant: {
-      items: [{ itemId: 'RENDERED_TALLOW', count: 2, massKg: 1.0 }],
+      items: [{ itemId: 'RAW_ADIPOSE_FAT', count: 2, massKg: 1.0 }],
       vesselSpecies: [
         { speciesId: 'KOH', moles: 2.0 },
-        { speciesId: 'SOAP_POTASSIUM', moles: 1.2 },
+        { speciesId: 'K_STEARATE', moles: 1.2 },
       ],
       vesselTempK: 358.15,
     },
@@ -165,8 +165,8 @@ export const TUTORIAL_LESSONS: TutorialLesson[] = [
     actionHint: 'Craft or equip a knapped flint or bronze pick/axe.',
     practiceGrant: {
       items: [
-        { itemId: 'KNAPPED_FLINT_HANDAXE', count: 1, massKg: 0.8 },
-        { itemId: 'COPPER_PICKAXE', count: 1, massKg: 1.5 },
+        { itemId: 'FLINT_ADZE', count: 1, massKg: 0.8 },
+        { itemId: 'FLINT_FLAKE_BLADE', count: 1, massKg: 0.5 },
       ],
     },
     isComplete: (ctx) => {
@@ -189,7 +189,7 @@ export const TUTORIAL_LESSONS: TutorialLesson[] = [
     practiceGrant: {
       items: [
         { itemId: 'MALACHITE_ORE', count: 4, massKg: 2.0 },
-        { itemId: 'CASSITERITE_PEBBLES', count: 2, massKg: 1.0 },
+        { itemId: 'CASSITERITE_ORE', count: 2, massKg: 1.0 },
       ],
     },
     isComplete: (ctx) => {
@@ -213,12 +213,11 @@ export const TUTORIAL_LESSONS: TutorialLesson[] = [
       items: [
         { itemId: 'COPPER_INGOT', count: 4, massKg: 2.0 },
         { itemId: 'TIN_INGOT', count: 1, massKg: 0.5 },
-        { itemId: 'BRONZE_INGOT', count: 2, massKg: 1.0 },
       ],
     },
     isComplete: (ctx) => {
       const items = ctx.state?.inventory?.items ?? [];
-      return items.some((it: any) => it.id.includes('BRONZE') || it.id.includes('COPPER_INGOT'));
+      return items.some((it: any) => it.id.includes('COPPER_INGOT') || it.id.includes('TIN_INGOT'));
     },
   },
   {
@@ -329,7 +328,7 @@ export const TUTORIAL_LESSONS: TutorialLesson[] = [
     practiceGrant: {
       vesselSpecies: [
         { speciesId: 'NACL', moles: 2.5 },
-        { speciesId: 'SOAP_SODIUM', moles: 0.8 },
+        { speciesId: 'NA_STEARATE', moles: 0.8 },
       ],
     },
     isComplete: (ctx) => {
@@ -373,11 +372,11 @@ export const TUTORIAL_LESSONS: TutorialLesson[] = [
     formulaHtml: `Faraday's Law: <code>&Delta;n_Na = (V - V_decomp) &middot; &Delta;t / (R_cell &middot; F &middot; z)</code>`,
     actionHint: 'Apply &gt; 5.0 V across molten lye to isolate elemental sodium.',
     practiceGrant: {
-      items: [{ itemId: 'METALLIC_SODIUM', count: 1, massKg: 0.1 }],
+      items: [{ itemId: 'SODIUM_METAL', count: 1, massKg: 0.1 }],
     },
     isComplete: (ctx) => {
       const items = ctx.state?.inventory?.items ?? [];
-      return items.some((it: any) => it.id === 'METALLIC_SODIUM');
+      return items.some((it: any) => it.id === 'SODIUM_METAL');
     },
   },
 ];

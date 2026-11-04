@@ -11,12 +11,12 @@ export interface VesselInputNeed {
 export const VESSEL_INPUTS: Readonly<Record<string, VesselInputNeed>> = {
   WATER_VESSEL: { speciesIdx: null, minMoles: 0, minLiquidL: 1.0, consume: 'none' },
   HARDWOOD_ASH_WATER: { speciesIdx: SPECIES.K2CO3, minMoles: 0.05, minLiquidL: 0.5, consume: 'none' },
-  ETHANOL_BROTH: { speciesIdx: SPECIES.ETHANOL, minMoles: 0.5, consume: 'all' },
-  PENICILLIN_BROTH: { speciesIdx: SPECIES.PENICILLIN, minMoles: 0.001, consume: 'all' },
-  SALICYLIC_ACID: { speciesIdx: SPECIES.SALICYLIC_ACID, minMoles: 0.001, consume: 'all' },
-  SULFURIC_ACID: { speciesIdx: SPECIES.H2SO4, minMoles: 0.5, consume: 'all' },
-  MOLTEN_KOH: { speciesIdx: SPECIES.KOH, minMoles: 1.0, consume: 'all' },
-  MOLTEN_NAOH: { speciesIdx: SPECIES.NAOH, minMoles: 1.0, consume: 'all' },
+  ETHANOL_BROTH: { speciesIdx: SPECIES.ETHANOL, minMoles: 0.05, consume: 'all' },
+  PENICILLIN_BROTH: { speciesIdx: SPECIES.PENICILLIN, minMoles: 0.0001, consume: 'all' },
+  SALICYLIC_ACID: { speciesIdx: SPECIES.SALICYLIC_ACID, minMoles: 0.0001, consume: 'all' },
+  SULFURIC_ACID: { speciesIdx: SPECIES.H2SO4, minMoles: 0.05, consume: 'all' },
+  MOLTEN_KOH: { speciesIdx: SPECIES.KOH, minMoles: 0.1, consume: 'all' },
+  MOLTEN_NAOH: { speciesIdx: SPECIES.NAOH, minMoles: 0.1, consume: 'all' },
 };
 
 export interface VesselInputPlan {

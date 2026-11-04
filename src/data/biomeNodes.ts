@@ -129,6 +129,7 @@ export const BIOME_DAG: ReadonlyArray<BiomeCategoryNode> = [
             harvestTimeTicks: 1,
             yields: [
               { itemId: 'PINE_DEADFALL_WOOD', name: 'Dry Pine Kindling', massKg: 2.0 },
+              { itemId: 'WOOD_BRANCH', name: 'Sturdy Branch', massKg: 0.5 },
               { itemId: 'OLEORESIN', name: 'Pine Oleoresin', massKg: 0.2 },
             ],
             description: 'Readily burnable kindling and adhesive resin.',
@@ -322,6 +323,7 @@ export const BIOME_DAG: ReadonlyArray<BiomeCategoryNode> = [
             harvestTimeTicks: 1,
             yields: [
               { itemId: 'SOAPSTONE_BLOCK', name: 'Soapstone Block', massKg: 3.0, chemicalFormula: 'Mg3Si4O10(OH)2' },
+              { itemId: 'SOAPSTONE_CHUNK', name: 'Soapstone Chunk', massKg: 1.0, chemicalFormula: 'Mg3Si4O10(OH)2' },
             ],
             description: 'Soft talc-schist rock (Mohs 1.5), easily carved into refractory casting molds and crucibles.',
           },
@@ -345,6 +347,7 @@ export const BIOME_DAG: ReadonlyArray<BiomeCategoryNode> = [
             harvestTimeTicks: 1,
             yields: [
               { itemId: 'SPHALERITE_ORE', name: 'Sphalerite Ore', massKg: 2.0, speciesIdx: 29, chemicalFormula: 'ZnS' },
+              { itemId: 'ZINC_METAL', name: 'Native Zinc Nodule', massKg: 0.5 },
             ],
             description: 'Zinc sulfide mineral (Mohs 3.8). Roast to ZnO and SO2, then smelt with charcoal to extract zinc metal.',
           },
@@ -422,6 +425,7 @@ export const BIOME_DAG: ReadonlyArray<BiomeCategoryNode> = [
             harvestTimeTicks: 1,
             yields: [
               { itemId: 'FIELD_MUSHROOM', name: 'Edible Mushroom', massKg: 0.5 },
+              { itemId: 'GRAIN_MASH', name: 'Grain Mash', massKg: 1.0 },
             ],
             description: 'Safe edible fungus: 22 kcal/100g raw, 38 kcal/100g cooked.',
           },
@@ -446,6 +450,7 @@ export const BIOME_DAG: ReadonlyArray<BiomeCategoryNode> = [
             harvestTimeTicks: 1,
             yields: [
               { itemId: 'PENICILLIUM_SPORES', name: 'Penicillium Spores', massKg: 0.05 },
+              { itemId: 'PENICILLIUM_MOLD_CULTURE', name: 'Penicillium Mold Culture', massKg: 0.2 },
               { itemId: 'PENICILLIUM_BROTH', name: 'Penicillium Mold Broth', massKg: 0.5, speciesIdx: 28, chemicalFormula: 'C16H18N2O4S (Penicillin)' },
             ],
             description: 'Fungal mold culture producing Penicillin antibiotic for treating systemic sepsis.',
@@ -482,6 +487,7 @@ export const BIOME_DAG: ReadonlyArray<BiomeCategoryNode> = [
               { itemId: 'MEAT_RAW', name: 'Fresh Game Meat', massKg: 14.0 },
               { itemId: 'DEER_SINEW', name: 'Animal Sinew Cordage', massKg: 0.3 },
               { itemId: 'ANIMAL_BONE', name: 'Heavy Femur Bone', massKg: 1.5 },
+              { itemId: 'LEATHER_SCRAP', name: 'Leather Scrap', massKg: 0.5 },
             ],
             description: 'Yields collagen hide for leather backpack and fat for soap making.',
           },

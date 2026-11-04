@@ -239,7 +239,7 @@ export const StoryMode = (() => {
           <button class="btn btn-danger" id="btn-death-restart">Begin Anew</button>
         </div>
       `;
-      const overlay = showOverlay(markup, 'death-overlay');
+      const overlay = showOverlay(markup, 'death-overlay', false);
       overlay.querySelector('#btn-death-restart')?.addEventListener('click', () => {
         overlay.remove();
         onRestart();

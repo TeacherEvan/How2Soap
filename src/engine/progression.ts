@@ -147,7 +147,7 @@ export function applyProgressEventsWithSensor(
     save.renown += 25; // per-objective bounty
 
     for (const l of LETTERS) {
-      if (l.task.id === id && !save.lettersDone.includes(l.id) && l.chapter - 1 <= save.chapter) {
+      if (l.task.id === id && !save.lettersDone.includes(l.id)) {
         save.lettersDone.push(l.id);
         lettersDoneNow.push(l.id);
         save.renown += l.rewardRenown;

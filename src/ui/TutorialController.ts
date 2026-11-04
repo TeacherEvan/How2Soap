@@ -31,6 +31,7 @@ export class TutorialController {
   private completedLessonIds = new Set<string>();
   private phdTelemetryEnabled = false;
   private modalEl: HTMLElement | null = null;
+  private currentOverlayEntry: { id: string; close: () => void } | null = null;
   private coachmarkEl: HTMLElement | null = null;
   private currentSpotlightEl: HTMLElement | null = null;
 
@@ -52,7 +53,7 @@ export class TutorialController {
   }
 
   private createHudTrigger(): void {
-    const hud = document.querySelector('.hud-right');
+    const hud = document.querySelector('.hud-right') || document.querySelector('header .controls') || document.querySelector('.telemetry');
     if (!hud) return;
 
     const existing = document.getElementById('btn-open-tutorial');
@@ -93,6 +94,7 @@ export class TutorialController {
         this.closeAcademyModal();
       },
     };
+    this.currentOverlayEntry = overlayEntry;
     globalOverlayStack.push(overlayEntry);
   }
 
@@ -100,7 +102,10 @@ export class TutorialController {
     if (this.modalEl) {
       this.modalEl.remove();
       this.modalEl = null;
-      globalOverlayStack.remove({ id: 'tutorial-modal-overlay' });
+      if (this.currentOverlayEntry) {
+        globalOverlayStack.remove(this.currentOverlayEntry);
+        this.currentOverlayEntry = null;
+      }
     }
   }
 

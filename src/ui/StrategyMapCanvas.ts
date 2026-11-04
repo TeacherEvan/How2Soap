@@ -373,7 +373,7 @@ export class StrategyMapCanvas {
         let defaultCommodity: WageCommodity = 'BAR_SOAP';
         if (archetype === 'FORAGER') {
           name = 'Forager ' + (Math.floor(Math.random() * 900) + 100);
-          defaultCommodity = 'DRIED_MEAT';
+          defaultCommodity = 'FIELD_MUSHROOM';
         } else if (archetype === 'MINER') {
           name = 'Miner ' + (Math.floor(Math.random() * 900) + 100);
           defaultCommodity = 'COPPER_INGOT';
@@ -638,13 +638,12 @@ export class StrategyMapCanvas {
     // Options for wage commodities
     const wageCommodities = [
       'BAR_SOAP',
-      'DRIED_MEAT',
+      'MEAT_RAW',
+      'FIELD_MUSHROOM',
       'COPPER_INGOT',
-      'BRONZE_INGOT',
       'WILLOW_TEA',
       'MINT_TONIC',
       'NITROUS_TONIC',
-      'BERRIES_ROWAN',
     ];
 
     // Avoid blowing away open select dropdowns if user is currently interacting with one
@@ -710,7 +709,15 @@ export class StrategyMapCanvas {
       select.addEventListener('change', () => {
         const colonistId = select.dataset.jobColonist!;
         const val = select.value;
-        if (!val) return;
+        if (!val) {
+          const colonist = this.colonyState?.colonists.find(c => c.id === colonistId);
+          if (colonist) {
+            colonist.assignedJob = null;
+            colonist.status = 'IDLE';
+          }
+          this.options.onAssignJob?.(colonistId, '', '');
+          return;
+        }
         const [speciesId, partId] = val.split('::');
         this.options.onAssignJob?.(colonistId, speciesId, partId);
       });
