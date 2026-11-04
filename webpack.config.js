@@ -1,7 +1,33 @@
 const path = require('path');
+const fs = require('fs');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const TerserPlugin = require('terser-webpack-plugin');
+
+/**
+ * Zero-dependency copy of public/ static files into dist/.
+ * (No CopyPlugin — the repo enforces 0 runtime deps and we keep the build chain lean.)
+ */
+class CopyPublicPlugin {
+  apply(compiler) {
+    compiler.hooks.thisCompilation.tap('CopyPublicPlugin', (compilation) => {
+      const raw = compiler.webpack.sources.RawSource;
+      const root = path.join(__dirname, 'public');
+      const files = ['favicon.svg', 'manifest.webmanifest', 'sw.js'];
+      const iconsDir = path.join(root, 'icons');
+      if (fs.existsSync(iconsDir)) {
+        for (const name of fs.readdirSync(iconsDir)) {
+          if (name.endsWith('.png')) files.push(path.join('icons', name));
+        }
+      }
+      for (const rel of files) {
+        const abs = path.join(root, rel);
+        if (!fs.existsSync(abs)) continue;
+        compilation.emitAsset(rel.split(path.sep).join('/'), new raw(fs.readFileSync(abs)));
+      }
+    });
+  }
+}
 
 const isolationHeaders = {
   'Cross-Origin-Opener-Policy': 'same-origin',
@@ -87,6 +113,7 @@ module.exports = (env, argv) => {
         }
       : false,
     plugins: [
+      new CopyPublicPlugin(),
       new HtmlWebpackPlugin({ template: './public/index.html', minify: production }),
       new MiniCssExtractPlugin({ filename: 'static/css/[name].[contenthash:8].css' }),
     ],

@@ -1,0 +1,189 @@
+/**
+ * Worker → UI message protocol. The worker runs the simulation; everything it
+ * says lands here. Kept separate from startWorld so the dispatch table can be
+ * read (and tested) without booting the renderer.
+ */
+import { applyProgressEventsWithSensor, levelFromRenown } from '../engine/progression';
+import { CHAPTERS } from '../data/story';
+import { StoryMode } from '../ui/StoryMode';
+import { showToast } from '../ui/Toast';
+import { mountJournal } from '../ui/JournalPanel';
+import { audio } from '../ui/audio';
+import { state, speciesMoles } from './state';
+import { tabJournal } from './dom';
+import { renderVessels, updateTargets, renderLog } from './views';
+import { updatePlayerUI, updatePaddockUI } from './panels';
+import { requestAutoSave, AUTO_SAVE_KEY } from './autosave';
+
+export type WorkerMessage =
+  | { type: 'READY' }
+  | { type: 'VESSELS'; vessels: typeof state.vessels }
+  | { type: 'EVENTS'; events: Array<{ vesselId: number; message: string }> }
+  | { type: 'PLAYER_SYNC'; player: any; inventory: any & { items?: Array<{ id: string; count: number; massKg: number }> }; paddock?: any }
+  | { type: 'COLONY_SYNC'; colony: any }
+  | { type: 'OBJECTIVE'; kind: 'recipe' | 'eat' | 'treat' | 'harvest' | 'flag'; target: string };
+
+function createSeedVessels(): void {
+  if (!state.worker) return;
+  state.worker.postMessage({
+    type: 'CREATE_VESSEL',
+    id: 1,
+    material: 'WOOD',
+    capacityL: 5,
+    label: 'Wooden Bucket',
+  });
+  state.worker.postMessage({
+    type: 'CREATE_VESSEL',
+    id: 2,
+    material: 'FIRED_CERAMIC',
+    capacityL: 2,
+    label: 'Clay Pot',
+  });
+  state.worker.postMessage({
+    type: 'CREATE_VESSEL',
+    id: 3,
+    material: 'COPPER',
+    capacityL: 1,
+    closed: true,
+    label: 'Copper Still',
+  });
+}
+
+export function handleWorkerMessage(data: WorkerMessage, options?: { load?: unknown }): void {
+  if (data.type === 'READY') {
+    // LOAD_WORLD also emits READY — only seed fresh worlds.
+    if (!options?.load) {
+      createSeedVessels();
+    }
+    return;
+  }
+
+  if (data.type === 'VESSELS') {
+    state.vessels = data.vessels;
+    renderVessels();
+    updateTargets();
+    return;
+  }
+
+  if (data.type === 'EVENTS') {
+    for (const ev of data.events) {
+      state.log.push(ev.message);
+      if (ev.message.includes('strike') || ev.message.includes('Strike') || ev.message.includes('unpaid')) {
+        audio.strikeBell();
+      } else if (ev.message.includes('payroll') || ev.message.includes('paid') || ev.message.includes('Wage')) {
+        audio.wageClink();
+      }
+      if (
+        ev.message.startsWith('Too exhausted') ||
+        ev.message.startsWith('Missing:') ||
+        ev.message.startsWith('Not a food') ||
+        ev.message.startsWith('Cannot treat')
+      ) {
+        showToast(ev.message, 'failure');
+      }
+    }
+    renderLog();
+    requestAutoSave();
+    return;
+  }
+
+  if (data.type === 'PLAYER_SYNC') {
+    state.player = data.player;
+    state.inventory = data.inventory;
+    state.items = data.inventory.items ?? [];
+    if (data.paddock) {
+      state.paddock = data.paddock;
+      updatePaddockUI();
+    }
+    updatePlayerUI();
+    requestAutoSave();
+    if (state.tutorial) {
+      state.tutorial.checkProgress({ state, snapshot: state.snapshot });
+    }
+    if ((state.player.conditions?.dead || (state.player as any).dead) && !state.deathModalShown) {
+      state.deathModalShown = true;
+      StoryMode.death('sepsis', { days: state.player.day ?? 1, renown: state.progression.renown }, () => {
+        localStorage.removeItem(AUTO_SAVE_KEY);
+        location.reload();
+      });
+    }
+    return;
+  }
+
+  if (data.type === 'COLONY_SYNC') {
+    state.colony = data.colony;
+    const seconds = (state.snapshot?.tick ?? 0) * 360;
+    const minuteOfDay = Math.floor((seconds % 86400) / 60);
+    if (state.strategyMap) {
+      state.strategyMap.update(data.colony, minuteOfDay);
+    }
+    return;
+  }
+
+  // OBJECTIVE
+  const sensor = {
+    hasSpecies: (idx: number, minMoles: number) => {
+      if (!state.snapshot) return false;
+      for (let v = 0; v < state.vessels.length; v++) {
+        if (speciesMoles(state.snapshot, v, idx) >= minMoles) return true;
+      }
+      return false;
+    },
+    hasItem: (itemId: string, count = 1) => {
+      const item = state.items.find(i => i.id === itemId);
+      return (item?.count ?? 0) >= count;
+    },
+    hasFabricated: (id: string) => state.progression.fabricatedRecipes.includes(id),
+    hasFlag: (f: string) => !!state.progression.ever[f],
+    hasEaten: (id: string) => (state.progression.craftStats.eaten[id] ?? 0) > 0,
+    hasTreated: (k: string) => (state.progression.craftStats.treated[k] ?? 0) > 0,
+  };
+
+  const res = applyProgressEventsWithSensor(
+    state.progression,
+    { kind: data.kind, target: data.target },
+    sensor,
+  );
+
+  for (const objId of res.objectives) {
+    audio.chime();
+    showToast(`Objective completed: ${objId} (+25 Renown)`, 'success');
+  }
+  for (const letId of res.letters) {
+    audio.stamp();
+    showToast(`Council letter received: ${letId}!`, 'renown');
+  }
+  for (const lu of res.levelUps) {
+    audio.levelUp();
+    showToast(`⭐ Advanced to Level ${lu.level}: ${lu.title}!`, 'renown');
+  }
+  for (const chId of res.chapters) {
+    const completedCh = CHAPTERS.find(c => c.id === chId);
+    if (completedCh) {
+      StoryMode.chapterComplete(completedCh, () => {
+        if (state.progression.chapter >= CHAPTERS.length) {
+          StoryMode.victory(
+            {
+              days: state.player.day ?? 1,
+              fabricated: state.progression.fabricatedRecipes.length,
+              renown: state.progression.renown,
+              levelTitle: levelFromRenown(state.progression.renown).title,
+            },
+            'You stand upon the heights of discovery, master of fire and flesh.',
+            {
+              onFreeCraft: () => {},
+              onNewWorld: () => {
+                localStorage.removeItem(AUTO_SAVE_KEY);
+                location.reload();
+              },
+            },
+          );
+        }
+      });
+    }
+  }
+
+  if (state.activeTab === 'JOURNAL') {
+    mountJournal(tabJournal, state.progression);
+  }
+}

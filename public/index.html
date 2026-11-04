@@ -3,12 +3,159 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="description" content="Emergent chemistry and survival engine" />
+    <meta
+      name="description"
+      content="The Grand Crucible — a turn-based alchemical survival odyssey. Master real chemistry from raw fire to pure potassium, one watch at a time."
+    />
     <meta name="theme-color" content="#0b0f12" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; media-src 'self'; font-src 'self'; connect-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'"
+    />
+    <meta property="og:title" content="The Grand Crucible" />
+    <meta
+      property="og:description"
+      content="A turn-based alchemical survival odyssey — survive by mastering real chemistry, from hardwood ash to metallic potassium."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="/icons/icon-512.png" />
     <link rel="icon" type="image/svg+xml" href="favicon.svg" />
-    <title>Chemistry Survival</title>
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <title>The Grand Crucible</title>
   </head>
   <body>
-    <div id="app"></div>
+    <div id="app" class="game">
+      <header class="topbar">
+        <div class="brand">
+          <span class="flame">△</span>
+          <div>
+            <h1>The Grand Crucible</h1>
+            <p>A turn-based alchemical survival odyssey</p>
+          </div>
+        </div>
+        <div class="telemetry">
+          <div class="stat"><span class="stat-label">Isolation</span><strong id="isolation">checking…</strong></div>
+          <div class="stat"><span class="stat-label">Day / Hour</span><strong id="clock">—</strong></div>
+          <div class="stat"><span class="stat-label">Glucose</span><strong id="p-glucose">1200 kcal</strong></div>
+          <div class="stat"><span class="stat-label">Body Temp</span><strong id="p-temp">37.0 °C</strong></div>
+          <div class="stat"><span class="stat-label">Insulation</span><strong id="p-iclo">0.05 clo</strong></div>
+          <div class="hud-chip" id="hud-adipose" title="Adipose reserves — your famine buffer">Adipose <b id="val-adipose">15,000 kcal</b></div>
+          <div class="hud-chip" id="hud-hydration" title="Hydration">Hydration <b id="val-hydration">100%</b></div>
+          <div class="hud-chip" id="hud-ambient" title="Ambient temperature">Amb <b id="val-ambient">288 K</b></div>
+          <div class="hud-chip" id="hud-renown" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" title="Renown progress">
+            <span id="val-renown-title">L1 · Scrub Apprentice</span>
+            <svg class="renown-ring" viewBox="0 0 36 36"><circle class="ring-bg" cx="18" cy="18" r="15.5"/><circle class="ring-fg" id="ring-renown-fg" cx="18" cy="18" r="15.5"/></svg>
+          </div>
+        </div>
+        <div class="controls">
+          <button id="pause" class="ghost">Pause</button>
+          <button id="sleep1" class="ghost">Sleep 1 h</button>
+          <button id="sleep8" class="ghost">Sleep 8 h</button>
+          <button id="reset" class="ghost danger">New world</button>
+        </div>
+      </header>
+
+      <div class="banners" id="banners" aria-live="polite"></div>
+
+      <main class="layout-4panel">
+        <!-- Panel 1: Left Biome Tree -->
+        <aside class="panel biome-panel" id="biome-panel-container"></aside>
+
+        <!-- Panel 2: Center Left Vessels List -->
+        <aside class="panel vessels-panel">
+          <h2>Vessels</h2>
+          <div id="vessel-list" class="vessel-list"></div>
+          <p class="hint">Wood chars at 523 K. Clay survives 1473 K. Copper conducts heat fast.</p>
+        </aside>
+
+        <!-- Panel 3: Center Tabbed Workbench -->
+        <section class="panel workbench">
+          <div id="workbench-tabs-container"></div>
+
+          <!-- Tab 1: Chemical Reactions -->
+          <div id="tab-reactions-content" class="tab-pane active">
+            <div class="workbench-head">
+              <div>
+                <h2 id="vessel-title">No vessel</h2>
+                <p id="vessel-sub" class="sub"></p>
+              </div>
+              <div class="readouts">
+                <div class="readout"><span>Temperature</span><strong id="r-temp">—</strong></div>
+                <div class="readout"><span>pH</span><strong id="r-ph">—</strong></div>
+                <div class="readout"><span>Pressure</span><strong id="r-pressure">—</strong></div>
+                <div class="readout"><span>Liquid</span><strong id="r-volume">—</strong></div>
+              </div>
+            </div>
+
+            <div class="actions">
+              <button data-action="water">+ 1 L water</button>
+              <button data-action="ash">+ 200 g hardwood ash</button>
+              <button data-action="tallow">+ 200 g raw fat</button>
+              <button data-action="salt">+ 50 g halite</button>
+              <button data-action="heat" class="accent">Toggle 400 W heater</button>
+              <button data-action="decant">Decant 1 L →</button>
+              <button data-action="skim">Skim soap curds →</button>
+              <select id="target" class="target" aria-label="Target vessel"></select>
+            </div>
+
+            <div class="advanced-vessel-controls" style="margin-top:0.8rem; padding:0.6rem; background:rgba(0,0,0,0.2); border-radius:6px; font-size:0.8rem; display:flex; flex-wrap:wrap; gap:0.8rem; align-items:center;">
+              <div style="display:flex; align-items:center; gap:0.4rem;">
+                <label for="heater-slider"><strong>Heater:</strong> <span id="val-heater-w">0</span> W</label>
+                <input type="range" id="heater-slider" min="0" max="1200" step="50" value="0" style="width:100px;">
+                <span id="heater-teq-preview" style="color:var(--text-muted, #9eb4c2); font-size:0.75rem;">(Eq: ~288 K)</span>
+              </div>
+              <div style="display:flex; align-items:center; gap:0.4rem;">
+                <label for="volts-slider"><strong>Voltaic Pile:</strong> <span id="val-volts">0.0</span> V</label>
+                <input type="range" id="volts-slider" min="0" max="13.2" step="0.6" value="0" style="width:90px;">
+              </div>
+              <div style="display:flex; align-items:center; gap:0.4rem;">
+                <label for="condenser-target-select"><strong>Distill To:</strong></label>
+                <select id="condenser-target-select" class="target" style="padding:0.2rem 0.4rem;">
+                  <option value="-1">None (Vented)</option>
+                </select>
+              </div>
+              <div style="display:flex; align-items:center; gap:0.4rem;">
+                <button id="btn-toggle-lid" class="ghost" style="padding:0.2rem 0.5rem; font-size:0.75rem;">Lid: Open</button>
+              </div>
+            </div>
+
+            <div class="contents">
+              <h3>Contents</h3>
+              <table>
+                <thead><tr><th>Species</th><th>mol</th><th>grams</th><th>Phase</th></tr></thead>
+                <tbody id="contents-body"><tr><td colspan="4" class="empty">Empty vessel.</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Tab 2: Mechanical Fabrication -->
+          <div id="tab-fabrication-content" class="tab-pane hidden"></div>
+
+          <!-- Tab 3: Domesticated Paddocks -->
+          <div id="tab-paddocks-content" class="tab-pane hidden"></div>
+
+          <!-- Tab 4: Strategy & Labor Map -->
+          <div id="tab-strategy-content" class="tab-pane hidden"></div>
+
+          <!-- Tab 5: Journal & Missions -->
+          <div id="tab-journal-content" class="tab-pane hidden"></div>
+
+          <div class="workbench-foot">
+            <div class="quest-box">
+              <h3>Master Tech Progression</h3>
+              <ul class="quest" id="quest"></ul>
+            </div>
+            <div class="event-box">
+              <h3>Event Log</h3>
+              <ul class="log" id="log"><li class="empty">No events yet.</li></ul>
+            </div>
+          </div>
+        </section>
+
+        <!-- Panel 4: Right Dedicated Tools & Inventory -->
+        <aside class="panel tool-inv-panel" id="tool-inv-container"></aside>
+      </main>
+    </div>
   </body>
 </html>

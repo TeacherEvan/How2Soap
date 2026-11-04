@@ -106,6 +106,20 @@ interface WorkerCtx {
 
 const ctx = self as unknown as WorkerCtx;
 
+/**
+ * Compile-time exhaustiveness guard: if a new Command union member is added
+ * without a handler case, `default` receives it typed `never` — this function
+ * stops compiling. At runtime (hostile/buggy posters) an unknown command is
+ * surfaced as an EVENTS message instead of being silently swallowed.
+ */
+function assertNeverCommand(command: never): void {
+  void command;
+  ctx.postMessage({
+    type: 'EVENTS',
+    events: [{ vesselId: -1, message: 'Unknown simulation command — UI and worker out of sync.' }],
+  });
+}
+
 let world: WorldState | null = null;
 let player: PlayerMetabolismState | null = null;
 let inventory: InventoryState | null = null;
@@ -917,6 +931,6 @@ ctx.onmessage = (event: MessageEvent<Command>) => {
       break;
     }
     default:
-      break;
+      assertNeverCommand(command);
   }
 };

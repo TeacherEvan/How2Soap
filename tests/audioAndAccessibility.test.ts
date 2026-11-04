@@ -97,10 +97,11 @@ describe('Spatial Stereo Web Audio & Accessibility (Task 5)', () => {
       expect(storyModeCode).not.toContain('L${opts.title}');
     });
 
-    it('#hud-renown updates aria-valuenow in main.ts updatePlayerUI', () => {
-      const mainPath = resolve(__dirname, '../src/main.ts');
-      const mainCode = readFileSync(mainPath, 'utf-8');
-      expect(mainCode).toMatch(/hudRenown(\?|\.)setAttribute\(\s*['"]aria-valuenow['"]/);
+    it('#hud-renown updates aria-valuenow in updatePlayerUI (src/app/panels.ts)', () => {
+      // The HUD implementation moved out of main.ts during the src/app refactor.
+      const panelsPath = resolve(__dirname, '../src/app/panels.ts');
+      const panelsCode = readFileSync(panelsPath, 'utf-8');
+      expect(panelsCode).toMatch(/hudRenown(\?|\.)setAttribute\(\s*['"]aria-valuenow['"]/);
     });
   });
 });
