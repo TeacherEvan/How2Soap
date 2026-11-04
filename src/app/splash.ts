@@ -1,17 +1,22 @@
 /**
- * Intro splash: skippable on any key/click/video end.
- * Skipped entirely for users who prefer reduced motion.
+ * Video Splash & Inter-display Loading Transitions
+ * - Intro Splash: Plays the new intro video on boot. Skippable via Esc/Space/Click.
+ * - Loading Screen: Uses the original intro video as a cinematic loading veil
+ *   between tab displays / window switches.
  */
-import splashMp4 from '../media/how2soap-intro.mp4';
-import splashWebm from '../media/how2soap-intro.webm';
-import splashPoster from '../media/how2soap-poster.png';
+import newSplashMp4 from '../media/how2soap-splash-new.mp4';
+import newSplashWebm from '../media/how2soap-splash-new.webm';
+import newSplashPoster from '../media/how2soap-splash-new.png';
+
+import loaderMp4 from '../media/how2soap-intro.mp4';
+import loaderWebm from '../media/how2soap-intro.webm';
+import loaderPoster from '../media/how2soap-poster.png';
+
 import { audio } from '../ui/audio';
 
 /**
- * Launch the intro splash on every startup. The world boots underneath it;
- * any click, keypress, or the video ending fades it out. Audio autoplay is
- * attempted and falls back to a muted play (browser autoplay policies).
- * Users who prefer reduced motion skip the splash entirely.
+ * Launch the intro splash on startup.
+ * The world boots underneath it; any click, keypress, or the video ending fades it out.
  */
 export function launchSplash(): void {
   if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
@@ -28,13 +33,13 @@ export function launchSplash(): void {
   video.autoplay = true;
   video.playsInline = true;
   video.preload = 'auto';
-  video.poster = splashPoster;
+  video.poster = newSplashPoster;
 
   const mp4Source = document.createElement('source');
-  mp4Source.src = splashMp4;
+  mp4Source.src = newSplashMp4;
   mp4Source.type = 'video/mp4';
   const webmSource = document.createElement('source');
-  webmSource.src = splashWebm;
+  webmSource.src = newSplashWebm;
   webmSource.type = 'video/webm';
   video.append(mp4Source, webmSource);
 
@@ -83,4 +88,103 @@ export function launchSplash(): void {
     video.muted = true;
     video.play().catch(() => dismiss());
   });
+}
+
+let activeLoaderOverlay: HTMLElement | null = null;
+let loaderFadeTimeout: number | null = null;
+
+/**
+ * Transition between displays using the previous splash video as a brief,
+ * atmospheric loading veil.
+ *
+ * @param displayLabel Display title (e.g. 'Workbench', 'Astrolabe Map', 'Sanctuary')
+ * @param performTransition Callback that executes the actual display switch
+ * @param minDurationMs Minimum display duration of loading veil (default 420ms)
+ */
+export function transitionDisplay(
+  displayLabel: string,
+  performTransition: () => void,
+  minDurationMs = 420,
+): void {
+  // Respect user preference for reduced motion
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    performTransition();
+    return;
+  }
+
+  // Clear any existing transition
+  if (activeLoaderOverlay) {
+    activeLoaderOverlay.remove();
+    activeLoaderOverlay = null;
+  }
+  if (loaderFadeTimeout !== null) {
+    window.clearTimeout(loaderFadeTimeout);
+    loaderFadeTimeout = null;
+  }
+
+  const overlay = document.createElement('div');
+  overlay.className = 'display-loading-overlay';
+  overlay.setAttribute('aria-hidden', 'true');
+
+  const viewport = document.createElement('div');
+  viewport.className = 'display-loading-viewport';
+
+  const video = document.createElement('video');
+  video.className = 'display-loading-video';
+  video.autoplay = true;
+  video.playsInline = true;
+  video.muted = true; // Always muted for rapid tab transitions
+  video.loop = true;
+  video.preload = 'auto';
+  video.poster = loaderPoster;
+
+  const mp4Source = document.createElement('source');
+  mp4Source.src = loaderMp4;
+  mp4Source.type = 'video/mp4';
+  const webmSource = document.createElement('source');
+  webmSource.src = loaderWebm;
+  webmSource.type = 'video/webm';
+  video.append(mp4Source, webmSource);
+
+  const lens = document.createElement('div');
+  lens.className = 'splash-lens';
+
+  const banner = document.createElement('div');
+  banner.className = 'display-loading-banner';
+  banner.innerHTML = `
+    <div class="display-loading-spinner"></div>
+    <div class="display-loading-text">
+      <span class="display-loading-title">${displayLabel}</span>
+      <span class="display-loading-sub">Calibrating apparatus...</span>
+    </div>
+  `;
+
+  viewport.append(video, lens, banner);
+  overlay.append(viewport);
+  document.body.appendChild(overlay);
+  activeLoaderOverlay = overlay;
+
+  video.play().catch(() => {
+    // If video fails to load, fail silently
+  });
+
+  const startTime = Date.now();
+
+  // Execute the DOM change
+  performTransition();
+
+  // Keep loader visible for minimum cinematic time, then fade smoothly
+  const elapsed = Date.now() - startTime;
+  const remaining = Math.max(0, minDurationMs - elapsed);
+
+  loaderFadeTimeout = window.setTimeout(() => {
+    overlay.classList.add('loading-fade-out');
+    loaderFadeTimeout = window.setTimeout(() => {
+      overlay.remove();
+      if (activeLoaderOverlay === overlay) {
+        activeLoaderOverlay = null;
+      }
+      loaderFadeTimeout = null;
+    }, 350);
+  }, remaining);
 }

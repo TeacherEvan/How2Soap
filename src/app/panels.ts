@@ -14,6 +14,7 @@ import { bannerModel, treatmentModel } from '../ui/panelModels';
 import { levelFromRenown } from '../engine/progression';
 import { calculateHarvestTotalCostKcal, type HarvestablePart, type BiomeSpeciesNode } from '../data/biomeNodes';
 import { audio } from '../ui/audio';
+import { transitionDisplay } from './splash';
 import { state, selectedIndex, send } from './state';
 import { openWindowById } from './launcher';
 import {
@@ -55,55 +56,75 @@ export function updatePaddockUI(): void {
 }
 
 export function switchTab(tab: WorkbenchTab): void {
-  state.activeTab = tab;
-  renderWorkbenchTabs(tabsNavContainer, {
-    currentTab: tab,
-    onSelectTab: switchTab,
-    onExecuteRecipe: (recipeId) => send({ type: 'FABRICATE', recipeId }),
-    onFeedPaddock: () => {
-      send({ type: 'FEED_PADDOCK', massKg: 5 });
-    },
-    onWaterPaddock: () => {
-      send({ type: 'WATER_PADDOCK', liters: 10 });
-    },
-  });
+  const previousTab = state.activeTab;
+  if (previousTab === tab) return;
 
-  tabReactions.classList.toggle('hidden', tab !== 'REACTIONS');
-  tabFabrication.classList.toggle('hidden', tab !== 'FABRICATION');
-  tabPaddocks.classList.toggle('hidden', tab !== 'PADDOCKS');
-  tabStrategy.classList.toggle('hidden', tab !== 'STRATEGY');
-  tabJournal.classList.toggle('hidden', tab !== 'JOURNAL');
+  const tabLabels: Record<WorkbenchTab, string> = {
+    REACTIONS: 'Reactions Apparatus',
+    FABRICATION: 'Fabrication Workshop',
+    PADDOCKS: 'Fauna Paddocks',
+    STRATEGY: 'Astrolabe Strategy Map',
+    JOURNAL: 'Chronicle & Council',
+  };
 
-  if (tab === 'FABRICATION') {
-    renderFabricationTab(tabFabrication, (recipeId) => {
-      send({ type: 'FABRICATE', recipeId });
-      state.log.push(`Fabricated recipe ${recipeId}`);
-      renderLog();
+  const applyTabSwitch = (): void => {
+    state.activeTab = tab;
+    renderWorkbenchTabs(tabsNavContainer, {
+      currentTab: tab,
+      onSelectTab: switchTab,
+      onExecuteRecipe: (recipeId) => send({ type: 'FABRICATE', recipeId }),
+      onFeedPaddock: () => {
+        send({ type: 'FEED_PADDOCK', massKg: 5 });
+      },
+      onWaterPaddock: () => {
+        send({ type: 'WATER_PADDOCK', liters: 10 });
+      },
     });
-  } else if (tab === 'PADDOCKS') {
-    updatePaddockUI();
-  } else if (tab === 'STRATEGY') {
-    if (state.strategyMap) {
-      (state.strategyMap as any).options.onHarvestBoost = (speciesId: string, bonus: boolean) => {
-        audio.harvestThud();
-        send({
-          type: 'HARVEST_PART',
-          partId: speciesId.includes('TREE') ? 'OAK_HEARTWOOD_LOG' : 'HALITE_ORE',
-          speciesId,
-          carriedMassKg: 0,
-          toolSlot: 'PERCUSSION_MINING',
-          distanceMeters: 50,
-        });
-        if (bonus) {
-          audio.clink();
-          state.log.push(`★ Bonus harvest! Clean strike boost!`);
-        }
+
+    tabReactions.classList.toggle('hidden', tab !== 'REACTIONS');
+    tabFabrication.classList.toggle('hidden', tab !== 'FABRICATION');
+    tabPaddocks.classList.toggle('hidden', tab !== 'PADDOCKS');
+    tabStrategy.classList.toggle('hidden', tab !== 'STRATEGY');
+    tabJournal.classList.toggle('hidden', tab !== 'JOURNAL');
+
+    if (tab === 'FABRICATION') {
+      renderFabricationTab(tabFabrication, (recipeId) => {
+        send({ type: 'FABRICATE', recipeId });
+        state.log.push(`Fabricated recipe ${recipeId}`);
         renderLog();
-      };
+      });
+    } else if (tab === 'PADDOCKS') {
+      updatePaddockUI();
+    } else if (tab === 'STRATEGY') {
+      if (state.strategyMap) {
+        (state.strategyMap as any).options.onHarvestBoost = (speciesId: string, bonus: boolean) => {
+          audio.harvestThud();
+          send({
+            type: 'HARVEST_PART',
+            partId: speciesId.includes('TREE') ? 'OAK_HEARTWOOD_LOG' : 'HALITE_ORE',
+            speciesId,
+            carriedMassKg: 0,
+            toolSlot: 'PERCUSSION_MINING',
+            distanceMeters: 50,
+          });
+          if (bonus) {
+            audio.clink();
+            state.log.push(`★ Bonus harvest! Clean strike boost!`);
+          }
+          renderLog();
+        };
+      }
+      state.strategyMap?.resizeCanvas();
+    } else if (tab === 'JOURNAL') {
+      mountJournal(tabJournal, state.progression);
     }
-    state.strategyMap?.resizeCanvas();
-  } else if (tab === 'JOURNAL') {
-    mountJournal(tabJournal, state.progression);
+  };
+
+  // If this is initial boot before any tab was selected, switch directly without loading veil
+  if (!previousTab) {
+    applyTabSwitch();
+  } else {
+    transitionDisplay(tabLabels[tab] || 'Alchemical Workshop', applyTabSwitch, 380);
   }
 }
 
