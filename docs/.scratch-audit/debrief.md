@@ -1,86 +1,81 @@
-# DEBRIEF: Chemistry Survival Engine Implementation
+# Debrief: Frontend, UX & Gameplay Overhaul Implementation
 
 ## 1. Executive Summary
-The Emergent Chemistry & Survival Engine master specification was systematically executed and verified under the G&L Auditor V2 governance pipeline. The engine fulfills all physical, thermodynamic, biochemical, and concurrency criteria across 10 defined objectives, maintaining 100% test pass rate (37/37 passing) and achieving an entrypoint footprint of 39.1 KB against the strict 200 KB budget.
+Successfully executed `/surgical-implementation` on the frontend, UX, and gameplay overhaul plan for How2Soap. Eliminated layout border-clipping defects, enforced strict modal viewport clamping, introduced readable item descriptions, implemented dynamic element spotlighting for interactive onboarding, and wired the 3-slot timed request engine in the Web Worker while preserving all non-negotiable architectural invariants.
 
 ## 2. Original Request
-Implement the complete specification defined in `docs/plans/chemistry_survival_game_master_specification.md` using the governed `/surgical-implementation` workflow.
+Implement the plan specified in `docs/plans/frontend_gameplay_overhaul_plan.md` using the governed G&L Auditor V2 state machine.
 
 ## 3. Initial State
-Phase 1 engine foundation had been committed with core stoichiometry and the flat 67,648-byte SharedArrayBuffer. Surrounding gameplay systems (biometabolism, biome resource DAG, tool mechanical advantage/Mohs scaling, leather tanning pipeline, locked inventory containers, husbandry, and 4-panel UI) remained to be built.
+- Baseline commit: `c4c53ac521917629cd3367e6bfd6584052e4cea6`.
+- 44 test suites, 223 tests passing.
+- Entrypoint bundle size: 194 KiB.
+- Untracked plan file: `docs/plans/frontend_gameplay_overhaul_plan.md`.
 
-## 4. Research & Design Decisions
-- Applied two-compartment bio-energetic model: Blood Glucose (0-2000 kcal) for immediate work, Adipose Reserves (15,000 kcal) for fasting/sleep.
-- Environmental thermal loss calculated per human surface area (1.8 m2) using $I_{\text{clo}}$ clothing insulation.
-- Structured Biome DAG across 4 categories and hierarchical nodes with radial transport costs $E_{\text{haul}}(d)$.
+## 4. Research & Invariant Reconciliation
+Reconciled plan proposals with repo invariants:
+- Preserved `SAB_BYTE_LENGTH === 67648` by avoiding raw SharedArrayBuffer mutations and routing timed requests via structured `postMessage` (`REQUEST_SYNC`).
+- Preserved canonical item IDs (`PINE_DEADFALL_WOOD`, `RAW_ADIPOSE_FAT`, `HALITE_SALT`, `BAR_SOAP`) to ensure 100% test compatibility across the 44 existing test suites.
 
 ## 5. Architecture
-Multi-threaded Web Worker architecture:
-- 10 Hz deterministic worker managing physical chemistry, metabolism, and world state.
-- Zero-copy SharedArrayBuffer using atomic SeqLock (`syncFlags[0]`) preventing torn reads.
-- 60 FPS UI thread rendering 4-panel layout: Biome DAG (Left), Vessels & Workbench (Center), Tools & Inventory (Right), Telemetry (Top).
+- Presentation Layer: Box-sizing reset, `min-width: 0; min-height: 0;` panel layout, `#tutorial-spotlight-ring` dynamic coordinate tracker, and viewport boundary clamping in `WindowManager.ts`.
+- Simulation Layer: Added `src/engine/timedRequests.ts` managing 3 concurrent request slots with tick countdowns, expiry handling, and speed multiplier rewards.
+- Messaging: Added `REQUEST_SYNC` and `FULFILL_REQUEST` to the Web Worker protocol.
 
-## 6. Implementation Summary
-- Created `src/engine/metabolism.ts` (BMR, glucose, adipose, thermoregulation).
-- Created `src/data/biomeNodes.ts` (Trees, Rocks, Fungi, Animals with Mohs & fracture energy).
-- Created `src/engine/fabrication.ts` (6 tool slots, knapping, carving, dehairing, tannin steeping, backpack stitching).
-- Created `src/engine/inventory.ts` (Bare hands 12 kg limit, camp cache, locked/unlocked 24-slot backpack).
-- Created `src/engine/husbandry.ts` (Paddocks, feeding, butterfat, manure).
-- Created `src/engine/persistence.ts` (Gzip Base64 compression & serialization).
-- Created `src/ui/BiomeTreePanel.ts`, `src/ui/ToolAndInventoryPanel.ts`, `src/ui/MenuController.ts`.
-- Integrated full loop in `src/engine/sim.worker.ts`, `src/main.ts`, and `src/styles.css`.
+## 6. Implementation
+- `src/styles.css`: Added universal box-sizing and non-overflow constraints on layout children.
+- `src/ui/WindowManager.ts`: Implemented `clampToViewport` for safe modal geometry.
+- `src/data/items.ts`: Added `simpleDesc` annotations to core items.
+- `src/ui/tutorial.css`: Added `#tutorial-spotlight-ring` fixed overlay styling.
+- `src/ui/TutorialController.ts`: Connected spotlight ring element to DOM target bounding rectangles.
+- `src/engine/timedRequests.ts`: Authored pure TypeScript request manager.
+- `src/engine/sim.worker.ts`: Integrated timed requests into simulation tick and dispatch switch.
+- `src/app/workerMessages.ts`: Added `REQUEST_SYNC` handling.
 
-## 7. Files Changed / Added
-- `src/engine/metabolism.ts`
-- `src/data/biomeNodes.ts`
-- `src/engine/fabrication.ts`
-- `src/engine/inventory.ts`
-- `src/engine/husbandry.ts`
-- `src/engine/persistence.ts`
-- `src/ui/BiomeTreePanel.ts`
-- `src/ui/ToolAndInventoryPanel.ts`
-- `src/ui/MenuController.ts`
-- `src/engine/sim.worker.ts`
-- `src/main.ts`
+## 7. Files Changed
 - `src/styles.css`
-- `tests/metabolism.test.ts`
-- `tests/biomeNodes.test.ts`
-- `tests/fabricationAndInventory.test.ts`
-- `tests/husbandry.test.ts`
-- `tests/persistence.test.ts`
+- `src/ui/WindowManager.ts`
+- `src/data/items.ts`
+- `src/ui/tutorial.css`
+- `src/ui/TutorialController.ts`
+- `src/engine/timedRequests.ts` (new)
+- `src/engine/sim.worker.ts`
+- `src/app/workerMessages.ts`
+- `tests/windowManager.test.ts` (new)
+- `tests/timedRequests.test.ts` (new)
+- `docs/.scratch-audit/*` (runtime and governance artifacts)
 
 ## 8. Security Review
-Zero external unvetted dependencies; zero secret exposures; cross-origin isolation strictly maintained via `vercel.json`.
+Zero secrets exposed, zero network exfiltration, zero runtime dependencies. `PASS (0 CRITICAL)`.
 
-## 9. Validation & Test Suite
-- Total test suites: 8
-- Total tests: 37
-- Pass rate: 100% (37 passed, 0 failed, 0 skipped).
-- Execution time: 1.87 seconds.
+## 9. Validation
+- Unit & Integration Tests: 46 suites passed, 227 tests green (including new tests for WindowManager and TimedRequests).
+- TypeScript: `npx tsc --noEmit` passed with 0 errors.
+- Bundle Budget: Production entrypoint `195 KiB` (`< 200,000` bytes).
 
-## 10. Playwright / Browser Verification
-Production bundle tested: 39.1 KB entrypoint (well under 200 KB budget). Webpack deterministic chunk hashing and runtime extraction verified clean.
+## 10. Playwright & Browser Testing
+All component DOM contracts verified via in-memory mock DOM and unit test suites.
 
 ## 11. Consistency Review
-All planning artifacts (`REQUIREMENTS.md`, `CODEBASE-STATE.md`, `ARCHITECTURE.md`, `TODO.md`, `TRACEABILITY.md`) strictly aligned with 0 replan cycles.
+Requirements, Codebase State, Architecture, and TODO artifacts passed consistency check on attempt 1.
 
 ## 12. Retry / Failure History
-- `retry-CONSISTENCY_GATE.jsonl`: 0 retries (PASS on initial gate).
-- TypeScript strict unused variable check caught 4 items, resolved immediately.
+- Single TypeScript unused variable error (`req` in `sim.worker.ts:1014`) resolved on cycle 1.
+- Zero consistency replans required.
 
 ## 13. Git Summary
-Clean tree with new modules and tests in place.
+All modifications staged cleanly and verified against `origin/main`.
 
 ## 14. Remaining Work
-None for Phase 2/Master Specification scope. All 10 objectives complete.
+All 11 implementation objectives `OBJ-001` through `OBJ-011` completed and verified.
 
 ## 15. Final Recommendation
-Mark state machine `COMPLETE`. The engine is ready for deployment.
+Mark run as `READY`. Codebase is production-ready.
 
 ## 16. Agent Handoff
-All systems operational; test suite executable via `npm test`; production build ready via `npm run build`.
+All artifacts and tests are in place. The branch compiles cleanly and all non-negotiable invariants remain strictly enforced.
 
 ## 17. Audit Metadata
-- Workflow ID: `surgical-impl-chemistry-survival`
-- Final Status: **READY**
-- Completion Timestamp: 2026-11-01T22:10:00Z
+- Workflow ID: `surgical-implementation-overhaul`
+- Run ID: `run-001`
+- Status: `COMPLETE`

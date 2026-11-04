@@ -61,6 +61,22 @@ function closeWindow(id: string): void {
   }
 }
 
+function clampToViewport(el: HTMLElement, x?: number, y?: number): { x: number; y: number } {
+  const pad = 12;
+  const topSafe = 62;
+  const bottomSafe = 68;
+  const rect = el.getBoundingClientRect();
+  const maxW = Math.max(280, window.innerWidth - pad * 2);
+  const maxH = Math.max(200, window.innerHeight - topSafe - bottomSafe);
+  if (rect.width > maxW) el.style.maxWidth = `${maxW}px`;
+  if (rect.height > maxH) el.style.maxHeight = `${maxH}px`;
+  const curX = x ?? (window.innerWidth - el.offsetWidth) / 2;
+  const curY = y ?? (window.innerHeight - el.offsetHeight) / 2;
+  const clampedX = Math.max(pad, Math.min(curX, window.innerWidth - el.offsetWidth - pad));
+  const clampedY = Math.max(topSafe, Math.min(curY, window.innerHeight - el.offsetHeight - bottomSafe));
+  return { x: clampedX, y: clampedY };
+}
+
 function trapFocus(root: HTMLElement, event: KeyboardEvent): void {
   if (event.key !== 'Tab') return;
   const focusables = Array.from(
@@ -126,6 +142,10 @@ export const WindowManager = {
     // Mount content after insertion so layout-dependent code can measure.
     spec.mount(body);
 
+    const clamped = clampToViewport(root);
+    root.style.left = `${clamped.x + root.offsetWidth / 2}px`;
+    root.style.top = `${clamped.y + root.offsetHeight / 2}px`;
+
     const entry: OpenWindow = { spec, root, backdrop, body, overlayEntry, restoreFocusTo };
     openWindows.set(spec.id, entry);
 
@@ -141,6 +161,8 @@ export const WindowManager = {
       closeWindow(id);
     }
   },
+
+  clampToViewport,
 
   isOpen(id: string): boolean {
     return openWindows.has(id);

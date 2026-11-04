@@ -16,7 +16,7 @@
   color-scheme: dark;
 }
 
-* {
+*, *::before, *::after {
   box-sizing: border-box;
 }
 
@@ -482,6 +482,13 @@ td {
   height: calc(100vh - 72px);
   box-sizing: border-box;
   overflow: hidden;
+}
+
+.layout-4panel > *,
+.hud-panel,
+.panel {
+  min-width: 0;
+  min-height: 0;
 }
 
 .biome-panel {

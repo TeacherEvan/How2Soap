@@ -34,13 +34,13 @@ export function renderBiomeTreePanel(
                       const estKcal = getHaulKcal ? getHaulKcal(p, sp.baseDistanceMeters) : null;
                       const costDisplay = estKcal !== null ? `<span class="haul-cost" title="Estimated kcal with your equipped tool">≈ ${Math.round(estKcal)} kcal</span>` : '';
                       return `
-                      <div class="part-row">
+                      <div class="part-row" data-node-id="${sp.id}">
                         <div class="part-info">
                           <span class="part-name">${p.name}</span>
                           <span class="part-desc">${p.description}</span>
                           ${costDisplay}
                         </div>
-                        <button class="btn-harvest" data-part-id="${p.id}">Harvest</button>
+                        <button class="btn-harvest" data-part-id="${p.id}" data-node-id="${sp.id}">Harvest</button>
                       </div>
                     `;}).join('')}
                   </div>

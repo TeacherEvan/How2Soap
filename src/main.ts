@@ -5,7 +5,7 @@
  */
 import './styles.css';
 import { SAB_BYTE_LENGTH, SharedWorldView } from './engine/memoryLayout';
-import { StrategyMapCanvas } from './ui/StrategyMapCanvas';
+// StrategyMapCanvas loaded dynamically to preserve < 200,000 byte entrypoint budget
 import type { SerializedWorldSave } from './engine/persistence';
 import { showToast } from './ui/Toast';
 import { StoryMode } from './ui/StoryMode';
@@ -145,49 +145,51 @@ function startWorld(options?: { load?: SerializedWorldSave }): void {
     state.strategyMap.destroy();
     state.strategyMap = null;
   }
-  state.strategyMap = new StrategyMapCanvas(tabStrategy, {
-    onRecruit: (recruit) => {
-      audio.recruitHorn();
-      send({
-        type: 'RECRUIT_COLONIST',
-        name: recruit.name,
-        archetype: recruit.archetype,
-        wageContract: recruit.wageContract,
-      });
-      state.log.push(`Recruited ${recruit.name} (${recruit.archetype})`);
-      renderLog();
-    },
-    onAssignJob: (colonistId, speciesId, partId) => {
-      audio.harvestThud();
-      send({
-        type: 'ASSIGN_COLONIST_JOB',
-        colonistId,
-        speciesId,
-        partId,
-      });
-      state.log.push(`Assigned colonist ${colonistId} to ${speciesId}`);
-      renderLog();
-    },
-    onAdministerStimulant: (colonistId, stimulantId) => {
-      audio.stimulantShimmer();
-      send({
-        type: 'ADMINISTER_STIMULANT',
-        colonistId,
-        stimulantId,
-      });
-      state.log.push(`Administered ${stimulantId} to ${colonistId}`);
-      renderLog();
-    },
-    onSetWageContract: (colonistId, wageContract) => {
-      audio.wageClink();
-      send({
-        type: 'SET_WAGE_CONTRACT',
-        colonistId,
-        wageContract,
-      });
-      state.log.push(`Updated wage contract for ${colonistId} to ${wageContract.commodity}`);
-      renderLog();
-    },
+  import('./ui/StrategyMapCanvas').then(({ StrategyMapCanvas }) => {
+    state.strategyMap = new StrategyMapCanvas(tabStrategy, {
+      onRecruit: (recruit) => {
+        audio.recruitHorn();
+        send({
+          type: 'RECRUIT_COLONIST',
+          name: recruit.name,
+          archetype: recruit.archetype,
+          wageContract: recruit.wageContract,
+        });
+        state.log.push(`Recruited ${recruit.name} (${recruit.archetype})`);
+        renderLog();
+      },
+      onAssignJob: (colonistId, speciesId, partId) => {
+        audio.harvestThud();
+        send({
+          type: 'ASSIGN_COLONIST_JOB',
+          colonistId,
+          speciesId,
+          partId,
+        });
+        state.log.push(`Assigned colonist ${colonistId} to ${speciesId}`);
+        renderLog();
+      },
+      onAdministerStimulant: (colonistId, stimulantId) => {
+        audio.stimulantShimmer();
+        send({
+          type: 'ADMINISTER_STIMULANT',
+          colonistId,
+          stimulantId,
+        });
+        state.log.push(`Administered ${stimulantId} to ${colonistId}`);
+        renderLog();
+      },
+      onSetWageContract: (colonistId, wageContract) => {
+        audio.wageClink();
+        send({
+          type: 'SET_WAGE_CONTRACT',
+          colonistId,
+          wageContract,
+        });
+        state.log.push(`Updated wage contract for ${colonistId} to ${wageContract.commodity}`);
+        renderLog();
+      },
+    });
   });
 
   // Instantiate 3-Tier Tutorial & Compendium Academy Controller

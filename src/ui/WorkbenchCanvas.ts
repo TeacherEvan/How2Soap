@@ -59,6 +59,7 @@ export function renderFabricationTab(
       <div class="view-header">
         <h3>Mechanical Tool-Shaping &amp; Leathercrafting</h3>
         <p class="sub">Craft primitive stone implements, dugout troughs, and tan leather.</p>
+        <button id="btn-open-soap-kettle" class="btn-dock" style="margin-top: 8px; background: #8c6d3f; color: #fff;">🧼 Open Soap Kettle Station</button>
       </div>
 
       <div class="recipes-grid">
@@ -85,6 +86,20 @@ export function renderFabricationTab(
       </div>
     </div>
   `;
+
+  container.querySelector<HTMLButtonElement>('#btn-open-soap-kettle')?.addEventListener('click', () => {
+    import('./SoapKettleModal').then(({ mountSoapKettleModal }) => {
+      mountSoapKettleModal(
+        document.body,
+        (result) => {
+          if (result.soapYield > 0) {
+            onExecuteRecipe('RECIPE_BOIL_CRUDE_SOAP');
+          }
+        },
+        () => {},
+      );
+    });
+  });
 
   container.querySelectorAll<HTMLButtonElement>('.btn-execute-recipe').forEach((btn) => {
     btn.addEventListener('click', () => {

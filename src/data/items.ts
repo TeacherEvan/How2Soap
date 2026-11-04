@@ -31,6 +31,7 @@ export interface ItemDef {
   readonly category: ItemCategory;
   readonly tier: 1 | 2 | 3 | 4 | 5;
   readonly desc: string;
+  readonly simpleDesc?: string;
   readonly icon: string;          // key into src/ui/icons.ts ICONS
   readonly mohs?: number;
   readonly toolSlot?: ToolSlotKey;
@@ -74,7 +75,7 @@ export const ITEMS: readonly ItemDef[] = [
   { id: 'PENICILLIUM_SPORES', name: 'Penicillium Spores', category: 'medicine', tier: 3, icon: 'spores', affinity: 'apothecary', desc: 'Wind-borne green dust; the seed of every penicillin brew.' },
   { id: 'PENICILLIUM_BROTH', name: 'Penicillium Mold Broth', category: 'medicine', tier: 3, icon: 'culture', affinity: 'apothecary', desc: 'Foraged moldy liquor, 0.5 kg; the antibiotic age starts in this jar.' },
   { id: 'PENICILLIUM_MOLD_CULTURE', name: 'Penicillium Mold Culture', category: 'medicine', tier: 3, icon: 'culture', affinity: 'apothecary', desc: 'Starter of P. chrysogenum on cooked starch; feed grain and buffer, wait 48 ticks.' },
-  { id: 'BAR_SOAP', name: 'Molded Bar Soap', category: 'medicine', tier: 2, icon: 'soapstone', wageValue: 25, affinity: 'soapwright', desc: 'Precipitated sodium stearate bar; cleanses contamination and boosts colony morale.' },
+  { id: 'BAR_SOAP', name: 'Molded Bar Soap', category: 'medicine', tier: 2, icon: 'soapstone', wageValue: 25, affinity: 'soapwright', desc: 'Precipitated sodium stearate bar; cleanses contamination and boosts colony morale.', simpleDesc: 'Basic soap that washes away dirt and stops camp sickness.' },
   {
     id: 'WILLOW_TEA',
     name: 'Brewed Willow Tea',
@@ -173,23 +174,23 @@ export const ITEMS: readonly ItemDef[] = [
   },
 
   // ---- Materials: wood & flora ----
-  { id: 'LOG_WHITE_OAK', name: 'White Oak Log', category: 'material', tier: 1, icon: 'log', desc: 'Dense heartwood; seasons into charcoal and hardwood ash.' },
-  { id: 'LOG_SCOTS_PINE', name: 'Pine Softwood Log', category: 'material', tier: 1, icon: 'log', desc: 'Low-density softwood; carves buckets, troughs and hafts.' },
-  { id: 'WHITE_OAK_BARK', name: 'White Oak Bark', category: 'material', tier: 1, icon: 'bark', affinity: 'soapwright', desc: 'Soaked in water it yields the tannin that sets hide into leather.' },
-  { id: 'PINE_DEADFALL_WOOD', name: 'Dry Pine Kindling', category: 'material', tier: 1, icon: 'kindling', desc: 'Deadfall branches, dry to the marrow; lights every first fire.' },
-  { id: 'PINE_SHAVINGS', name: 'Pine Shavings', category: 'material', tier: 1, icon: 'shavings', desc: 'Curly tinder from bucket-carving; catches a spark from pyrite.' },
-  { id: 'OLEORESIN', name: 'Pine Oleoresin', category: 'material', tier: 1, icon: 'resin', desc: 'Sticky pine resin; adhesive, waterproofing and lamp fuel.' },
-  { id: 'WOOD_BRANCH', name: 'Sturdy Branch', category: 'material', tier: 1, icon: 'branch', desc: 'Straight haft branch; the spine of every adze and spear.' },
+  { id: 'LOG_WHITE_OAK', name: 'White Oak Log', category: 'material', tier: 1, icon: 'log', desc: 'Dense heartwood; seasons into charcoal and hardwood ash.', simpleDesc: 'Dry logs chopped from the forest. Burn in a fire pit for ash.' },
+  { id: 'LOG_SCOTS_PINE', name: 'Pine Softwood Log', category: 'material', tier: 1, icon: 'log', desc: 'Low-density softwood; carves buckets, troughs and hafts.', simpleDesc: 'Softwood logs used to carve buckets and troughs.' },
+  { id: 'WHITE_OAK_BARK', name: 'White Oak Bark', category: 'material', tier: 1, icon: 'bark', affinity: 'soapwright', desc: 'Soaked in water it yields the tannin that sets hide into leather.', simpleDesc: 'Tree bark rich in tannin for curing tough leather.' },
+  { id: 'PINE_DEADFALL_WOOD', name: 'Dry Pine Kindling', category: 'material', tier: 1, icon: 'kindling', desc: 'Deadfall branches, dry to the marrow; lights every first fire.', simpleDesc: 'Dry logs chopped from the forest. Burn in a fire pit for ash.' },
+  { id: 'PINE_SHAVINGS', name: 'Pine Shavings', category: 'material', tier: 1, icon: 'shavings', desc: 'Curly tinder from bucket-carving; catches a spark from pyrite.', simpleDesc: 'Curly dry shavings to start fires quickly.' },
+  { id: 'OLEORESIN', name: 'Pine Oleoresin', category: 'material', tier: 1, icon: 'resin', desc: 'Sticky pine resin; adhesive, waterproofing and lamp fuel.', simpleDesc: 'Sticky pine resin used for sealing vessels and fuel.' },
+  { id: 'WOOD_BRANCH', name: 'Sturdy Branch', category: 'material', tier: 1, icon: 'branch', desc: 'Straight haft branch; the spine of every adze and spear.', simpleDesc: 'Sturdy wooden branch to craft tools and spear hafts.' },
 
   // ---- Materials: stone & earth ----
-  { id: 'FLINT_NODULE', name: 'Flint Nodule', category: 'material', tier: 1, icon: 'flint', desc: 'Cryptocrystalline silica nodule, Mohs 7.0; conchoidal fracture yields razor flakes.' },
-  { id: 'FLINT_ADZE_HEAD', name: 'Flint Adze Head', category: 'material', tier: 1, icon: 'flint', desc: 'Knapped flint adze bit, Mohs 7.0; awaits a branch and sinew lashings.' },
-  { id: 'RAW_KAOLIN_CLAY', name: 'Raw Kaolin Clay', category: 'material', tier: 1, icon: 'clay', desc: 'Hydrated aluminosilicate clay, Mohs 2.0; 1373 K sinters it into mullite crucibles.' },
-  { id: 'LIMESTONE_ROCK', name: 'Limestone Rock', category: 'material', tier: 1, icon: 'rock', desc: 'Sedimentary calcite (CaCO3), Mohs 3.0; calcinated above 1100 K into quicklime.' },
-  { id: 'HALITE_SALT', name: 'Halite Salt', category: 'material', tier: 1, icon: 'halite', desc: 'Cubic rock salt (NaCl), Mohs 2.5; precipitates hard sodium stearate soap.' },
-  { id: 'SOAPSTONE_BLOCK', name: 'Soapstone Block', category: 'material', tier: 1, icon: 'soapstone', mohs: 1.5, desc: 'Soft talc-schist, Mohs 1.5; carves like cold butter into molds.' },
-  { id: 'SOAPSTONE_CHUNK', name: 'Soapstone Chunk', category: 'material', tier: 1, icon: 'soapstone', mohs: 1.5, affinity: 'forgewright', desc: 'Fist-sized soapstone offcut; the two-part mold starts here.' },
-  { id: 'CHARCOAL', name: 'Hardwood Charcoal', category: 'material', tier: 1, icon: 'charcoal', desc: 'Oak pyrolyzed airless; reductant for every carbothermic smelt.' },
+  { id: 'FLINT_NODULE', name: 'Flint Nodule', category: 'material', tier: 1, icon: 'flint', desc: 'Cryptocrystalline silica nodule, Mohs 7.0; conchoidal fracture yields razor flakes.', simpleDesc: 'Hard flint stone that knaps into sharp blade edges.' },
+  { id: 'FLINT_ADZE_HEAD', name: 'Flint Adze Head', category: 'material', tier: 1, icon: 'flint', desc: 'Knapped flint adze bit, Mohs 7.0; awaits a branch and sinew lashings.', simpleDesc: 'Shaped flint axe head ready to lash to a branch.' },
+  { id: 'RAW_KAOLIN_CLAY', name: 'Raw Kaolin Clay', category: 'material', tier: 1, icon: 'clay', desc: 'Hydrated aluminosilicate clay, Mohs 2.0; 1373 K sinters it into mullite crucibles.', simpleDesc: 'White clay dug from riverbanks. Fire in kiln for pots.' },
+  { id: 'LIMESTONE_ROCK', name: 'Limestone Rock', category: 'material', tier: 1, icon: 'rock', desc: 'Sedimentary calcite (CaCO3), Mohs 3.0; calcinated above 1100 K into quicklime.', simpleDesc: 'White stone from the quarry. Bake in a hot kiln to make Quicklime.' },
+  { id: 'HALITE_SALT', name: 'Halite Salt', category: 'material', tier: 1, icon: 'halite', desc: 'Cubic rock salt (NaCl), Mohs 2.5; precipitates hard sodium stearate soap.', simpleDesc: 'Turns soft soap into hard bars and keeps meat from spoiling.' },
+  { id: 'SOAPSTONE_BLOCK', name: 'Soapstone Block', category: 'material', tier: 1, icon: 'soapstone', mohs: 1.5, desc: 'Soft talc-schist, Mohs 1.5; carves like cold butter into molds.', simpleDesc: 'Soft heatproof stone carved into metal molds.' },
+  { id: 'SOAPSTONE_CHUNK', name: 'Soapstone Chunk', category: 'material', tier: 1, icon: 'soapstone', mohs: 1.5, affinity: 'forgewright', desc: 'Fist-sized soapstone offcut; the two-part mold starts here.', simpleDesc: 'Chunk of soft stone used to carve metal molds.' },
+  { id: 'CHARCOAL', name: 'Hardwood Charcoal', category: 'material', tier: 1, icon: 'charcoal', desc: 'Oak pyrolyzed airless; reductant for every carbothermic smelt.', simpleDesc: 'Burns much hotter than firewood and filters dirty well water.' },
 
   // ---- Materials: metals & minerals ----
   { id: 'MALACHITE_ORE', name: 'Malachite Ore', category: 'material', tier: 2, icon: 'ore', affinity: 'forgewright', desc: 'Cu2CO3(OH)2, Mohs 3.5; smelted with charcoal into copper.' },
@@ -207,7 +208,7 @@ export const ITEMS: readonly ItemDef[] = [
   { id: 'TUYERE_PIPE', name: 'Tuyere Blast Pipe', category: 'misc', tier: 3, icon: 'tuyere', affinity: 'forgewright', desc: 'Clay blast pipe; forced-draft breath for crucibles and piles.' },
 
   // ---- Materials: animal & leather ----
-  { id: 'RAW_ADIPOSE_FAT', name: 'Raw Adipose Fat', category: 'material', tier: 1, icon: 'fat', affinity: 'soapwright', desc: 'Rendered with lye it becomes soap; eaten, dense calories.' },
+  { id: 'RAW_ADIPOSE_FAT', name: 'Raw Adipose Fat', category: 'material', tier: 1, icon: 'fat', affinity: 'soapwright', desc: 'Rendered with lye it becomes soap; eaten, dense calories.', simpleDesc: 'Fresh fat from animals. Melt it in a pot to make Clean Fat.' },
   { id: 'RAW_MEDIUM_HIDE', name: 'Medium Raw Hide', category: 'material', tier: 1, icon: 'hide', desc: '4 kg boar hide, hair intact; dehair in ash lye before tanning.' },
   { id: 'DEHAIRED_HIDE', name: 'Dehaired Collagen Hide', category: 'material', tier: 1, icon: 'hide', affinity: 'soapwright', desc: 'Follicles loosened in pH-11 soak; collagen bare and ready for tannin.' },
   { id: 'VEGETABLE_TANNED_LEATHER', name: 'Vegetable-Tanned Leather', category: 'material', tier: 2, icon: 'leather', affinity: 'soapwright', desc: 'Tannin cross-linked and rot-proof; the backpack is cut from it.' },

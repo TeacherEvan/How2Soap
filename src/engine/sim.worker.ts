@@ -59,6 +59,7 @@ import {
   type CrisisContext,
   type CrisisId,
 } from './crisis';
+import { createTimedRequestManager, type TimedRequestManager } from './timedRequests';
 
 export interface FullSimState {
   world: WorldState;
@@ -103,7 +104,8 @@ type Command =
   | { type: 'ADMINISTER_STIMULANT'; colonistId: string; stimulantId: string }
   | { type: 'SET_WAGE_CONTRACT'; colonistId: string; wageContract: WageContract }
   | { type: 'GRANT_TUTORIAL_REAGENTS'; items?: Array<{ itemId: string; count?: number; massKg?: number }>; vesselSpecies?: Array<{ speciesId: string; moles: number }>; vesselTempK?: number }
-  | { type: 'CRISIS_CHOICE'; crisisId: CrisisId; choiceId: string };
+  | { type: 'CRISIS_CHOICE'; crisisId: CrisisId; choiceId: string }
+  | { type: 'FULFILL_REQUEST'; slot: number };
 
 interface WorkerCtx {
   postMessage(message: unknown): void;
@@ -140,6 +142,7 @@ let rngSeed = 0;
 let rng = createSeededRng(rngSeed);
 const crisis = createCrisisDirector();
 let lastCrisisSync = '';
+const timedRequests: TimedRequestManager = createTimedRequestManager();
 
 function postVessels(): void {
   if (!world) return;
@@ -231,6 +234,13 @@ function postCrisisSync(): void {
   ctx.postMessage({ type: 'CRISIS_SYNC', telegraph: snap.telegraph, active: snap.active });
 }
 
+function postRequestSync(): void {
+  ctx.postMessage({
+    type: 'REQUEST_SYNC',
+    slots: timedRequests.slots,
+  });
+}
+
 const emittedSpeciesMilestones = new Set<string>();
 
 function checkAndEmitSpeciesObjectives(): void {
@@ -309,6 +319,11 @@ function stepSingleTick(activitySeconds: number = SIM_STEP_SECONDS): WorldEvent[
       events.push({ vesselId: -1, message: msg });
     }
     postCrisisSync();
+
+    timedRequests.step(world.tick, (expiredReq) => {
+      events.push({ vesselId: -1, message: `⌛ Request expired: ${expiredReq.title}` });
+    });
+    postRequestSync();
   }
   return events;
 }
@@ -978,6 +993,35 @@ ctx.onmessage = (event: MessageEvent<Command>) => {
       postPlayerAndInventory();
       postColonySync();
       postCrisisSync();
+      break;
+    }
+    case 'FULFILL_REQUEST': {
+      if (!world || !inventory) break;
+      const flatInv: Record<string, number> = {};
+      const tally = (cont: any) => {
+        if (!cont) return;
+        for (const slot of cont.slots) {
+          if (slot) flatInv[slot.itemId] = (flatInv[slot.itemId] ?? 0) + slot.count;
+        }
+      };
+      tally(inventory.bareHands);
+      tally(inventory.backpack);
+      tally(inventory.campCache);
+
+      const res = timedRequests.fulfill(command.slot, flatInv, world.tick);
+      if (res && res.success) {
+        ctx.postMessage({
+          type: 'EVENTS',
+          events: [{ vesselId: -1, message: `Delivered town request! (+${res.rewardRenown} Renown, ${res.speedMultiplier}x Speed)` }],
+        });
+        postPlayerAndInventory();
+        postRequestSync();
+      } else {
+        ctx.postMessage({
+          type: 'EVENTS',
+          events: [{ vesselId: -1, message: 'Cannot fulfill request — missing required items.' }],
+        });
+      }
       break;
     }
     default:

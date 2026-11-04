@@ -1,0 +1,123 @@
+.soap-kettle-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 8500;
+  background: rgba(10, 8, 6, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.soap-kettle-panel {
+  width: 560px;
+  background: #1c1813;
+  border: 2px solid #8c6d3f;
+  border-radius: 8px;
+  padding: 16px;
+  color: #eeddbb;
+}
+.kettle-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #5a4628;
+  padding-bottom: 8px;
+}
+.btn-close-kettle {
+  background: transparent;
+  border: none;
+  color: #eeddbb;
+  font-size: 20px;
+  cursor: pointer;
+}
+.kettle-status-banner {
+  background: #2b241a;
+  padding: 8px 12px;
+  border-radius: 4px;
+  margin: 12px 0;
+  text-align: center;
+  font-weight: bold;
+}
+.kettle-status-banner.status-perfect {
+  background: #1b4d24;
+  color: #98ff98;
+}
+.kettle-status-banner.status-ruined {
+  background: #4d1b1b;
+  color: #ff9898;
+}
+.kettle-gauges {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px;
+}
+.gauge-col {
+  background: #252018;
+  padding: 10px;
+  border-radius: 6px;
+  text-align: center;
+}
+.pour-track, .thermo-track {
+  height: 120px;
+  width: 28px;
+  background: #110e0a;
+  margin: 10px auto;
+  position: relative;
+  border-radius: 4px;
+  overflow: hidden;
+  border: 1px solid #5a4628;
+}
+.pour-fill-lye {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 50%;
+  background: #5aa5ff;
+}
+.pour-fill-fat {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 50%;
+  background: #ffd166;
+}
+.pour-target-band {
+  position: absolute;
+  bottom: 45%;
+  height: 10%;
+  width: 100%;
+  background: rgba(76, 175, 80, 0.45);
+  border-top: 1px dashed #4caf50;
+  border-bottom: 1px dashed #4caf50;
+}
+.thermo-fill {
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  background: #ff5722;
+}
+.thermo-target-band {
+  position: absolute;
+  bottom: 60%;
+  height: 15%;
+  width: 100%;
+  background: rgba(76, 175, 80, 0.45);
+  border-top: 1px dashed #4caf50;
+  border-bottom: 1px dashed #4caf50;
+}
+.stir-circle {
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  border: 2px dashed #8c6d3f;
+  margin: 20px auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.stir-paddle {
+  width: 6px;
+  height: 40px;
+  background: #d4a373;
+  border-radius: 3px;
+  transition: transform 0.15s ease-out;
+}

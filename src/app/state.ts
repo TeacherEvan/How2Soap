@@ -45,6 +45,12 @@ export const MATERIAL_LABEL: Record<string, string> = {
   BOROSILICATE: 'Borosilicate',
 };
 
+export const UI_FLAG_MAP = 1 << 0;
+export const UI_FLAG_WORKSHOP = 1 << 1;
+export const UI_FLAG_SOAP_LAB = 1 << 2;
+export const UI_FLAG_REQUESTS = 1 << 3;
+export const UI_FLAG_PADDOCKS = 1 << 4;
+
 export const state = {
   worker: null as Worker | null,
   view: null as SharedWorldView | null,
@@ -52,6 +58,9 @@ export const state = {
   vessels: [] as VesselMeta[],
   selected: 0,
   activeTab: 'REACTIONS' as WorkbenchTab,
+  unlockedUiFlags: UI_FLAG_MAP | UI_FLAG_WORKSHOP | UI_FLAG_SOAP_LAB | UI_FLAG_REQUESTS | UI_FLAG_PADDOCKS,
+  timedRequests: [] as any[],
+  completedRequestsCount: 0,
   ever: {
     ash: false,
     lye: false,

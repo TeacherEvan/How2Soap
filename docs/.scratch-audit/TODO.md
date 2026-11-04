@@ -1,71 +1,86 @@
-# TODO.md — Governed Implementation Objectives
+# G&L Auditor V2: Implementation Task List (TODO.md)
 
-- [x] **OBJ-001**: Bio-Metabolism Model (`src/engine/metabolism.ts`)
-  - *Requirements*: AC-004
-  - *Details*: Implement two-compartment energy pool (Blood Glucose 0–2000 kcal, Adipose Reserves 15,000 kcal baseline), BMR (70 kcal/h), mechanical work expenditure ($\eta_{\text{human}} = 0.22$), environmental thermal dissipation with clothing insulation ($I_{\text{clo}}$), core body temperature tracking ($37.0^\circ\text{C}$ nominal, hypothermia < $35.0^\circ\text{C}$, hyperthermia > $39.5^\circ\text{C}$).
-  - *Validation*: Vitest unit tests in `tests/metabolism.test.ts`.
-  - *Evidence*: `tests/metabolism.test.ts` (6/6 passing)
+**Document:** `docs/.scratch-audit/TODO.md`  
+**Run:** `run-001`  
+**Target:** How2Soap (`teacherevan/how2soap`)  
+**Date:** 2026-11-04  
 
-- [x] **OBJ-002**: Hierarchical Biome DAG Resource Registry (`src/data/biomeNodes.ts`)
-  - *Requirements*: AC-005
-  - *Details*: Define complete 3-level DAG: Categories (`TREES`, `ROCKS_MINERALS`, `MUSHROOMS_FLORA`, `ANIMALS`), Species/Deposits (White Oak, Sugar Maple, Scots Pine, White Willow, Chert, Kaolinite, Limestone, Halite, Malachite, Pyrite, Field Mushroom, Tinder Fungus, Penicillium, Hare, Boar, Aurochs), and harvestable parts with base work $W_{\text{fracture}}$, moisture, yield stoichiometry, and transport haul energy cost $E_{\text{haul}}(d)$.
-  - *Validation*: Vitest unit tests in `tests/biomeNodes.test.ts`.
-  - *Evidence*: `tests/biomeNodes.test.ts` (6/6 passing)
+---
 
-- [x] **OBJ-003**: Tool Mechanics & Mohs Hardness Scaling (`src/engine/fabrication.ts`)
-  - *Requirements*: AC-006, AC-007
-  - *Details*: Define 6 tool slots: `CUTTING_SKINNING`, `CHOPPING_CARVING`, `PERCUSSION_MINING`, `THERMAL_HANDLING`, `STITCHING_MEDICAL`, `EATING_UTENSIL`. Implement Mohs hardness scaling formula $E_{\text{harvest}} = \frac{W_{\text{fracture}}}{MA_{\text{tool}}} \cdot (\frac{\text{Mohs}_{\text{target}}}{\text{Mohs}_{\text{tool}}})^2$ and tool durability.
-  - *Validation*: Vitest unit tests in `tests/fabricationAndInventory.test.ts`.
-  - *Evidence*: `tests/fabricationAndInventory.test.ts` (6/6 passing)
+## Objectives (≥10 Measurable Objectives)
 
-- [x] **OBJ-004**: Primitive Tool Crafting & Leather Backpack Pipeline (`src/engine/fabrication.ts`)
-  - *Requirements*: AC-006
-  - *Details*: Step-by-step pipeline implementation:
-    1. Knap Chert/Flint (`FLINT_FLAKE_BLADE`, `FLINT_ADZE_HEAD`).
-    2. Carve soft Pine trunk into `WOODEN_BUCKET` / `WOODEN_TROUGH`.
-    3. Hunt/Skin medium animal for `RAW_MEDIUM_HIDE`, fat, and sinew.
-    4. Alkaline dehairing in ash water (pH 11.2, 12 ticks).
-    5. Oak bark vegetable tanning (leaching tannic acid, 48 ticks soak).
-    6. Sinew bone-awl stitching into `LEATHER_BACKPACK`.
-  - *Validation*: Vitest unit tests in `tests/fabricationAndInventory.test.ts`.
-  - *Evidence*: `tests/fabricationAndInventory.test.ts` (6/6 passing)
+- [ ] **OBJ-001: CSS Layout Box-Sizing & Border Clipping Elimination**
+  - **Requirement:** FR-01, AC-001
+  - **Scope:** `src/styles.css`, `src/ui/windows/windows.css`
+  - **Action:** Enforce `*, *::before, *::after { box-sizing: border-box; }`, apply `min-width: 0; min-height: 0;` to grid children, and add `margin: 2px` safe inset for interactive cards.
+  - **Validation:** Visual inspection & layout checks.
 
-- [x] **OBJ-005**: Dynamic Inventory Containers & Slots (`src/engine/inventory.ts`)
-  - *Requirements*: AC-007
-  - *Details*: Implement Bare Hands container (2 slots, max 6 kg per hand), Stationary Camp Cache (6 slots at coordinates 0,0), and unlockable Leather Backpack (24 slots, 40 kg cap, weather-protected). Include mass checks and slot transfer operations.
-  - *Validation*: Vitest unit tests in `tests/fabricationAndInventory.test.ts`.
-  - *Evidence*: `tests/fabricationAndInventory.test.ts` (6/6 passing)
+- [ ] **OBJ-002: Window Viewport Boundary Clamping**
+  - **Requirement:** FR-02, AC-002
+  - **Scope:** `src/ui/WindowManager.ts`
+  - **Action:** Implement `clampToViewport(el, x, y)` with `topSafe: 62`, `bottomSafe: 68`, and `pad: 12`.
+  - **Validation:** Add unit tests in `tests/windowManager.test.ts`.
 
-- [x] **OBJ-006**: Animal Domestication & Husbandry Engine (`src/engine/husbandry.ts`)
-  - *Requirements*: AC-008
-  - *Details*: Implement paddock structures, live animal capture transport cost (+20%), daily feed/water inputs, and renewable yields (milk butterfat, egg calories, manure for niter beds).
-  - *Validation*: Vitest unit tests in `tests/husbandry.test.ts`.
-  - *Evidence*: `tests/husbandry.test.ts` (3/3 passing)
+- [ ] **OBJ-003: Plain-English Item Descriptions & Readability Enhancement**
+  - **Requirement:** FR-03, AC-003
+  - **Scope:** `src/data/items.ts`
+  - **Action:** Add `simpleDesc` field and ensure all item definitions have concise, clear descriptions while preserving canonical IDs and passing `tests/items.test.ts`.
+  - **Validation:** `npx vitest run tests/items.test.ts`.
 
-- [x] **OBJ-007**: Asynchronous Persistence & Compression (`src/engine/persistence.ts`)
-  - *Requirements*: AC-009
-  - *Details*: IndexedDB wrapper for `chem_world_v1` saving binary snapshots and JSON world state; Gzip compression using `CompressionStream('gzip')` with Base64 encoding for export and import with SHA-256 integrity prefix.
-  - *Validation*: Vitest tests in `tests/persistence.test.ts`.
-  - *Evidence*: `tests/persistence.test.ts` (2/2 passing)
+- [ ] **OBJ-004: Progressive UI Gating Flags**
+  - **Requirement:** FR-04, AC-004
+  - **Scope:** `src/app/state.ts`, `src/app/views.ts`
+  - **Action:** Introduce UI disclosure flags (`UI_FLAG_MAP`, `UI_FLAG_WORKSHOP`, `UI_FLAG_SOAP_LAB`, `UI_FLAG_REQUESTS`) to hide locked stations until requirements are met.
+  - **Validation:** Vitest UI state assertion.
 
-- [x] **OBJ-008**: Simulation Worker Integration (`src/engine/sim.worker.ts`)
-  - *Requirements*: AC-003, AC-004, AC-006
-  - *Details*: Connect metabolism, fabrication actions, biome harvesting, and inventory updates into the 10 Hz Web Worker simulation loop alongside existing chemistry.
-  - *Validation*: Worker command suite testing in `tests/soapWalkthrough.test.ts`, `tests/memoryLayout.test.ts`.
-  - *Evidence*: Worker running clean with `SharedWorldView` SeqLock.
+- [ ] **OBJ-005: Interactive Tutorial Element Spotlight Engine**
+  - **Requirement:** FR-05, AC-005
+  - **Scope:** `src/ui/TutorialController.ts`, `src/ui/tutorial.css`
+  - **Action:** Implement dynamic `#tutorial-spotlight-ring` tracking DOM elements via `getBoundingClientRect()` with smooth transitions and backdrop mask.
+  - **Validation:** DOM tracking test in `tests/surgicalAuditAndTutorial.test.ts`.
 
-- [x] **OBJ-009**: Interactive 4-Panel UI Viewport Components (`src/ui/`)
-  - *Requirements*: AC-010
-  - *Details*: Modularize UI:
-    - `src/ui/BiomeTreePanel.ts`: collapsible DAG explorer with harvest action buttons
-    - `src/ui/ToolAndInventoryPanel.ts`: 6 tool slots, bare hands, backpack lock state
-    - `src/ui/MenuController.ts`: settings and save hooks
-    - 4-panel layout integrated in `src/main.ts` and `src/styles.css`.
-  - *Validation*: Production Webpack build compiles clean.
-  - *Evidence*: `dist/` bundle verified.
+- [ ] **OBJ-006: 6-Step Hands-On Interactive Onboarding Script**
+  - **Requirement:** FR-05, AC-005
+  - **Scope:** `src/ui/tutorialCurriculum.ts`, `src/ui/TutorialController.ts`
+  - **Action:** Wire the 6 onboarding steps (Chop Wood, Burn Ash, Drip Lye, Melt Fat, Cook Soap, Deliver Request) to real inventory/event triggers.
+  - **Validation:** Vitest tutorial progression test.
 
-- [x] **OBJ-010**: End-to-End Soap & Survival Verification & Webpack Budget Audit
-  - *Requirements*: AC-011, Master Spec Section 6 & 7
-  - *Details*: Complete walkthrough verification from tree harvest -> ash/fat -> lye -> soap, backpack unlock, test suite 100% green, and webpack production bundle check maintaining strict < 200 KB budget.
-  - *Validation*: Full Vitest run (37/37 passing) + `npm run build` (Entrypoint: 39.1 KB).
-  - *Evidence*: `tests/soapWalkthrough.test.ts`, `dist/` bundle.
+- [ ] **OBJ-007: Timed Requests Engine Model**
+  - **Requirement:** FR-06, AC-006
+  - **Scope:** `src/engine/timedRequests.ts` (new file)
+  - **Action:** Implement 3-slot request manager with urgency tiers, tick countdowns, expiry penalties, and speed multipliers.
+  - **Validation:** Unit tests in `tests/timedRequests.test.ts`.
+
+- [ ] **OBJ-008: Worker Protocol Integration for Timed Requests**
+  - **Requirement:** FR-06, AC-006
+  - **Scope:** `src/engine/sim.worker.ts`, `src/app/workerMessages.ts`
+  - **Action:** Wire `REQUEST_SYNC`, `FULFILL_REQUEST`, and expiry notifications into the worker tick loop via structured cloning.
+  - **Validation:** Worker dispatch test in `tests/workerDispatch.test.ts`.
+
+- [ ] **OBJ-009: Timed Requests HUD Widget in Right Sidebar**
+  - **Requirement:** FR-06, AC-004
+  - **Scope:** `src/ui/TimedRequestsPanel.ts` (or `src/app/views.ts`), `src/styles.css`
+  - **Action:** Render active request cards with live animated progress bars, reward previews, and one-click deliver buttons.
+  - **Validation:** Visual verification.
+
+- [ ] **OBJ-010: Interactive Soap Kettle Mini-Game Controls**
+  - **Requirement:** FR-06
+  - **Scope:** `src/ui/WorkbenchCanvas.ts`
+  - **Action:** Implement 3-phase interactive kettle controller (Pouring mix hold gauge, Bellows heat pump inside target band, Stirring rhythm).
+  - **Validation:** Interactive canvas test.
+
+- [ ] **OBJ-011: Strict Verification & Quality Budget Gate**
+  - **Requirement:** NFR-01, NFR-02, NFR-03, NFR-04, NFR-05
+  - **Scope:** Full repository
+  - **Action:** Execute `npx vitest run`, `npx tsc --noEmit`, and `npm run build` (<200 KiB budget check).
+  - **Validation:** Automated test and build outputs.
+
+---
+
+## Definition of Done (DoD)
+
+1. Zero unstyled or overflowing layout boundaries across all screens.
+2. `SAB_BYTE_LENGTH === 67648` verified by `tests/memoryLayout.test.ts`.
+3. 0 dependencies in `package.json`.
+4. Production bundle under 200,000 bytes.
+5. All 44+ Vitest test suites green.

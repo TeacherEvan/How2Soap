@@ -1,0 +1,100 @@
+/* Timed Requests Widget & Cards — imported dynamically with TimedRequestsWidget */
+.timed-requests-card {
+  background: rgba(18, 24, 30, 0.7);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0.75rem;
+  margin-bottom: 0.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.tr-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.tr-header h4 {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--accent);
+}
+.tr-badge {
+  font-size: 0.65rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: #1c252d;
+  color: var(--muted);
+}
+.tr-badge.active {
+  background: rgba(224, 164, 88, 0.2);
+  color: var(--accent);
+  border: 1px solid var(--accent);
+}
+.tr-hint {
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin: 0;
+  font-style: italic;
+}
+.request-slot-card {
+  background: #171f26;
+  border: 1px solid #2f3c47;
+  border-radius: 6px;
+  padding: 0.5rem 0.65rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin: 2px 0;
+}
+.req-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.8rem;
+}
+.req-urgency {
+  font-size: 0.6rem;
+  font-weight: 700;
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+.req-urgency.tier-1 { background: rgba(76, 175, 80, 0.2); color: #81c784; }
+.req-urgency.tier-2 { background: rgba(255, 152, 0, 0.2); color: #ffb74d; }
+.req-urgency.tier-3 { background: rgba(244, 67, 54, 0.2); color: #e57373; }
+.req-details-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.75rem;
+}
+.req-item-info {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.renown-gain {
+  color: var(--brass-amber);
+  font-weight: 600;
+}
+.req-progress-bar-wrap {
+  width: 100%;
+  height: 5px;
+  background: #0d1217;
+  border-radius: 3px;
+  overflow: hidden;
+}
+.req-progress-fill {
+  height: 100%;
+  transition: width 0.3s ease-out;
+}
+.req-actions-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.7rem;
+}
+.req-timer-text {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}

@@ -35,6 +35,10 @@ export type WorkerMessage =
         startedTick: number;
         choices: Array<{ id: string; label: string; detail: string; requiresOtherVessel: boolean }>;
       } | null;
+    }
+  | {
+      type: 'REQUEST_SYNC';
+      slots: any[];
     };
 
 function createSeedVessels(): void {
@@ -157,6 +161,20 @@ export function handleWorkerMessage(data: WorkerMessage, options?: { load?: unkn
       import('../ui/score').then(({ score }) => score.setTheme('hearth'));
       closeCrisisModal();
     }
+    return;
+  }
+
+  if (data.type === 'REQUEST_SYNC') {
+    const prevSlots = (state as any).timedRequests ?? [];
+    (state as any).timedRequests = data.slots;
+    if (data.slots && prevSlots.length > 0) {
+      for (const slot of data.slots) {
+        if (!slot.active && prevSlots.some((p: any) => p.slot === slot.slot && p.active)) {
+          state.completedRequestsCount = (state.completedRequestsCount || 0) + 1;
+        }
+      }
+    }
+    updatePlayerUI();
     return;
   }
 

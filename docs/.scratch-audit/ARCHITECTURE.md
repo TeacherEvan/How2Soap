@@ -1,60 +1,48 @@
-# ARCHITECTURE.md — Target Architecture & System Design
+# G&L Auditor V2: Target Architecture & Areas Being Edited
 
-## 1. System Topology & Data Flow
+**Document:** `docs/.scratch-audit/ARCHITECTURE.md`  
+**Run:** `run-001`  
+**Date:** 2026-11-04  
 
-```
-+--------------------------------------------------------------------------------+
-| MAIN THREAD (60 FPS DOM / Canvas / UI Event Loop)                              |
-|                                                                                |
-|  +--------------------+     +-------------------+     +---------------------+  |
-|  | Top Telemetry Bar  |     | BiomeTreePanel    |     | Tool & Inventory    |  |
-|  | Glucose, Temp, Day |     | 3-Level DAG & Run |     | 6 Tools, Hands, Pack|  |
-|  +--------------------+     +-------------------+     +---------------------+  |
-|            |                          |                          |             |
-|            +--------------------------+--------------------------+             |
-|                                       |                                        |
-|                          +------------------------+                            |
-|                          | Center Workbench Panel |                            |
-|                          | Reactions, Fabricate   |                            |
-|                          +------------------------+                            |
-|                                       |                                        |
-|                     +-----------------+-----------------+                      |
-|                     | Atomic SeqLock Poller (Float64)   |                      |
-|                     | Reads snapshot at 60 FPS          |                      |
-+---------------------+-----------------+-----------------+----------------------+
-                                        |
-                           SharedArrayBuffer (67,648 B)
-                           [syncFlags, telemetry, moles]
-                                        |
-+---------------------+-----------------+-----------------+----------------------+
-| WORKER THREAD (10 Hz Deterministic Simulation Loop)                            |
-|                                                                                |
-|  +-------------------+      +-------------------+      +--------------------+  |
-|  | Physical Chemistry|      | Bio-Metabolism    |      | Fabrication &      |  |
-|  | Arrhenius, pH,    |      | Glucose, Adipose, |      | Hardness Mechanics |  |
-|  | Boiling, Ksp      |      | Thermogenesis     |      | Knap, Carve, Tan   |  |
-|  +-------------------+      +-------------------+      +--------------------+  |
-|                                       |                                        |
-|                              Authoritative World                               |
-|                          vessels[], player, inventory                          |
-+--------------------------------------------------------------------------------+
+---
+
+## 1. Architectural Changes Overview
+
+```mermaid
+flowchart TD
+  subgraph Presentation_Layer["Presentation Layer (DOM & Canvases)"]
+    HTML["public/index.html<br/>Refined Shell & Vitals"]
+    CSS["src/styles.css & windows.css<br/>Strict Clamping & No-Clipping Layout"]
+    WM["src/ui/WindowManager.ts<br/>clampToViewport() & Safe Offsets"]
+    TUT["src/ui/TutorialController.ts<br/>#tutorial-spotlight-ring State Machine"]
+    WB["src/ui/WorkbenchCanvas.ts<br/>Interactive Soap Kettle Mini-Game"]
+    REQ_UI["src/ui/TimedRequestsPanel.ts<br/>3 Concurrent Urgent Request Slots"]
+  end
+
+  subgraph Engine_Layer["Simulation & Worker Layer"]
+    WORKER["src/engine/sim.worker.ts<br/>Timed Request Expiry & Fulfill Logic"]
+    REQ_ENG["src/engine/timedRequests.ts<br/>Tick Countdown, Urgency Tiers & Rewards"]
+    SYNC["postMessage(REQUEST_SYNC)<br/>Structured Clone (0-byte SAB impact)"]
+  end
+
+  REQ_ENG --> WORKER
+  WORKER --> SYNC
+  SYNC --> REQ_UI
+  WM --> CSS
+  TUT --> CSS
 ```
 
-## 2. Areas Being Created / Updated
+---
 
-| Module | Purpose | Interfacing APIs |
+## 2. Areas Being Edited
+
+| File | Nature of Edit | Invariant Protection |
 | :--- | :--- | :--- |
-| `src/data/biomeNodes.ts` | Complete hierarchical resource definitions for Trees, Rocks, Flora, Animals | Consumed by `BiomeTreePanel.ts` and `fabrication.ts` |
-| `src/engine/metabolism.ts` | Blood Glucose, Adipose Reserves, BMR, environmental heat transfer, shivering/sweating | Stepped in `sim.worker.ts` each tick |
-| `src/engine/fabrication.ts` | Tool durability & Mohs rating, flint knapping, wood hollow carving, hide dehairing, tannin steeping, leather stitching | Dispatched via worker commands from UI |
-| `src/engine/husbandry.ts` | Animal paddock management, feeding, milk/manure generation | Integrated into world simulation loop |
-| `src/engine/persistence.ts` | IndexedDB `chem_world_v1` save/load with gzip compression | Invoked from Settings modal / Topbar controls |
-| `src/ui/ViewportGrid.ts` | CSS Grid orchestrator integrating 4 panels | Bootstrapped in `src/main.ts` |
-| `src/ui/BiomeTreePanel.ts` | Interactive collapsible tree rendering with tool-scaled kcal costs | Renders left panel |
-| `src/ui/ToolAndInventoryPanel.ts` | 6 dedicated tool slots, 2 Bare Hands slots, locked/unlocked Backpack grid | Renders right panel |
-| `src/ui/WorkbenchCanvas.ts` | Vessel monitoring, reaction progress, heating controls, decanting & skimming | Center panel tabs |
-| `src/ui/MenuController.ts` | Main menu, settings modal, compendium view, export/import save data | UI overlay layer |
-
-## 3. Concurrency & Security Boundaries
-- **SeqLock Protocol**: UI thread NEVER writes to the SharedArrayBuffer. UI sends postMessage commands (`POST_ACTION`, `HARVEST`, `FABRICATE`, `TICK_SPEED`). Worker holds authoritative state, executes tick computations, updates internal models, and writes a zero-copy atomic frame to `SharedWorldView` with SeqLock odd/even guards.
-- **COOP/COEP Headers**: Verified in `vercel.json` and checked gracefully on boot in `main.ts` with friendly fallback instructions if isolation is not supported.
+| `src/styles.css` | Box sizing, border clipping fixes, safe insets, spotlight overlay styling. | No external CSS, responsive down to 1280x720. |
+| `src/ui/windows/windows.css` | Window dimensions, safe margin, responsive sheets. | WCAG 2.2 touch target compliance. |
+| `src/ui/WindowManager.ts` | Add `clampToViewport` for floating & modal window bounds. | Non-breaking API. |
+| `src/data/items.ts` | Add `simpleDesc` and enhance clarity while preserving all canonical item IDs. | Integrity check in `tests/items.test.ts` passes. |
+| `src/ui/TutorialController.ts` | Dynamic element spotlight `#tutorial-spotlight-ring` tracking target bounding rect. | Backward compatible with existing curriculum. |
+| `src/engine/timedRequests.ts` | Engine for 3 concurrent timed town requests (new module). | Pure TypeScript, zero npm deps. |
+| `src/engine/sim.worker.ts` | Handle `FULFILL_REQUEST` and emit `REQUEST_SYNC` on tick loop. | `SAB_BYTE_LENGTH` unchanged at 67648 B. |
+| `src/app/workerMessages.ts` | Dispatch `REQUEST_SYNC` and update UI state. | Strict type assertions. |

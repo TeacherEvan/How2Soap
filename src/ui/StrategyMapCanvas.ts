@@ -53,6 +53,24 @@ export interface StrategyMapCanvasOptions {
   onAssignJob?: (colonistId: string, speciesId: string, partId: string) => void;
   onAdministerStimulant?: (colonistId: string, stimulantId: string) => void;
   onSetWageContract?: (colonistId: string, wageContract: WageContract) => void;
+  onHarvestBoost?: (speciesId: string, bonus: boolean) => void;
+}
+
+export interface MapHotspot {
+  id: string;
+  speciesId: string;
+  name: string;
+  expiresAtMs: number;
+}
+
+export interface TimingRingStrike {
+  speciesId: string;
+  worldX: number;
+  worldY: number;
+  startMs: number;
+  durationMs: number; // 1200ms
+  innerRadius: number; // 12px
+  outerRadius: number; // 38px
 }
 
 export class StrategyMapCanvas {
@@ -79,6 +97,10 @@ export class StrategyMapCanvas {
   private panStartY = 0;
   private showReliefUnderlay = true;
   private reliefImage: HTMLImageElement | null = null;
+
+  public activeHotspots: MapHotspot[] = [];
+  public activeTimingRing: TimingRingStrike | null = null;
+  private lastHotspotSpawnMs = 0;
 
   private dockContainer!: HTMLElement;
 
@@ -201,6 +223,12 @@ export class StrategyMapCanvas {
       this.dragStartY = e.clientY;
       this.panStartX = this.viewport.panX;
       this.panStartY = this.viewport.panY;
+
+      // Check click on Biome node for timing ring or hotspot
+      const rect = this.canvas.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+      this.handleNodeClick(mouseX, mouseY);
     });
 
     window.addEventListener('mousemove', this.onWindowMouseMove);
@@ -403,15 +431,46 @@ export class StrategyMapCanvas {
     }
 
     // 5. Biome resource nodes placed at getSpeciesWorldPosition
+    const nowMs = Date.now();
+    // Spawn periodic 30s bonus hotspot every 45s
+    if (nowMs - this.lastHotspotSpawnMs > 45000) {
+      this.lastHotspotSpawnMs = nowMs;
+      const allSpecies = BIOME_DAG.flatMap(c => c.species);
+      const chosen = allSpecies[Math.floor(Math.random() * allSpecies.length)];
+      if (chosen && !this.activeHotspots.some(h => h.speciesId === chosen.id)) {
+        this.activeHotspots.push({
+          id: `hotspot_${nowMs}`,
+          speciesId: chosen.id,
+          name: chosen.name,
+          expiresAtMs: nowMs + 30000,
+        });
+      }
+    }
+    // Filter expired hotspots
+    this.activeHotspots = this.activeHotspots.filter(h => h.expiresAtMs > nowMs);
+
     for (const cat of BIOME_DAG) {
       for (const sp of cat.species) {
         const pos = getSpeciesWorldPosition(sp);
         const s = worldToScreen(pos.x, pos.y, viewport);
 
+        // Check if hotspot active on this node
+        const isHotspot = this.activeHotspots.some(h => h.speciesId === sp.id);
+
+        if (isHotspot) {
+          ctx.beginPath();
+          ctx.arc(s.x, s.y, 14, 0, Math.PI * 2);
+          ctx.fillStyle = 'rgba(255, 215, 0, 0.35)';
+          ctx.fill();
+          ctx.strokeStyle = '#ffd700';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+        }
+
         // Node circle
         ctx.beginPath();
         ctx.arc(s.x, s.y, 6, 0, Math.PI * 2);
-        ctx.fillStyle = cat.key === 'TREES' ? '#4caf50'
+        ctx.fillStyle = isHotspot ? '#ffd700' : cat.key === 'TREES' ? '#4caf50'
           : cat.key === 'ROCKS_MINERALS' ? '#e0a458'
           : cat.key === 'MUSHROOMS_FLORA' ? '#9c27b0'
           : '#ff9800';
@@ -421,9 +480,40 @@ export class StrategyMapCanvas {
         ctx.stroke();
 
         // Label
-        ctx.fillStyle = '#dce6ec';
-        ctx.font = '10px serif';
-        ctx.fillText(sp.name, s.x + 8, s.y + 3);
+        ctx.fillStyle = isHotspot ? '#ffe57f' : '#dce6ec';
+        ctx.font = isHotspot ? 'bold 10px serif' : '10px serif';
+        ctx.fillText(isHotspot ? `★ ${sp.name} (3x!)` : sp.name, s.x + 8, s.y + 3);
+      }
+    }
+
+    // Render active timing ring strike if any
+    if (this.activeTimingRing) {
+      const elapsed = nowMs - this.activeTimingRing.startMs;
+      if (elapsed > this.activeTimingRing.durationMs) {
+        this.activeTimingRing = null;
+      } else {
+        const progress = elapsed / this.activeTimingRing.durationMs;
+        const currentRadius = this.activeTimingRing.outerRadius - progress * (this.activeTimingRing.outerRadius - this.activeTimingRing.innerRadius);
+        const ringPos = worldToScreen(this.activeTimingRing.worldX, this.activeTimingRing.worldY, viewport);
+
+        // Inner target circle
+        ctx.beginPath();
+        ctx.arc(ringPos.x, ringPos.y, this.activeTimingRing.innerRadius, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(76, 175, 80, 0.8)';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // Contracting outer ring
+        ctx.beginPath();
+        ctx.arc(ringPos.x, ringPos.y, Math.max(1, currentRadius), 0, Math.PI * 2);
+        const inPerfectZone = progress >= 0.70 && progress <= 0.98;
+        ctx.strokeStyle = inPerfectZone ? '#4caf50' : '#ffd700';
+        ctx.lineWidth = inPerfectZone ? 3 : 2;
+        ctx.stroke();
+
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 9px sans-serif';
+        ctx.fillText(inPerfectZone ? 'STRIKE NOW!' : 'Harvesting...', ringPos.x - 24, ringPos.y - 18);
       }
     }
 
@@ -510,6 +600,59 @@ export class StrategyMapCanvas {
     ctx.fillRect(0, 0, width, height);
 
     ctx.restore();
+  }
+
+  private handleNodeClick(screenX: number, screenY: number): void {
+    const now = Date.now();
+
+    // Check if second click on active timing ring
+    if (this.activeTimingRing) {
+      const ringPos = worldToScreen(this.activeTimingRing.worldX, this.activeTimingRing.worldY, this.viewport);
+      const dist = Math.hypot(screenX - ringPos.x, screenY - ringPos.y);
+      if (dist <= 45) {
+        const elapsed = now - this.activeTimingRing.startMs;
+        const progress = elapsed / this.activeTimingRing.durationMs;
+        // Perfect timing band: 0.70 to 0.95
+        const isPerfect = progress >= 0.70 && progress <= 0.98;
+        if (this.options.onHarvestBoost) {
+          this.options.onHarvestBoost(this.activeTimingRing.speciesId, isPerfect);
+        }
+        this.activeTimingRing = null;
+        return;
+      }
+    }
+
+    // Check click on nodes or hotspots
+    for (const cat of BIOME_DAG) {
+      for (const sp of cat.species) {
+        const pos = getSpeciesWorldPosition(sp);
+        const s = worldToScreen(pos.x, pos.y, this.viewport);
+        const dist = Math.hypot(screenX - s.x, screenY - s.y);
+        if (dist <= 18) {
+          // Check if hotspot clicked
+          const hotspotIdx = this.activeHotspots.findIndex(h => h.speciesId === sp.id);
+          if (hotspotIdx >= 0) {
+            this.activeHotspots.splice(hotspotIdx, 1);
+            if (this.options.onHarvestBoost) {
+              this.options.onHarvestBoost(sp.id, true);
+            }
+            return;
+          }
+
+          // Trigger 1.2s timing ring strike
+          this.activeTimingRing = {
+            speciesId: sp.id,
+            worldX: pos.x,
+            worldY: pos.y,
+            startMs: now,
+            durationMs: 1200,
+            innerRadius: 10,
+            outerRadius: 36,
+          };
+          return;
+        }
+      }
+    }
   }
 
   private renderDock(): void {

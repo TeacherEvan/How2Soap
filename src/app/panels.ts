@@ -83,6 +83,24 @@ export function switchTab(tab: WorkbenchTab): void {
   } else if (tab === 'PADDOCKS') {
     updatePaddockUI();
   } else if (tab === 'STRATEGY') {
+    if (state.strategyMap) {
+      (state.strategyMap as any).options.onHarvestBoost = (speciesId: string, bonus: boolean) => {
+        audio.harvestThud();
+        send({
+          type: 'HARVEST_PART',
+          partId: speciesId.includes('TREE') ? 'OAK_HEARTWOOD_LOG' : 'HALITE_ORE',
+          speciesId,
+          carriedMassKg: 0,
+          toolSlot: 'PERCUSSION_MINING',
+          distanceMeters: 50,
+        });
+        if (bonus) {
+          audio.clink();
+          state.log.push(`★ Bonus harvest! Clean strike boost!`);
+        }
+        renderLog();
+      };
+    }
     state.strategyMap?.resizeCanvas();
   } else if (tab === 'JOURNAL') {
     mountJournal(tabJournal, state.progression);
@@ -189,5 +207,26 @@ export function updatePlayerUI(): void {
     },
     treatments,
     isDead: state.player.conditions?.dead,
+  });
+
+  // Render Timed Requests into Right Panel or dedicated container
+  let reqContainer = document.getElementById('timed-requests-container');
+  if (!reqContainer) {
+    reqContainer = document.createElement('div');
+    reqContainer.id = 'timed-requests-container';
+    toolInvPanel.prepend(reqContainer);
+  }
+  import('../ui/TimedRequestsWidget').then(({ renderTimedRequestsWidget }) => {
+    if (reqContainer) {
+      renderTimedRequestsWidget(
+        reqContainer,
+        (state as any).timedRequests,
+        state.snapshot?.tick ?? 0,
+        (slot) => {
+          audio.clink();
+          send({ type: 'FULFILL_REQUEST', slot });
+        },
+      );
+    }
   });
 }

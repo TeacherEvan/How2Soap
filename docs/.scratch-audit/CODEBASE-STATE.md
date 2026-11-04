@@ -1,42 +1,36 @@
-# CODEBASE-STATE Baseline Report
+# G&L Auditor V2: Codebase Baseline State
 
-## Metadata
-- **Date**: 2026-11-01
-- **Target Repo**: How to make soap (Chemistry Survival Engine)
-- **Baseline Git Commit**: `ff8639215792a16e14f3c84a56e75f356b938aca` ("Phase 1: Engine foundation")
-- **Node Environment**: Node.js v20 LTS / Linux
-- **TypeScript**: 5.4.5, strict mode enabled
-- **Bundler**: Webpack 5.112.2, TerserPlugin, MiniCssExtractPlugin
-- **Test Runner**: Vitest 3.2.7 (14/14 tests passing)
+**Document:** `docs/.scratch-audit/CODEBASE-STATE.md`  
+**Run:** `run-001`  
+**Commit Baseline:** `c4c53ac521917629cd3367e6bfd6584052e4cea6`  
+**Date:** 2026-11-04  
 
-## Architecture Overview
-The project is an emergent chemistry and survival simulation engine designed for browser execution with strict Cross-Origin Isolation (`SharedArrayBuffer` via COOP/COEP headers).
+---
 
-### Current File Tree
-- `vercel.json`: Edge headers (`Cross-Origin-Opener-Policy: same-origin`, `Cross-Origin-Embedder-Policy: require-corp`).
-- `webpack.config.js`: Webpack 5 bundle configuration with strict entrypoint size budgets (<200 KB). Current entrypoint: 22.1 KB.
-- `src/data/speciesRegistry.ts`: 34 species defined out of 256 indexed capacity (H2O, K2CO3, CaO, Ca(OH)2, CaCO3, KOH, Tristearin, Potash Soap, Glycerol, NaCl, Sodium Stearate, etc.).
-- `src/data/reactionRules.ts`: Arrhenius reaction rules (hydration, double displacement, saponification, salting out) and electrolysis rules.
-- `src/engine/memoryLayout.ts`: Flat 67,648-byte `SharedArrayBuffer` layout with `syncFlags` SeqLock, telemetry stride (8 float64s/vessel), and mole matrix (32 vessels x 256 species).
-- `src/engine/chemistry.ts`: Pure physical chemistry solver: Arrhenius rate calculation, enthalpy & calorimetry, latent heat phase clamping & boiling, Ksp precipitation, SID dynamic pH solver, Faraday electrolysis.
-- `src/engine/world.ts`: Authoritative multi-vessel state container, decanting, skimming, stepping, and SeqLock sync to SharedArrayBuffer.
-- `src/engine/sim.worker.ts`: 10 Hz deterministic Web Worker event loop responding to worker commands (`INIT`, `STEP`, `SET_HEAT`, `ADD_SPECIES`, `DECANT`, `SKIM`, etc.).
-- `src/main.ts`: UI layer currently bootstrapping a 4-panel workbench with real-time SeqLock snapshot polling at 60 FPS.
-- `tests/`:
-  - `memoryLayout.test.ts`: SeqLock atomicity and buffer indexing tests (5 passed).
-  - `chemistry.test.ts`: Calorimetry, Arrhenius kinetics, pH, precipitation, latent heat boiling, and Faraday electrolysis tests (8 passed).
-  - `soapWalkthrough.test.ts`: Canonical ash -> lye -> decant -> saponify -> salt-out test (1 passed).
+## 1. System Metadata & Health
 
-## Existing Strengths
-1. Rock-solid zero-copy multithreaded architecture with SeqLock preventing torn reads.
-2. Verified physical chemistry equations for the core soap pathway.
-3. Clean TypeScript code without external runtime dependencies (zero UI bloat).
-4. Fast build and test suite (<1s test execution, <3.5s webpack production build).
+- **Architecture:** TypeScript 5.6.3, Webpack 5.112.2, Web Worker (`src/engine/sim.worker.ts`), SharedArrayBuffer + SeqLock (`src/engine/memoryLayout.ts`), Canvas 2D & WebGL2 (`src/ui/gl/`).
+- **Tests:** 44 test suites, 223 tests passing via Vitest.
+- **Typecheck:** Clean compilation (`npx tsc --noEmit` exits 0).
+- **Bundle Budget:** Production entrypoint size is `194 KiB` (Budget: `< 200,000` bytes).
+- **Runtime Dependencies:** 0 in `"dependencies"`.
 
-## Gaps Identified vs Master Specification
-1. **Bio-Thermodynamic Metabolism (`src/engine/metabolism.ts`)**: Missing BMR (70 kcal/h), blood glucose (0-2000 kcal), adipose reserve (15,000 kcal), hypothermia/hyperthermia thermogenesis, and clothing insulation ($I_{\text{clo}}$).
-2. **Biome DAG & Resource Nodes (`src/data/biomeNodes.ts`)**: Missing 3-level hierarchical explorer (Trees: White Oak, Sugar Maple, Scots Pine, White Willow; Rocks: Chert, Kaolinite, Limestone, Halite, Malachite, Pyrite; Fungi/Flora; Animals).
-3. **Mechanical Fabrication & Tool System (`src/engine/fabrication.ts`)**: Missing tool mechanical advantage ($MA$), Mohs hardness scaling, knapping, carving, dehairing, tannin steeping, and Leather Backpack 24-slot unlock.
-4. **Domestication & Animal Husbandry (`src/engine/husbandry.ts`)**: Missing live capture, paddocks, feeding/culling, manure generation.
-5. **Persistence & Save Management**: Missing IndexedDB (`chem_world_v1`) asynchronous storage and `CompressionStream('gzip')` export/import.
-6. **Compendium & Accessibility Settings**: Missing dynamic chemical compendium and accessible color palettes / audio routing stubs.
+---
+
+## 2. Directory Layout & Key Modules
+
+- `src/main.ts`: Application bootstrap, orchestration, topbar controls, and canvas loop.
+- `src/styles.css`: Core layout styles, topbar, HUD panels, and theme variables.
+- `src/ui/WindowManager.ts`: Dialog & feature window management (`role="dialog"`, focus trap, ESC).
+- `src/ui/windows/`: Feature window implementations (`BiomeWindow.ts`, `FabricationWindow.ts`, `PaddocksWindow.ts`, `ReactionsWindow.ts`, `windows.css`).
+- `src/ui/TutorialController.ts` & `tutorialCurriculum.ts`: 3-Tier academy, coachmark banner, and lesson curricula.
+- `src/data/items.ts`: 50+ item definitions (`ITEM_BY_ID`, `ITEMS`).
+- `src/engine/sim.worker.ts`: Web Worker simulation tick loop, message handling, chemistry and colony updates.
+- `src/engine/memoryLayout.ts`: `SAB_BYTE_LENGTH = 67648` invariant.
+
+---
+
+## 3. Identified Plan Gaps & Reconciliation Directives
+
+1. **Item ID Discrepancies:** The overhaul plan references fictional item IDs (`timber_hardwood`, `raw_suet`, etc.). The actual codebase uses canonical IDs (`PINE_DEADFALL_WOOD`, `RAW_ADIPOSE_FAT`, `HALITE_SALT`, `BAR_SOAP`). Plan execution must map to canonical IDs to avoid breaking 44 test suites.
+2. **SAB Invariant Protection:** The plan text suggests expanding SAB for timed requests with 24 floats. However, `AGENTS.md` strictly prohibits modifying `SAB_BYTE_LENGTH` (`67648`). Therefore, timed request state must be synchronized via structured `postMessage` (`REQUEST_SYNC` / `PLAYER_SYNC`), matching how `colony.ts` and `crisis.ts` operate.

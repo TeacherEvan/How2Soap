@@ -1,14 +1,23 @@
-# TRACEABILITY MATRIX
+# G&L Auditor V2: Traceability Matrix
 
-| Objective | Master Spec Section | Acceptance Criteria | Implementation File(s) | Verification Test | Test Status |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| **OBJ-001** | §4.1 Player Metabolism | AC-004 | `src/engine/metabolism.ts` | `tests/metabolism.test.ts` | PASS (6/6) |
-| **OBJ-002** | §4.2 Biome Nodes | AC-005 | `src/data/biomeNodes.ts` | `tests/biomeNodes.test.ts` | PASS (6/6) |
-| **OBJ-003** | §4.1, §5 Tool Mechanics | AC-006, AC-007 | `src/engine/fabrication.ts` | `tests/fabricationAndInventory.test.ts` | PASS (6/6) |
-| **OBJ-004** | §5 Backpack Crafting | AC-006 | `src/engine/fabrication.ts` | `tests/fabricationAndInventory.test.ts` | PASS (6/6) |
-| **OBJ-005** | §2.2, §5 Containers | AC-007 | `src/engine/inventory.ts` | `tests/fabricationAndInventory.test.ts` | PASS (6/6) |
-| **OBJ-006** | §4.2 (Node 4) Husbandry | AC-008 | `src/engine/husbandry.ts` | `tests/husbandry.test.ts` | PASS (3/3) |
-| **OBJ-007** | §0.4, §2.1 Persistence | AC-009 | `src/engine/persistence.ts` | `tests/persistence.test.ts` | PASS (2/2) |
-| **OBJ-008** | §3 Shared Engine Loop | AC-003, AC-004 | `src/engine/sim.worker.ts` | `tests/soapWalkthrough.test.ts`, `tests/memoryLayout.test.ts` | PASS (6/6) |
-| **OBJ-009** | §2 4-Panel UI Viewport | AC-010 | `src/ui/*`, `src/main.ts`, `src/styles.css` | Webpack 5 production build | PASS |
-| **OBJ-010** | §1, §6 Master Soap Loop | AC-001, AC-002, AC-011 | Full stack | Webpack 5 bundle (< 200 KB budget: 39.1 KB), Vitest suite | PASS (37/37) |
+**Document:** `docs/.scratch-audit/TRACEABILITY.md`  
+**Run:** `run-001`  
+**Date:** 2026-11-04  
+
+---
+
+| Objective | Requirement | Test Suite / Verification Gate | Evidence Status |
+| :--- | :--- | :--- | :--- |
+| **OBJ-001** (CSS Box-Sizing & Layout) | FR-01, AC-001 | `src/styles.css`, `npm run build` | `VERIFIED` |
+| **OBJ-002** (Viewport Clamping) | FR-02, AC-002 | `tests/windowManager.test.ts` | `VERIFIED` (1 test green) |
+| **OBJ-003** (Item Catalog Readability) | FR-03, AC-003 | `tests/items.test.ts` | `VERIFIED` (5 tests green) |
+| **OBJ-004** (Progressive Gating) | FR-04, AC-004 | `tests/progression.test.ts` | `VERIFIED` (8 tests green) |
+| **OBJ-005** (Interactive Spotlight) | FR-05, AC-005 | `src/ui/tutorial.css`, `tests/surgicalAuditAndTutorial.test.ts` | `VERIFIED` (8 tests green) |
+| **OBJ-006** (Onboarding Script) | FR-05, AC-005 | `tests/soapWalkthrough.test.ts` | `VERIFIED` (1 test green) |
+| **OBJ-007** (Timed Requests Engine) | FR-06, AC-006 | `tests/timedRequests.test.ts` | `VERIFIED` (3 tests green) |
+| **OBJ-008** (Worker Protocol) | FR-06, AC-006 | `tests/workerDispatch.test.ts` | `VERIFIED` (11 tests green) |
+| **OBJ-009** (Requests Widget) | FR-06, AC-004 | `src/app/workerMessages.ts`, build verification | `VERIFIED` |
+| **OBJ-010** (Interactive Kettle) | FR-06 | `src/ui/WorkbenchCanvas.ts`, `tests/chemistry.test.ts` | `VERIFIED` (8 tests green) |
+| **OBJ-011** (Strict Quality Gates) | NFR-01..NFR-05 | `npx tsc --noEmit && npm run build` + 46 test suites | `VERIFIED` (227 tests green, entrypoint 195 KiB) |
+
+**Final Status:** `READY`

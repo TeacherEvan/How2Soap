@@ -327,6 +327,8 @@ export class TutorialController {
     this.applySpotlight(lesson.spotlightSelector);
   }
 
+  private spotlightRingEl: HTMLElement | null = null;
+
   private applySpotlight(selector: string): void {
     this.clearSpotlight();
     try {
@@ -334,6 +336,19 @@ export class TutorialController {
       if (el) {
         el.classList.add('tutorial-spotlight-target');
         this.currentSpotlightEl = el;
+
+        if (!this.spotlightRingEl) {
+          this.spotlightRingEl = document.createElement('div');
+          this.spotlightRingEl.id = 'tutorial-spotlight-ring';
+          document.body.appendChild(this.spotlightRingEl);
+        }
+
+        const rect = el.getBoundingClientRect();
+        this.spotlightRingEl.style.left = `${rect.left - 4}px`;
+        this.spotlightRingEl.style.top = `${rect.top - 4}px`;
+        this.spotlightRingEl.style.width = `${rect.width + 8}px`;
+        this.spotlightRingEl.style.height = `${rect.height + 8}px`;
+        this.spotlightRingEl.style.display = 'block';
       }
     } catch {
       // Ignore selector errors
@@ -344,6 +359,9 @@ export class TutorialController {
     if (this.currentSpotlightEl) {
       this.currentSpotlightEl.classList.remove('tutorial-spotlight-target');
       this.currentSpotlightEl = null;
+    }
+    if (this.spotlightRingEl) {
+      this.spotlightRingEl.style.display = 'none';
     }
   }
 
