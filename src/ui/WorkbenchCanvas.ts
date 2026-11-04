@@ -104,6 +104,7 @@ export function renderPaddockTab(
   },
   onFeed: () => void,
   onWater: () => void,
+  onCapture?: (species: 'GOAT' | 'RED_JUNGLE_FOWL' | 'AUROCHS') => void,
 ): void {
   container.innerHTML = `
     <div class="paddock-view">
@@ -122,6 +123,8 @@ export function renderPaddockTab(
       <div class="paddock-actions">
         <button id="btn-add-feed" class="ghost">+ Add 5 kg Fodder</button>
         <button id="btn-add-water" class="ghost">+ Refill 10 L Water Trough</button>
+        <button id="btn-capture-goat" class="btn btn-primary" title="Capture wild dairy goat (-120 kcal)">🐐 Capture Goat</button>
+        <button id="btn-capture-fowl" class="btn btn-secondary" title="Capture jungle fowl (-120 kcal)">🐓 Capture Fowl</button>
       </div>
 
       <div class="paddock-roster">
@@ -140,4 +143,6 @@ export function renderPaddockTab(
 
   container.querySelector<HTMLButtonElement>('#btn-add-feed')?.addEventListener('click', onFeed);
   container.querySelector<HTMLButtonElement>('#btn-add-water')?.addEventListener('click', onWater);
+  container.querySelector<HTMLButtonElement>('#btn-capture-goat')?.addEventListener('click', () => onCapture?.('GOAT'));
+  container.querySelector<HTMLButtonElement>('#btn-capture-fowl')?.addEventListener('click', () => onCapture?.('RED_JUNGLE_FOWL'));
 }

@@ -30,6 +30,9 @@ import { globalOverlayStack } from './ui/overlayStack';
 import { audio } from './ui/audio';
 import { snapshotSignature } from './engine/saveSignature';
 import { migrateSave } from './engine/persistence';
+import { predictEquilibriumTempK } from './engine/chemistry';
+import { simulateWatchForecast } from './engine/telegraph';
+import type { LabBench3DCanvas } from './ui/gl/LabBench3DCanvas';
 import type { TutorialController } from './ui/TutorialController';
 
 interface VesselMeta {
@@ -110,6 +113,7 @@ const state = {
   colony: null as any,
   strategyMap: null as StrategyMapCanvas | null,
   tutorial: null as TutorialController | null,
+  bench3d: null as LabBench3DCanvas | null,
 };
 
 const app = document.querySelector<HTMLDivElement>('#app');
@@ -257,6 +261,27 @@ app.innerHTML = `
             <select id="target" class="target" aria-label="Target vessel"></select>
           </div>
 
+          <div class="advanced-vessel-controls" style="margin-top:0.8rem; padding:0.6rem; background:rgba(0,0,0,0.2); border-radius:6px; font-size:0.8rem; display:flex; flex-wrap:wrap; gap:0.8rem; align-items:center;">
+            <div style="display:flex; align-items:center; gap:0.4rem;">
+              <label for="heater-slider"><strong>Heater:</strong> <span id="val-heater-w">0</span> W</label>
+              <input type="range" id="heater-slider" min="0" max="1200" step="50" value="0" style="width:100px;">
+              <span id="heater-teq-preview" style="color:var(--text-muted, #9eb4c2); font-size:0.75rem;">(Eq: ~288 K)</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:0.4rem;">
+              <label for="volts-slider"><strong>Voltaic Pile:</strong> <span id="val-volts">0.0</span> V</label>
+              <input type="range" id="volts-slider" min="0" max="13.2" step="0.6" value="0" style="width:90px;">
+            </div>
+            <div style="display:flex; align-items:center; gap:0.4rem;">
+              <label for="condenser-target-select"><strong>Distill To:</strong></label>
+              <select id="condenser-target-select" class="target" style="padding:0.2rem 0.4rem;">
+                <option value="-1">None (Vented)</option>
+              </select>
+            </div>
+            <div style="display:flex; align-items:center; gap:0.4rem;">
+              <button id="btn-toggle-lid" class="ghost" style="padding:0.2rem 0.5rem; font-size:0.75rem;">Lid: Open</button>
+            </div>
+          </div>
+
           <div class="contents">
             <h3>Contents</h3>
             <table>
@@ -389,6 +414,24 @@ function nextVesselId(): number {
 function updateTargets(): void {
   const current = targetSelect.value;
   targetSelect.replaceChildren();
+  const condenserSelect = $<HTMLSelectElement>('condenser-target-select');
+  if (condenserSelect) {
+    const curCond = condenserSelect.value;
+    condenserSelect.replaceChildren();
+    const noneOpt = document.createElement('option');
+    noneOpt.value = '-1';
+    noneOpt.textContent = 'None (Vented)';
+    condenserSelect.append(noneOpt);
+    state.vessels.forEach((vessel) => {
+      if (vessel.id === state.vessels[selectedIndex()]?.id) return;
+      const option = document.createElement('option');
+      option.value = String(vessel.id);
+      option.textContent = `→ ${vessel.label}`;
+      condenserSelect.append(option);
+    });
+    condenserSelect.value = curCond || '-1';
+  }
+
   state.vessels.forEach((vessel) => {
     if (vessel.id === state.vessels[selectedIndex()]?.id) return;
     const option = document.createElement('option');
@@ -441,6 +484,28 @@ function renderWorkbench(snapshot: Snapshot): void {
   contentsBody.innerHTML = rows.length
     ? rows.join('')
     : '<tr><td colspan="4" class="empty">Empty vessel.</td></tr>';
+
+  if (state.bench3d) {
+    const vesselStates = state.vessels.map((v, i) => {
+      const b = i * 8;
+      return {
+        id: v.id,
+        material: v.material as any,
+        capacityL: v.capacityL,
+        headspaceClosed: v.closed,
+        temperatureK: snapshot.telemetry[b + TELEMETRY.TEMP_K],
+        moles: new Float64Array(MAX_DEFINED_SPECIES),
+        precipitated: new Float64Array(MAX_DEFINED_SPECIES),
+        heaterWatts: snapshot.telemetry[b + TELEMETRY.HEATER_W],
+        condenserTargetVesselId: -1,
+        pressureKPa: snapshot.telemetry[b + TELEMETRY.PRESSURE_KPA],
+        ruptured: false,
+        appliedVolts: 0,
+        cellResistanceOhm: 10,
+      };
+    });
+    state.bench3d.render(vesselStates, vessel.id);
+  }
 }
 
 function renderQuest(snapshot: Snapshot): void {
@@ -531,6 +596,9 @@ function updatePaddockUI(): void {
     () => {
       send({ type: 'WATER_PADDOCK', liters: 10 });
     },
+    (species) => {
+      send({ type: 'CAPTURE_ANIMAL', species });
+    },
   );
 }
 
@@ -583,6 +651,11 @@ function updatePlayerUI(): void {
     onAdministerTreatment: (itemId) => {
       audio.sealDone();
       send({ type: 'APPLY_TREATMENT', itemId });
+    },
+    onChargeToVessel: (itemId) => {
+      audio.clink();
+      const v = state.vessels[selectedIndex()];
+      if (v) send({ type: 'CHARGE_ITEM_TO_VESSEL', vesselId: v.id, itemId });
     },
     treatments,
     isDead: state.player.conditions?.dead,
@@ -861,6 +934,19 @@ function startWorld(options?: { load?: SerializedWorldSave }): void {
     state.strategyMap.destroy();
     state.strategyMap = null;
   }
+  if (!state.bench3d && tabReactions) {
+    import('./ui/gl/LabBench3DCanvas').then(({ LabBench3DCanvas }) => {
+      state.bench3d = new LabBench3DCanvas(tabReactions, {
+        onSelectVessel: (vesselId) => {
+          const idx = state.vessels.findIndex((v) => v.id === vesselId);
+          if (idx !== -1) {
+            state.selected = idx;
+            renderVessels();
+          }
+        },
+      });
+    });
+  }
   state.strategyMap = new StrategyMapCanvas(tabStrategy, {
     onRecruit: (recruit) => {
       audio.recruitHorn();
@@ -1074,15 +1160,76 @@ function bindActions(): void {
     });
   });
 
+  const heaterSlider = $<HTMLInputElement>('heater-slider');
+  const valHeaterW = $('val-heater-w');
+  const heaterTeqPreview = $('heater-teq-preview');
+  if (heaterSlider) {
+    heaterSlider.addEventListener('input', () => {
+      const vessel = state.vessels[selectedIndex()];
+      if (!vessel) return;
+      const watts = Number(heaterSlider.value);
+      if (valHeaterW) valHeaterW.textContent = String(watts);
+      const ambK = state.player.ambientTempK ?? 288.15;
+      const estTeq = Math.round(predictEquilibriumTempK(vessel.material as any, watts, ambK));
+      if (heaterTeqPreview) heaterTeqPreview.textContent = `(Eq: ~${estTeq} K)`;
+      send({ type: 'SET_HEATER', vesselId: vessel.id, watts });
+    });
+  }
+
+  const voltsSlider = $<HTMLInputElement>('volts-slider');
+  const valVolts = $('val-volts');
+  if (voltsSlider) {
+    voltsSlider.addEventListener('input', () => {
+      const vessel = state.vessels[selectedIndex()];
+      if (!vessel) return;
+      const volts = Number(voltsSlider.value);
+      if (valVolts) valVolts.textContent = volts.toFixed(1);
+      send({ type: 'SET_VOLTS', vesselId: vessel.id, volts });
+    });
+  }
+
+  const condenserTargetSelect = $<HTMLSelectElement>('condenser-target-select');
+  if (condenserTargetSelect) {
+    condenserTargetSelect.addEventListener('change', () => {
+      const vessel = state.vessels[selectedIndex()];
+      if (!vessel) return;
+      const targetId = Number(condenserTargetSelect.value);
+      send({ type: 'SET_CONDENSER', vesselId: vessel.id, targetVesselId: targetId });
+    });
+  }
+
+  const btnToggleLid = $<HTMLButtonElement>('btn-toggle-lid');
+  if (btnToggleLid) {
+    btnToggleLid.addEventListener('click', () => {
+      const vessel = state.vessels[selectedIndex()];
+      if (!vessel) return;
+      vessel.closed = !vessel.closed;
+      btnToggleLid.textContent = vessel.closed ? 'Lid: Sealed' : 'Lid: Open';
+      send({ type: 'SET_CLOSED', vesselId: vessel.id, closed: vessel.closed });
+    });
+  }
+
   pauseButton.addEventListener('click', () => {
     state.paused = !state.paused;
     send({ type: 'SET_PAUSED', paused: state.paused });
     pauseButton.textContent = state.paused ? 'Resume' : 'Pause';
   });
 
+  const updateWatchTooltips = () => {
+    const s1 = $('sleep1');
+    const s8 = $('sleep8');
+    if (!state.worker) return;
+    const f1 = simulateWatchForecast(null, state.colony, 1);
+    const f8 = simulateWatchForecast(null, state.colony, 8);
+    if (s1) s1.title = `Rest 1h: est -${f1.estCaloricBurnKcal} kcal, -${f1.estHydrationLossPct}% hydration`;
+    if (s8) s8.title = `Sleep 8h: est -${f8.estCaloricBurnKcal} kcal, -${f8.estHydrationLossPct}% hydration`;
+  };
+  $('sleep1')?.addEventListener('mouseenter', updateWatchTooltips);
+  $('sleep8')?.addEventListener('mouseenter', updateWatchTooltips);
   $('sleep1').addEventListener('click', () => send({ type: 'ADVANCE', hours: 1 }));
   $('sleep8').addEventListener('click', () => send({ type: 'ADVANCE', hours: 8 }));
   $('reset').addEventListener('click', () => {
+    deathModalShown = false;
     state.worker?.terminate();
     state.worker = null;
     state.view = null;

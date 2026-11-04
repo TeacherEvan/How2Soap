@@ -31,9 +31,8 @@ export type WageCommodity =
   | 'MINT_TONIC'
   | 'NITROUS_TONIC'
   | 'COPPER_INGOT'
-  | 'BRONZE_INGOT'
-  | 'DRIED_MEAT'
-  | 'BERRIES_ROWAN'
+  | 'MEAT_RAW'
+  | 'FIELD_MUSHROOM'
   | string;
 
 export interface WageContract {
@@ -322,6 +321,9 @@ function processPayroll(
       amount: dailyAmount,
       paid,
     });
+    if (state.ledger.length > 100) {
+      state.ledger.splice(0, state.ledger.length - 100);
+    }
   }
 }
 
@@ -387,9 +389,8 @@ function updateColonistJobAndMovement(
     }
 
     const targetPos = getSpeciesWorldPosition(colonist.assignedJob.speciesId);
-    const arrived = moveTowards(colonist, targetPos, effectiveSpeed * deltaMinutes);
+    const arrived = moveTowards(state, colonist, targetPos, effectiveSpeed * deltaMinutes);
 
-    // Footstep wear accumulation on the traversed cell
     recordFootstep(state, colonist.position.x, colonist.position.y);
 
     if (arrived) {
@@ -436,7 +437,7 @@ function updateColonistJobAndMovement(
     }
   } else if (colonist.status === 'RETURNING') {
     const hearthPos = { x: 0, y: 0 };
-    const arrived = moveTowards(colonist, hearthPos, effectiveSpeed * deltaMinutes);
+    const arrived = moveTowards(state, colonist, hearthPos, effectiveSpeed * deltaMinutes);
 
     recordFootstep(state, colonist.position.x, colonist.position.y);
 
@@ -452,13 +453,24 @@ function updateColonistJobAndMovement(
         addItemToContainer(campStorage, slot);
       }
       colonist.carriedYields = [];
-      colonist.assignedJob = null;
-      colonist.status = 'IDLE';
+      // Loop gathering trips continuously until unassigned
+      colonist.status = 'TRAVELING';
     }
   }
 }
 
+export function getApprenticeChemistMultiplier(colony: ColonyState): number {
+  let bonus = 1.0;
+  for (const c of colony.colonists) {
+    if (c.archetype === 'APPRENTICE_CHEMIST' && c.status !== 'STRIKE') {
+      bonus += 0.15;
+    }
+  }
+  return bonus;
+}
+
 function moveTowards(
+  state: ColonyState,
   colonist: Colonist,
   target: { x: number; y: number },
   maxDist: number,
@@ -478,9 +490,18 @@ function moveTowards(
   const vx = (dx / dist) * step;
   const vy = (dy / dist) * step;
 
+  const startX = colonist.position.x;
+  const startY = colonist.position.y;
   colonist.position.x += vx;
   colonist.position.y += vy;
   colonist.velocity = { vx, vy };
+
+  // Sub-step footsteps along path every 50 meters
+  const subSteps = Math.max(1, Math.floor(step / 50));
+  for (let s = 1; s <= subSteps; s++) {
+    const frac = s / subSteps;
+    recordFootstep(state, startX + vx * frac, startY + vy * frac);
+  }
   return false;
 }
 

@@ -18,6 +18,7 @@ export function renderToolAndInventoryPanel(
     onEatFood?: (itemId: string) => void;
     onEquipTool?: (itemId: string, slot: string) => void;
     onAdministerTreatment?: (itemId: string) => void;
+    onChargeToVessel?: (itemId: string) => void;
     treatments?: TreatmentAction[];
     isDead?: boolean;
   },
@@ -50,12 +51,15 @@ export function renderToolAndInventoryPanel(
     const isFood = itemDef?.category === 'food' || itemDef?.foodKcal !== undefined;
     const isTool = itemDef?.category === 'tool' && itemDef.toolSlot;
     const canEquip = isTool && itemDef?.toolSlot;
+    const isMaterial = itemDef?.category === 'material' || itemDef?.category === 'medicine';
 
     let actionBtn = '';
     if (isFood) {
       actionBtn = `<button class="btn-slot-action btn-eat" data-item-id="${item.itemId}" ${callbacks.isDead ? 'disabled' : ''}>Eat</button>`;
     } else if (canEquip && itemDef?.toolSlot) {
       actionBtn = `<button class="btn-slot-action btn-equip" data-item-id="${item.itemId}" data-slot="${itemDef.toolSlot}">Equip</button>`;
+    } else if (isMaterial) {
+      actionBtn = `<button class="btn-slot-action btn-charge" data-item-id="${item.itemId}" title="Charge reagent into active vessel">Vessel +</button>`;
     }
 
     return `
@@ -191,6 +195,13 @@ export function renderToolAndInventoryPanel(
       const id = btn.dataset.itemId;
       const slot = btn.dataset.slot;
       if (id && slot && callbacks.onEquipTool) callbacks.onEquipTool(id, slot);
+    });
+  });
+
+  container.querySelectorAll<HTMLButtonElement>('.btn-charge').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.itemId;
+      if (id && callbacks.onChargeToVessel) callbacks.onChargeToVessel(id);
     });
   });
 

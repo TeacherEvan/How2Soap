@@ -44,6 +44,7 @@ export interface SerializedWorldSave {
   lettersDone: string[];
   epilogueSeen: boolean;
   colony?: SerializedColonyState;
+  paddock?: any;
 }
 
 export function serializeSave(save: SerializedWorldSave): string {
@@ -76,6 +77,7 @@ export function deserializeSave(json: string): SerializedWorldSave {
     },
     inventory: parsed.inventory ?? {},
     vessels: parsed.vessels ?? [],
+    paddock: parsed.paddock ?? undefined,
     ever: parsed.ever ?? {},
     renown: parsed.renown ?? 0,
     affinity: parsed.affinity ?? { apothecary: 0, soapwright: 0, forgewright: 0 },
@@ -119,6 +121,7 @@ export function migrateSave(raw: unknown): SerializedWorldSave {
     },
     inventory: (r.inventory as any) ?? {},
     vessels: (r.vessels as any) ?? [],
+    paddock: (r.paddock as any) ?? undefined,
     ever: (r.ever as Record<string, boolean>) ?? {},
     renown: (typeof r.renown === 'number' ? r.renown : 0),
     affinity: (r.affinity as any) ?? { apothecary: 0, soapwright: 0, forgewright: 0 },
@@ -198,6 +201,10 @@ export async function decompressBase64ToSave(base64: string): Promise<Serialized
     writer.write(bytes);
     writer.close();
     const decompressedBuffer = await new Response(ds.readable).arrayBuffer();
+    const MAX_DECOMPRESSED_BYTES = 5 * 1024 * 1024; // 5 MB safety limit
+    if (decompressedBuffer.byteLength > MAX_DECOMPRESSED_BYTES) {
+      throw new Error(`Decompressed save exceeds 5MB limit (${decompressedBuffer.byteLength} bytes)`);
+    }
     jsonText = new TextDecoder().decode(decompressedBuffer);
   } else {
     jsonText = decodeURIComponent(escape(binary));

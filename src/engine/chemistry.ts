@@ -391,6 +391,20 @@ export function decant(source: VesselState, target: VesselState, volumeL: number
   }
 }
 
+/** Predict steady-state equilibrium temperature (K) for a vessel under given heater wattage. */
+export function predictEquilibriumTempK(
+  materialKey: VesselMaterialKey,
+  heaterWatts: number,
+  ambientTempK: number = 288.15,
+): number {
+  if (heaterWatts <= 0) return ambientTempK;
+  const material = MATERIALS[materialKey] ?? MATERIALS.WOOD;
+  const conductionWPerK = (material.conductivityWPerMK * WALL_AREA_M2) / WALL_THICKNESS_M;
+  const airFilmWPerK = AIR_FILM_W_PER_M2K * WALL_AREA_M2;
+  const lossCoefficientWPerK = 1 / (1 / conductionWPerK + 1 / airFilmWPerK);
+  return ambientTempK + heaterWatts / lossCoefficientWPerK;
+}
+
 /** Skim settled/floating solids (e.g. soap curds) into another vessel. */
 export function skim(source: VesselState, target: VesselState, speciesIdx: number): number {
   const amount = source.precipitated[speciesIdx];

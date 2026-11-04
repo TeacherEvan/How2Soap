@@ -76,9 +76,81 @@ export const FABRICATION_RECIPES: ReadonlyArray<FabricationRecipe> = [
     outputs: [
       { itemId: 'FLINT_ADZE', count: 1, label: 'Flint Adze' },
     ],
+    requiredToolSlot: 'CHOPPING_CARVING',
     energyCostKcal: 8.0,
     workTicks: 1,
     description: 'Lash adze head to branch for efficient wood carving.',
+  },
+  {
+    id: 'RECIPE_BURN_CHARCOAL',
+    name: 'Burn Hardwood Charcoal',
+    inputs: [
+      { itemId: 'LOG_WHITE_OAK', count: 1, label: 'White Oak Log' },
+    ],
+    outputs: [
+      { itemId: 'CHARCOAL', count: 2, label: 'Hardwood Charcoal' },
+    ],
+    energyCostKcal: 20.0,
+    workTicks: 4,
+    description: 'Smother oak heartwood in turf to carbonize it into smelting fuel.',
+  },
+  {
+    id: 'RECIPE_MOLD_CLAY_TUYERE',
+    name: 'Mold Tuyere Blast Pipe',
+    inputs: [
+      { itemId: 'RAW_KAOLIN_CLAY', count: 1, label: 'Raw Kaolin Clay' },
+    ],
+    outputs: [
+      { itemId: 'TUYERE_PIPE', count: 1, label: 'Tuyere Blast Pipe' },
+    ],
+    requiredToolSlot: 'CUTTING_SKINNING',
+    energyCostKcal: 15.0,
+    workTicks: 1,
+    description: 'Roll refractory kaolin clay into a draft nozzle for bellows smelting.',
+  },
+  {
+    id: 'RECIPE_FIRE_CERAMIC_VESSEL',
+    name: 'Fire Ceramic Vessel',
+    inputs: [
+      { itemId: 'RAW_KAOLIN_CLAY', count: 2, label: 'Raw Kaolin Clay' },
+      { itemId: 'CHARCOAL', count: 1, label: 'Hardwood Charcoal' },
+    ],
+    outputs: [
+      { itemId: 'FIRED_CERAMIC_VESSEL', count: 1, label: 'Fired Ceramic Vessel' },
+    ],
+    requiredToolSlot: 'THERMAL_HANDLING',
+    energyCostKcal: 45.0,
+    workTicks: 3,
+    description: 'Bake clay at high heat into a thermal and acid-resistant reaction vessel.',
+  },
+  {
+    id: 'RECIPE_MAKE_CARBON_ELECTRODES',
+    name: 'Form Carbon Electrodes',
+    inputs: [
+      { itemId: 'CHARCOAL', count: 2, label: 'Hardwood Charcoal' },
+      { itemId: 'OLEORESIN', count: 1, label: 'Pine Oleoresin Binder' },
+    ],
+    outputs: [
+      { itemId: 'CARBON_ELECTRODES', count: 2, label: 'Carbon Electrodes' },
+    ],
+    requiredToolSlot: 'CUTTING_SKINNING',
+    energyCostKcal: 25.0,
+    workTicks: 2,
+    description: 'Compress powdered charcoal with pine resin into conductive electrolysis rods.',
+  },
+  {
+    id: 'RECIPE_SCRAP_LEATHER',
+    name: 'Cut Leather Scraps',
+    inputs: [
+      { itemId: 'VEGETABLE_TANNED_LEATHER', count: 1, label: 'Vegetable-Tanned Leather' },
+    ],
+    outputs: [
+      { itemId: 'LEATHER_SCRAP', count: 4, label: 'Leather Scraps' },
+    ],
+    requiredToolSlot: 'CUTTING_SKINNING',
+    energyCostKcal: 10.0,
+    workTicks: 1,
+    description: 'Cut tanned leather into disc separators for the voltaic pile battery.',
   },
   {
     id: 'RECIPE_CARVE_WOODEN_BUCKET',

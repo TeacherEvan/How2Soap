@@ -23,11 +23,13 @@ import {
   createInventoryState,
   unlockBackpack,
   addItemToContainer,
+  removeItemFromContainer,
   type InventoryState,
 } from './inventory';
 import {
   createPaddock,
   stepPaddockDay,
+  captureAnimal,
   type Paddock,
 } from './husbandry';
 import { applyHarvest } from './harvest';
@@ -37,7 +39,7 @@ import { ITEM_BY_ID } from '../data/items';
 import { FABRICATION_RECIPES, RECIPE_EFFECTS, METALLURGY_TOOLS, resolveToolItem } from './fabrication';
 import { satisfyVesselInputs, applyVesselConsumption, type VesselInputResult, VESSEL_INPUTS } from './vesselInputs';
 import { SIM_STEP_SECONDS, WORKER_HZ } from './time';
-import { SPECIES_BY_INDEX } from '../data/speciesRegistry';
+import { SPECIES, SPECIES_BY_INDEX } from '../data/speciesRegistry';
 import { escalateConditions } from './conditions';
 import {
   createInitialColonyState,
@@ -46,6 +48,7 @@ import {
   administerStimulant,
   setWageContract,
   stepColony,
+  getApprenticeChemistMultiplier,
   type ColonyState,
   type ColonistArchetype,
   type WageContract,
@@ -76,6 +79,8 @@ type Command =
   | { type: 'SET_HEATER'; vesselId: number; watts: number }
   | { type: 'SET_CONDENSER'; vesselId: number; targetId: number }
   | { type: 'SET_VOLTS'; vesselId: number; volts: number; resistanceOhm?: number }
+  | { type: 'SET_CLOSED'; vesselId: number; closed: boolean }
+  | { type: 'CHARGE_ITEM'; vesselId: number; itemId: string; count: number }
   | { type: 'DECANT'; fromId: number; toId: number; litres: number }
   | { type: 'SKIM'; fromId: number; toId: number; speciesIdx: number }
   | { type: 'ADVANCE'; hours: number }
@@ -87,6 +92,7 @@ type Command =
   | { type: 'APPLY_TREATMENT'; itemId: string }
   | { type: 'FEED_PADDOCK'; massKg: number }
   | { type: 'WATER_PADDOCK'; liters: number }
+  | { type: 'CAPTURE_ANIMAL'; species?: 'GOAT' | 'RED_JUNGLE_FOWL' | 'AUROCHS' }
   | { type: 'RECRUIT_COLONIST'; name: string; archetype: ColonistArchetype; wageContract: WageContract }
   | { type: 'ASSIGN_COLONIST_JOB'; colonistId: string; speciesId: string; partId: string; workRequired?: number }
   | { type: 'ADMINISTER_STIMULANT'; colonistId: string; stimulantId: string }
@@ -167,7 +173,11 @@ function postPlayerAndInventory(): void {
     },
     paddock: paddock
       ? {
+          animals: paddock.animals,
           animalsCount: paddock.animals.length,
+          storedFeedKg: paddock.storedFeedKg,
+          storedWaterL: paddock.storedWaterL,
+          accumulatedManureKg: paddock.accumulatedManureKg,
           feedKg: paddock.storedFeedKg,
           waterL: paddock.storedWaterL,
           manureKg: paddock.accumulatedManureKg,
@@ -190,73 +200,63 @@ function postColonySync(): void {
   });
 }
 
+const emittedSpeciesMilestones = new Set<string>();
+
 function checkAndEmitSpeciesObjectives(): void {
   if (!world) return;
   for (const vessel of world.vessels) {
     for (let s = 0; s < vessel.moles.length; s++) {
-      const amount = vessel.moles[s] + (vessel.precipitated ? vessel.precipitated[s] : 0);
+      const amount = vessel.moles[s]; // vessel.moles already includes total moles
       if (amount >= 0.005) {
         const spec = SPECIES_BY_INDEX.get(s);
         if (spec) {
-          ctx.postMessage({
-            type: 'OBJECTIVE',
-            event: { kind: 'species', targetId: (spec as any).id ?? spec.code, amount },
-          });
-        }
-      }
-    }
-  }
-}
-
-function advance(hours: number): WorldEvent[] {
-  if (!world || !player) return [];
-  if (player.dead) return [];
-  const steps = Math.max(1, Math.round(hours * WORKER_HZ));
-  const events: WorldEvent[] = [];
-  for (let step = 0; step < steps; step += 1) {
-    events.push(...stepWorld(world, SIM_STEP_SECONDS));
-    stepPlayerMetabolism(player, {
-      dtSeconds: SIM_STEP_SECONDS,
-      ambientTempK: world.ambientTempK,
-    });
-    // Escalate conditions each step (SIM_STEP_SECONDS hours per step)
-    const condEvents = escalateConditions(player, SIM_STEP_SECONDS / 3600);
-    for (const ev of condEvents) events.push({ vesselId: -1, message: ev.message });
-    if (inventory) {
-      stepColony(colony, SIM_STEP_SECONDS / 60, world.tick, inventory.campCache, BIOME_DAG);
-    }
-    if (world.tick > 0 && world.tick % 240 === 0 && paddock && paddock.animals.length > 0) {
-      const yields = stepPaddockDay(paddock);
-      if (yields.eggs > 0) {
-        const eggSlot = { itemId: 'FIELD_MUSHROOM', count: yields.eggs, massKg: yields.eggs * 0.05, label: 'Fresh Egg' };
-        if (!addItemToContainer(inventory?.bareHands ?? null as any, eggSlot)) {
-          if (!addItemToContainer(inventory?.backpack ?? null as any, eggSlot)) {
-            if (inventory?.campCache) addItemToContainer(inventory.campCache, eggSlot);
+          // Find matching SPECIES enum key
+          const enumKey = String((Object.keys(SPECIES) as Array<keyof typeof SPECIES>).find(k => SPECIES[k] === s) ?? spec.code);
+          const milestoneKey = `${enumKey}:${Math.floor(amount * 10)}`;
+          if (!emittedSpeciesMilestones.has(milestoneKey)) {
+            emittedSpeciesMilestones.add(milestoneKey);
+            ctx.postMessage({
+              type: 'OBJECTIVE',
+              kind: 'species',
+              target: enumKey,
+              amount,
+            });
           }
         }
       }
-      events.push({ vesselId: -1, message: `Paddock yields: ${yields.milkL.toFixed(1)} L milk, ${yields.butterfatGrams.toFixed(0)} g butterfat, ${yields.eggs} eggs, ${yields.manureKg.toFixed(2)} kg manure.` });
     }
   }
-  return events;
 }
 
-function tick(): void {
-  if (!world || !view || !player || paused) return;
-  if (player.dead) return;
-  const events = stepWorld(world, SIM_STEP_SECONDS);
+function stepSingleTick(activitySeconds: number = SIM_STEP_SECONDS): WorldEvent[] {
+  if (!world || !player) return [];
+  const events: WorldEvent[] = [];
+  events.push(...stepWorld(world, activitySeconds));
   stepPlayerMetabolism(player, {
-    dtSeconds: SIM_STEP_SECONDS,
+    dtSeconds: activitySeconds,
     ambientTempK: world.ambientTempK,
   });
-  // Escalate conditions each tick
-  const condEvents = escalateConditions(player, SIM_STEP_SECONDS / 3600);
+  const condEvents = escalateConditions(player, activitySeconds / 3600);
   for (const ev of condEvents) events.push({ vesselId: -1, message: ev.message });
   if (inventory) {
-    stepColony(colony, SIM_STEP_SECONDS / 60, world.tick, inventory.campCache, BIOME_DAG);
+    stepColony(colony, activitySeconds / 60, world.tick, inventory.campCache, BIOME_DAG);
   }
   if (world.tick > 0 && world.tick % 240 === 0 && paddock && paddock.animals.length > 0) {
     const yields = stepPaddockDay(paddock);
+    if (yields.butterfatGrams > 0) {
+      const butterfatSlot = {
+        itemId: 'RAW_ADIPOSE_FAT',
+        count: 1,
+        massKg: yields.butterfatGrams / 1000,
+        quality: 1.0,
+        label: 'Rendered Butterfat',
+      };
+      if (!addItemToContainer(inventory?.bareHands ?? null as any, butterfatSlot)) {
+        if (!addItemToContainer(inventory?.backpack ?? null as any, butterfatSlot)) {
+          if (inventory?.campCache) addItemToContainer(inventory.campCache, butterfatSlot);
+        }
+      }
+    }
     if (yields.eggs > 0) {
       const eggSlot = { itemId: 'FIELD_MUSHROOM', count: yields.eggs, massKg: yields.eggs * 0.05, label: 'Fresh Egg' };
       if (!addItemToContainer(inventory?.bareHands ?? null as any, eggSlot)) {
@@ -268,6 +268,27 @@ function tick(): void {
     events.push({ vesselId: -1, message: `Paddock yields: ${yields.milkL.toFixed(1)} L milk, ${yields.butterfatGrams.toFixed(0)} g butterfat, ${yields.eggs} eggs, ${yields.manureKg.toFixed(2)} kg manure.` });
   }
   checkAndEmitSpeciesObjectives();
+  return events;
+}
+
+function advance(hours: number): WorldEvent[] {
+  if (!world || !player) return [];
+  if (player.dead) return [];
+  const steps = Math.max(1, Math.round(hours * WORKER_HZ));
+  const events: WorldEvent[] = [];
+  for (let step = 0; step < steps; step += 1) {
+    events.push(...stepSingleTick(SIM_STEP_SECONDS));
+  }
+  if (view) syncWorldToShared(world, view);
+  postPlayerAndInventory();
+  postColonySync();
+  return events;
+}
+
+function tick(): void {
+  if (!world || !view || !player || paused) return;
+  if (player.dead) return;
+  const events = stepSingleTick(SIM_STEP_SECONDS);
   syncWorldToShared(world, view);
   if (events.length > 0) ctx.postMessage({ type: 'EVENTS', events });
   postPlayerAndInventory();
@@ -338,9 +359,10 @@ ctx.onmessage = (event: MessageEvent<Command>) => {
             const count = item.count ?? 1;
             const massKg = item.massKg ?? 0.1;
             const quality = item.quality ?? 1.0;
+            const label = item.label;
             for (let i = 0; i < container.slots.length; i++) {
               if (!container.slots[i]) {
-                container.slots[i] = { itemId, count, massKg, quality };
+                container.slots[i] = { itemId, count, massKg, quality, label };
                 break;
               }
             }
@@ -421,12 +443,78 @@ ctx.onmessage = (event: MessageEvent<Command>) => {
       }
       break;
     }
+    case 'SET_CLOSED': {
+      const vessel = world && findVessel(world, command.vesselId);
+      if (vessel) {
+        vessel.headspaceClosed = command.closed;
+      }
+      break;
+    }
+    case 'CHARGE_ITEM': {
+      const vessel = world && findVessel(world, command.vesselId);
+      if (!vessel || !inventory) break;
+      const count = command.count || 1;
+      const removed =
+        removeItemFromContainer(inventory.backpack, command.itemId, count) ||
+        removeItemFromContainer(inventory.bareHands, command.itemId, count);
+      if (!removed) {
+        ctx.postMessage({ type: 'EVENTS', events: [{ vesselId: command.vesselId, message: `No ${command.itemId} in inventory to charge!` }] });
+        break;
+      }
+
+      // Convert solid reagent items into corresponding vessel moles
+      if (command.itemId === 'CHARCOAL') {
+        vessel.moles[SPECIES.CARBON] += count * (50 / 12.011); // ~50g C per piece
+      } else if (command.itemId === 'LIMESTONE_ROCK') {
+        vessel.moles[SPECIES.CACO3] += count * (200 / 100.086); // ~200g
+      } else if (command.itemId === 'HALITE_SALT') {
+        vessel.moles[SPECIES.NACL] += count * (50 / 58.44); // ~50g
+      } else if (command.itemId === 'RAW_ADIPOSE_FAT') {
+        vessel.moles[SPECIES.TRISTEARIN] += count * (150 / 891.5); // ~150g
+      } else if (command.itemId === 'MALACHITE_ORE') {
+        vessel.moles[SPECIES.MALACHITE] += count * (100 / 221.12);
+      } else if (command.itemId === 'CASSITERITE_ORE') {
+        vessel.moles[SPECIES.CASSITERITE] += count * (100 / 150.71);
+      } else if (command.itemId === 'SPHALERITE_ORE') {
+        vessel.moles[SPECIES.SPHALERITE] += count * (100 / 97.47);
+      } else if (command.itemId === 'PYRITE_ORE') {
+        vessel.moles[SPECIES.PYRITE] += count * (100 / 119.98);
+      } else if (command.itemId === 'SALTPETER_CRYSTALS') {
+        vessel.moles[SPECIES.KNO3] += count * (50 / 101.1);
+      } else if (command.itemId === 'WILLOW_BARK') {
+        vessel.moles[SPECIES.SALICIN] += count * (25 / 286.28);
+      } else {
+        ctx.postMessage({ type: 'EVENTS', events: [{ vesselId: command.vesselId, message: `Charged ${count}x ${command.itemId}` }] });
+      }
+
+      ctx.postMessage({ type: 'EVENTS', events: [{ vesselId: command.vesselId, message: `Charged ${count}x ${command.itemId} into Vessel #${command.vesselId}` }] });
+      postPlayerAndInventory();
+      break;
+    }
     case 'DECANT': {
       if (world) decantWorld(world, command.fromId, command.toId, command.litres);
       break;
     }
     case 'SKIM': {
-      if (world) skimWorld(world, command.fromId, command.toId, command.speciesIdx);
+      if (world) {
+        const skimmedMoles = skimWorld(world, command.fromId, command.toId, command.speciesIdx);
+        if (skimmedMoles > 0 && command.speciesIdx === SPECIES.NA_STEARATE && inventory) {
+          // 1 bar of soap is roughly 0.3 moles Na-stearate (~92g)
+          const barsToAdd = Math.max(1, Math.floor(skimmedMoles / 0.3));
+          addItemToContainer(inventory.backpack, {
+            itemId: 'BAR_SOAP',
+            label: 'Bar Soap',
+            count: barsToAdd,
+            massKg: barsToAdd * 0.1,
+          });
+          ctx.postMessage({
+            type: 'EVENTS',
+            events: [{ vesselId: command.fromId, message: `Skimmed and formed ${barsToAdd} Bar Soap!` }],
+          });
+          ctx.postMessage({ type: 'OBJECTIVE', kind: 'item_acquired', target: 'BAR_SOAP' });
+          postPlayerAndInventory();
+        }
+      }
       break;
     }
     case 'ADVANCE': {
@@ -478,6 +566,21 @@ ctx.onmessage = (event: MessageEvent<Command>) => {
       }
       const containerInputs = recipe.inputs.filter(i => !VESSEL_INPUTS[i.itemId]);
       const vesselInputIds = recipe.inputs.filter(i => VESSEL_INPUTS[i.itemId]).map(i => i.itemId);
+
+      // Check tool requirement if defined
+      if (recipe.requiredToolSlot && !inventory.tools[recipe.requiredToolSlot]) {
+        ctx.postMessage({ type: 'EVENTS', events: [{ vesselId: -1, message: `Requires tool in slot: ${recipe.requiredToolSlot}` }] });
+        return;
+      }
+
+      // Check player glucose energy cost
+      const toolMA = recipe.requiredToolSlot && inventory.tools[recipe.requiredToolSlot] ? inventory.tools[recipe.requiredToolSlot]!.mechanicalAdvantage : 1.0;
+      const apprenticeMult = colony ? getApprenticeChemistMultiplier(colony) : 1.0;
+      const energyCost = Math.max(1, (recipe.energyCostKcal / Math.max(1.0, toolMA)) / apprenticeMult);
+      if (player.glucoseKcal < energyCost) {
+        ctx.postMessage({ type: 'EVENTS', events: [{ vesselId: -1, message: `Exhausted: requires ${energyCost.toFixed(0)} kcal glucose` }] });
+        return;
+      }
       const needMap = new Map<string, number>();
       for (const inp of containerInputs) needMap.set(inp.itemId, (needMap.get(inp.itemId) ?? 0) + inp.count);
       const missing: string[] = [];
@@ -513,6 +616,7 @@ ctx.onmessage = (event: MessageEvent<Command>) => {
         }
       }
       if (vesselResult.ok && vesselResult.plan) applyVesselConsumption(world.vessels, vesselResult.plan);
+      player.glucoseKcal = Math.max(0, player.glucoseKcal - energyCost);
       for (const out of recipe.outputs) {
         const slot = { itemId: out.itemId, count: out.count, massKg: 0.1, label: out.label };
         if (!addItemToContainer(inventory.bareHands, slot)) if (!addItemToContainer(inventory.backpack, slot)) addItemToContainer(inventory.campCache, slot);
@@ -696,6 +800,22 @@ ctx.onmessage = (event: MessageEvent<Command>) => {
       if (!paddock) return;
       paddock.storedWaterL += command.liters;
       ctx.postMessage({ type: 'EVENTS', events: [{ vesselId: -1, message: `Refilled paddock water trough (+${command.liters} L)` }] });
+      postPlayerAndInventory();
+      break;
+    }
+    case 'CAPTURE_ANIMAL': {
+      if (!paddock) paddock = createPaddock();
+      if (paddock.animals.length >= paddock.maxAnimals) {
+        ctx.postMessage({ type: 'EVENTS', events: [{ vesselId: -1, message: `Paddock is full (max ${paddock.maxAnimals})!` }] });
+        break;
+      }
+      const animal = captureAnimal(command.species || 'GOAT');
+      paddock.animals.push(animal);
+      if (player) {
+        // Animal capture takes stamina/glucose
+        player.glucoseKcal = Math.max(50, player.glucoseKcal - 120);
+      }
+      ctx.postMessage({ type: 'EVENTS', events: [{ vesselId: -1, message: `Captured ${animal.species} for paddock (-120 kcal)` }] });
       postPlayerAndInventory();
       break;
     }
