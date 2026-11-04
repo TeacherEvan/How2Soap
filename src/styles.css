@@ -1468,3 +1468,98 @@ body.reduced-motion *, body.reduced-motion *::before, body.reduced-motion *::aft
 }
 
 
+
+/* ============================================================
+ * Crisis Turns — resolution overlay & choice buttons
+ * ============================================================ */
+.crisis-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  background: rgba(5, 7, 10, 0.62);
+  backdrop-filter: blur(3px);
+  animation: crisis-in 0.35s ease;
+}
+@keyframes crisis-in {
+  from { opacity: 0; transform: scale(1.04); }
+  to { opacity: 1; transform: scale(1); }
+}
+.crisis-modal {
+  max-width: 34rem;
+  width: 100%;
+  padding: 1.6rem 1.6rem 1.4rem;
+  background: linear-gradient(160deg, #1a1f28 0%, #141821 100%);
+  border: 1px solid #d4a020;
+  border-radius: 10px;
+  box-shadow: 0 0 0 1px rgba(212, 160, 32, 0.25), 0 24px 60px rgba(0, 0, 0, 0.6), 0 0 80px rgba(212, 160, 32, 0.08);
+  text-align: center;
+}
+.crisis-sigil {
+  font-size: 1.6rem;
+  line-height: 1;
+  color: #f5b042;
+  text-shadow: 0 0 18px rgba(245, 176, 66, 0.55);
+  margin-bottom: 0.35rem;
+}
+.crisis-title {
+  margin: 0 0 0.4rem;
+  font-size: 1.35rem;
+  color: #f0e6d2;
+  letter-spacing: 0.02em;
+}
+.crisis-description {
+  margin: 0 auto 1rem;
+  max-width: 30rem;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: #c9c0ae;
+}
+.crisis-choices {
+  display: grid;
+  gap: 0.6rem;
+}
+.crisis-choice {
+  min-height: 44px;
+  padding: 0.55rem 0.75rem;
+  text-align: left;
+  background: #1f2530;
+  border: 1px solid rgba(212, 160, 32, 0.4);
+  border-radius: 6px;
+  color: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.crisis-choice:hover:not(:disabled),
+.crisis-choice:focus-visible {
+  border-color: #f5b042;
+  background: #252c3a;
+  outline: 2px solid #5aa5ff;
+  outline-offset: 2px;
+}
+.crisis-choice:disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
+}
+.crisis-choice-label {
+  display: block;
+  font-weight: 600;
+  color: #ecdfc8;
+}
+.crisis-choice-detail {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 0.75rem;
+  color: #9aa3b2;
+}
+@media (prefers-reduced-motion: reduce) {
+  .crisis-overlay {
+    animation: none;
+  }
+  .crisis-choice {
+    transition: none;
+  }
+}

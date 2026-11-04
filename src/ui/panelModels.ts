@@ -1,3 +1,5 @@
+import { CRISIS_DEFS, type CrisisSnapshot } from '../engine/crisis';
+
 export interface ConditionState {
   fever?: boolean;
   systemicInfection?: boolean;
@@ -57,7 +59,17 @@ export const TREATMENTS: Record<string, { name: string; effects: string; clears:
   },
 };
 
-export function bannerModel(player: PlayerStateInput): BannerItem[] {
+/** Crisis snapshot as consumed by UI (kept structural to avoid engine coupling in tests). */
+export interface CrisisUiState {
+  phase: 'idle' | 'telegraph' | 'active';
+  telegraph: { crisisId: string; severity: number; watchesUntil: number } | null;
+  active: { crisisId: string; title: string; severity: number } | null;
+}
+
+export function bannerModel(
+  player: PlayerStateInput,
+  crisis?: CrisisUiState | CrisisSnapshot | null,
+): BannerItem[] {
   const banners: BannerItem[] = [];
   const c = player.conditions ?? {};
 
@@ -95,6 +107,16 @@ export function bannerModel(player: PlayerStateInput): BannerItem[] {
       id: 'hunger',
       text: '🩸 Ravenous — glucose below 250 kcal',
       severity: 'warn',
+    });
+  }
+
+  if (crisis?.phase === 'telegraph' && crisis.telegraph) {
+    const def = CRISIS_DEFS[crisis.telegraph.crisisId as keyof typeof CRISIS_DEFS];
+    const severity = crisis.telegraph.severity;
+    banners.push({
+      id: 'crisis-telegraph',
+      text: `⚠ Crisis brewing — ${def?.title ?? crisis.telegraph.crisisId} (${crisis.telegraph.watchesUntil} watch${crisis.telegraph.watchesUntil === 1 ? '' : 'es'})`,
+      severity: severity >= 3 ? 'critical' : severity === 2 ? 'warn' : 'info',
     });
   }
 

@@ -144,7 +144,7 @@ export function updatePlayerUI(): void {
   }
 
   // Update banners
-  const banners = bannerModel(state.player);
+  const banners = bannerModel(state.player, state.crisis);
   bannersRow.innerHTML = banners
     .map(b => `<div class="banner banner-${b.severity}">${b.text}</div>`)
     .join('');

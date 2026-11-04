@@ -9,8 +9,10 @@ import { StoryMode } from '../ui/StoryMode';
 import { showToast } from '../ui/Toast';
 import { mountJournal } from '../ui/JournalPanel';
 import { audio } from '../ui/audio';
-import { state, speciesMoles } from './state';
+import { state, speciesMoles, send } from './state';
 import { tabJournal } from './dom';
+import { openCrisisModal, closeCrisisModal } from '../ui/CrisisModal';
+import type { CrisisSeverity, CrisisId } from '../engine/crisis';
 import { renderVessels, updateTargets, renderLog } from './views';
 import { updatePlayerUI, updatePaddockUI } from './panels';
 import { requestAutoSave, AUTO_SAVE_KEY } from './autosave';
@@ -21,7 +23,19 @@ export type WorkerMessage =
   | { type: 'EVENTS'; events: Array<{ vesselId: number; message: string }> }
   | { type: 'PLAYER_SYNC'; player: any; inventory: any & { items?: Array<{ id: string; count: number; massKg: number }> }; paddock?: any }
   | { type: 'COLONY_SYNC'; colony: any }
-  | { type: 'OBJECTIVE'; kind: 'recipe' | 'eat' | 'treat' | 'harvest' | 'flag'; target: string };
+  | { type: 'OBJECTIVE'; kind: 'recipe' | 'eat' | 'treat' | 'harvest' | 'flag'; target: string }
+  | {
+      type: 'CRISIS_SYNC';
+      telegraph: { crisisId: string; severity: number; watchesUntil: number } | null;
+      active: {
+        crisisId: string;
+        title: string;
+        description: string;
+        severity: number;
+        startedTick: number;
+        choices: Array<{ id: string; label: string; detail: string; requiresOtherVessel: boolean }>;
+      } | null;
+    };
 
 function createSeedVessels(): void {
   if (!state.worker) return;
@@ -116,6 +130,30 @@ export function handleWorkerMessage(data: WorkerMessage, options?: { load?: unkn
     const minuteOfDay = Math.floor((seconds % 86400) / 60);
     if (state.strategyMap) {
       state.strategyMap.update(data.colony, minuteOfDay);
+    }
+    return;
+  }
+
+  if (data.type === 'CRISIS_SYNC') {
+    const phase: 'idle' | 'telegraph' | 'active' = data.active ? 'active' : data.telegraph ? 'telegraph' : 'idle';
+    state.crisis = {
+      phase,
+      telegraph: data.telegraph
+        ? { ...data.telegraph, crisisId: data.telegraph.crisisId as CrisisId, severity: data.telegraph.severity as CrisisSeverity }
+        : null,
+      active: data.active
+        ? { ...data.active, crisisId: data.active.crisisId as CrisisId, severity: data.active.severity as CrisisSeverity }
+        : null,
+    };
+    updatePlayerUI();
+    const active = state.crisis.active;
+    if (active) {
+      audio.strikeBell();
+      openCrisisModal(active, state.vessels.length, (choiceId: string) => {
+        send({ type: 'CRISIS_CHOICE', crisisId: active.crisisId, choiceId });
+      });
+    } else {
+      closeCrisisModal();
     }
     return;
   }

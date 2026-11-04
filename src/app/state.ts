@@ -10,6 +10,7 @@ import type { ToolAndInventoryState } from '../ui/ToolAndInventoryPanel';
 import type { LabBench3DCanvas } from '../ui/gl/LabBench3DCanvas';
 import type { TutorialController } from '../ui/TutorialController';
 import { initialProgression } from '../engine/progression';
+import type { CrisisSnapshot } from '../engine/crisis';
 
 interface VesselMeta {
   id: number;
@@ -97,6 +98,7 @@ export const state = {
   items: [] as Array<{ id: string; count: number; massKg: number }>,
   progression: initialProgression(),
   colony: null as any,
+  crisis: null as CrisisSnapshot | null,
   strategyMap: null as StrategyMapCanvas | null,
   tutorial: null as TutorialController | null,
   bench3d: null as LabBench3DCanvas | null,
