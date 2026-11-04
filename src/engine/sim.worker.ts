@@ -54,6 +54,11 @@ import {
   type WageContract,
 } from './colony';
 import { restoreColonyFromSave } from './worldRestore';
+import {
+  createCrisisDirector,
+  type CrisisContext,
+  type CrisisId,
+} from './crisis';
 
 export interface FullSimState {
   world: WorldState;
@@ -97,7 +102,8 @@ type Command =
   | { type: 'ASSIGN_COLONIST_JOB'; colonistId: string; speciesId: string; partId: string; workRequired?: number }
   | { type: 'ADMINISTER_STIMULANT'; colonistId: string; stimulantId: string }
   | { type: 'SET_WAGE_CONTRACT'; colonistId: string; wageContract: WageContract }
-  | { type: 'GRANT_TUTORIAL_REAGENTS'; items?: Array<{ itemId: string; count?: number; massKg?: number }>; vesselSpecies?: Array<{ speciesId: string; moles: number }>; vesselTempK?: number };
+  | { type: 'GRANT_TUTORIAL_REAGENTS'; items?: Array<{ itemId: string; count?: number; massKg?: number }>; vesselSpecies?: Array<{ speciesId: string; moles: number }>; vesselTempK?: number }
+  | { type: 'CRISIS_CHOICE'; crisisId: CrisisId; choiceId: string };
 
 interface WorkerCtx {
   postMessage(message: unknown): void;
@@ -132,6 +138,8 @@ const labels = new Map<number, string>();
 
 let rngSeed = 0;
 let rng = createSeededRng(rngSeed);
+const crisis = createCrisisDirector();
+let lastCrisisSync = '';
 
 function postVessels(): void {
   if (!world) return;
@@ -214,6 +222,15 @@ function postColonySync(): void {
   });
 }
 
+/** Posts CRISIS_SYNC only when the crisis snapshot changed (dirty compare). */
+function postCrisisSync(): void {
+  const snap = crisis.snapshot();
+  const payload = JSON.stringify({ telegraph: snap.telegraph, active: snap.active });
+  if (payload === lastCrisisSync) return;
+  lastCrisisSync = payload;
+  ctx.postMessage({ type: 'CRISIS_SYNC', telegraph: snap.telegraph, active: snap.active });
+}
+
 const emittedSpeciesMilestones = new Set<string>();
 
 function checkAndEmitSpeciesObjectives(): void {
@@ -282,6 +299,17 @@ function stepSingleTick(activitySeconds: number = SIM_STEP_SECONDS): WorldEvent[
     events.push({ vesselId: -1, message: `Paddock yields: ${yields.milkL.toFixed(1)} L milk, ${yields.butterfatGrams.toFixed(0)} g butterfat, ${yields.eggs} eggs, ${yields.manureKg.toFixed(2)} kg manure.` });
   }
   checkAndEmitSpeciesObjectives();
+  if (inventory) {
+    const crisisContext: CrisisContext = { world, player, inventory, colony, rng };
+    const crisisEvents = crisis.tick(world.tick, paused, crisisContext);
+    if (crisisEvents.activated) {
+      events.push({ vesselId: -1, message: `⚠ Crisis: ${crisisEvents.activated.title}.` });
+    }
+    for (const msg of crisisEvents.autoResolved) {
+      events.push({ vesselId: -1, message: msg });
+    }
+    postCrisisSync();
+  }
   return events;
 }
 
@@ -323,6 +351,7 @@ ctx.onmessage = (event: MessageEvent<Command>) => {
       paddock = createPaddock();
       rngSeed = (Math.random() * 0xffffffff) >>> 0;
       rng = createSeededRng(rngSeed);
+      crisis.reset(rngSeed, 0);
       colony = createInitialColonyState();
 
       syncWorldToShared(world, view);
@@ -330,6 +359,7 @@ ctx.onmessage = (event: MessageEvent<Command>) => {
       ctx.postMessage({ type: 'READY' });
       postPlayerAndInventory();
       postColonySync();
+      postCrisisSync();
       break;
     }
     case 'LOAD_WORLD': {
@@ -397,6 +427,7 @@ ctx.onmessage = (event: MessageEvent<Command>) => {
       }
       rngSeed = save.rngSeed ?? ((Math.random() * 0xffffffff) >>> 0);
       rng = createSeededRng(rngSeed);
+      crisis.reset(rngSeed, save.tick ?? 0);
       paddock = save.paddock ?? createPaddock();
       colony = restoreColonyFromSave(save);
 
@@ -406,6 +437,7 @@ ctx.onmessage = (event: MessageEvent<Command>) => {
       postVessels();
       postPlayerAndInventory();
       postColonySync();
+      postCrisisSync();
       break;
     }
     case 'CREATE_VESSEL': {
@@ -928,6 +960,24 @@ ctx.onmessage = (event: MessageEvent<Command>) => {
       }
       postPlayerAndInventory();
       ctx.postMessage({ type: 'EVENTS', events: [{ vesselId: -1, message: 'Granted tutorial lesson reagents to camp cache.' }] });
+      break;
+    }
+    case 'CRISIS_CHOICE': {
+      if (!world || !player || !inventory) break;
+      const result = crisis.resolve(command.crisisId, command.choiceId, {
+        world,
+        player,
+        inventory,
+        colony,
+        rng,
+      });
+      for (const message of result.messages) {
+        ctx.postMessage({ type: 'EVENTS', events: [{ vesselId: -1, message }] });
+      }
+      if (view) syncWorldToShared(world, view);
+      postPlayerAndInventory();
+      postColonySync();
+      postCrisisSync();
       break;
     }
     default:
