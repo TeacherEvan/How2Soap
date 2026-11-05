@@ -3,7 +3,7 @@
  * says lands here. Kept separate from startWorld so the dispatch table can be
  * read (and tested) without booting the renderer.
  */
-import { applyProgressEventsWithSensor, levelFromRenown } from '../engine/progression';
+import { applyProgressEventsWithSensor, levelFromRenown, type ObjectiveSensor } from '../engine/progression';
 import { CHAPTERS } from '../data/story';
 import { StoryMode } from '../ui/StoryMode';
 import { showToast } from '../ui/Toast';
@@ -264,7 +264,7 @@ export function handleWorkerMessage(data: WorkerMessage, options?: { load?: unkn
   }
 
   // OBJECTIVE
-  const sensor = {
+  const sensor: ObjectiveSensor = {
     hasSpecies: (idx: number, minMoles: number) => {
       if (!state.snapshot) return false;
       for (let v = 0; v < state.vessels.length; v++) {
@@ -280,6 +280,10 @@ export function handleWorkerMessage(data: WorkerMessage, options?: { load?: unkn
     hasFlag: (f: string) => !!state.progression.ever[f],
     hasEaten: (id: string) => (state.progression.craftStats.eaten[id] ?? 0) > 0,
     hasTreated: (k: string) => (state.progression.craftStats.treated[k] ?? 0) > 0,
+    // ES-1 Tutorial sensors
+    hasHarvestedSpeciesPart: () => false,
+    hasCompletedSoapKettleBatch: () => false,
+    hasFulfilledTimedRequest: () => false,
   };
 
   const res = applyProgressEventsWithSensor(

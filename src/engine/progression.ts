@@ -16,6 +16,10 @@ export interface ObjectiveSensor {
   hasFlag(flag: string): boolean;
   hasEaten(itemId: string): boolean;
   hasTreated(kind: string): boolean;
+  // ES-1 Tutorial sensors
+  hasHarvestedSpeciesPart(speciesId: string, partId: string): boolean;
+  hasCompletedSoapKettleBatch(): boolean;
+  hasFulfilledTimedRequest(): boolean;
 }
 
 export interface ProgressionState {
@@ -190,6 +194,10 @@ export function applyProgressEvents(
     hasFlag: f => !!save.ever[f],
     hasEaten: id => (save.craftStats.eaten[id] ?? 0) > 0,
     hasTreated: k => (save.craftStats.treated[k] ?? 0) > 0,
+    // ES-1 Tutorial sensors (no-op defaults for non-tutorial progression)
+    hasHarvestedSpeciesPart: () => false,
+    hasCompletedSoapKettleBatch: () => false,
+    hasFulfilledTimedRequest: () => false,
   });
 }
 

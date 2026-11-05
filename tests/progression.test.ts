@@ -18,6 +18,9 @@ const sensorFor = (over: Partial<ObjectiveSensor> = {}): ObjectiveSensor => ({
   hasFlag: () => false,
   hasEaten: () => false,
   hasTreated: () => false,
+  hasHarvestedSpeciesPart: () => false,
+  hasCompletedSoapKettleBatch: () => false,
+  hasFulfilledTimedRequest: () => false,
   ...over,
 });
 

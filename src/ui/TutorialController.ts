@@ -8,6 +8,7 @@ import { globalOverlayStack } from './overlayStack';
 import { audio } from './audio';
 import type { WorldSnapshot } from '../engine/memoryLayout';
 import { computeVesselPhdTelemetry, type PhdTelemetryData } from '../engine/phdTelemetry';
+import { TutorialProgressiveReveal, type TutorialBeat } from './TutorialProgressiveReveal';
 
 // Asset references
 import terrainMapImg from '../assets/tutorial/blender_terrain_map.png';
@@ -38,9 +39,29 @@ export class TutorialController {
   private coachmarkEl: HTMLElement | null = null;
   private currentSpotlightEl: HTMLElement | null = null;
 
+  // ES-1 Progressive Reveal
+  private progressiveReveal: TutorialProgressiveReveal | null = null;
+  private progressiveRevealStarted = false;
+
   constructor(private readonly options: TutorialControllerOptions) {
     this.createHudTrigger();
     this.createCoachmarkDom();
+    this.initProgressiveReveal();
+  }
+
+  private initProgressiveReveal(): void {
+    this.progressiveReveal = new TutorialProgressiveReveal({
+      onBeatComplete: (_beat: TutorialBeat) => {
+        // Could trigger analytics or save progress
+      },
+      onAllComplete: () => {
+        // All 3 beats done - progressive reveal complete
+        // The old coachmark will show tier complete
+      },
+      onSkip: () => {
+        // User skipped progressive reveal
+      },
+    });
   }
 
   public snapshot() {
@@ -50,6 +71,7 @@ export class TutorialController {
       completedLessonIds: Array.from(this.completedLessonIds),
       phdTelemetryEnabled: this.phdTelemetryEnabled,
       coachmarkDismissed: this.coachmarkDismissed,
+      progressiveReveal: this.progressiveReveal?.snapshot(),
     };
   }
 
@@ -59,6 +81,11 @@ export class TutorialController {
     completedLessonIds?: string[];
     phdTelemetryEnabled?: boolean;
     coachmarkDismissed?: boolean;
+    progressiveReveal?: {
+      currentBeatIndex?: number;
+      completedBeats?: string[];
+      dismissed?: boolean;
+    };
   }): void {
     if (!save) return;
     if (save.activeTier) this.activeTier = save.activeTier;
@@ -72,8 +99,16 @@ export class TutorialController {
     if (typeof save.coachmarkDismissed === 'boolean') {
       this.coachmarkDismissed = save.coachmarkDismissed;
     }
+    if (save.progressiveReveal && this.progressiveReveal) {
+      this.progressiveReveal.restore(save.progressiveReveal);
+    }
     this.updateHudTierBadge();
     this.updateCoachmark();
+    // Start progressive reveal if not dismissed and not complete
+    if (this.progressiveReveal && !this.progressiveRevealStarted && !save.progressiveReveal?.dismissed) {
+      this.progressiveReveal.start();
+      this.progressiveRevealStarted = true;
+    }
   }
 
   public computePhdTelemetry(vesselIndex: number, snapshot: WorldSnapshot): PhdTelemetryData {
@@ -93,6 +128,11 @@ export class TutorialController {
     if (this.coachmarkEl) {
       this.coachmarkEl.remove();
       this.coachmarkEl = null;
+    }
+    // Destroy progressive reveal
+    if (this.progressiveReveal) {
+      this.progressiveReveal.destroy();
+      this.progressiveReveal = null;
     }
     const btn = document.getElementById('btn-open-tutorial');
     if (btn) btn.remove();
@@ -489,6 +529,16 @@ export class TutorialController {
   }
 
   public checkProgress(ctx: TutorialEvalContext): void {
+    // ES-1 Progressive Reveal runs first (first session only)
+    if (this.progressiveReveal && !this.progressiveReveal.isDismissed()) {
+      this.progressiveReveal.checkProgress(ctx);
+      // If progressive reveal is active, don't run old lesson system
+      if (!this.progressiveReveal.isDismissed()) {
+        return;
+      }
+    }
+
+    // Original lesson system (for post-progressive-reveal or returning players)
     if (!this.activeLessonId) return;
     const lesson = TUTORIAL_LESSONS.find((l) => l.id === this.activeLessonId);
     if (!lesson) return;

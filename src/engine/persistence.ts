@@ -58,6 +58,14 @@ export interface SerializedWorldSave {
     completedLessonIds: string[];
     phdTelemetryEnabled: boolean;
     coachmarkDismissed: boolean;
+    progressiveReveal?: {
+      currentBeatIndex: number;
+      completedBeats: string[];
+      dismissed: boolean;
+    };
+  };
+  featureFlags?: {
+    colonyChemistryLink: boolean;
   };
 }
 
@@ -114,6 +122,19 @@ export function deserializeSave(json: string): SerializedWorldSave {
       nextColonistId: parsed.colony.nextColonistId ?? 1,
       lastDecayTick: parsed.colony.lastDecayTick,
     } : undefined,
+    tutorial: parsed.tutorial ? {
+      activeTier: parsed.tutorial.activeTier ?? 'BEGINNER',
+      activeLessonId: parsed.tutorial.activeLessonId ?? null,
+      completedLessonIds: Array.isArray(parsed.tutorial.completedLessonIds) ? parsed.tutorial.completedLessonIds : [],
+      phdTelemetryEnabled: parsed.tutorial.phdTelemetryEnabled ?? false,
+      coachmarkDismissed: parsed.tutorial.coachmarkDismissed ?? false,
+      progressiveReveal: parsed.tutorial.progressiveReveal ? {
+        currentBeatIndex: parsed.tutorial.progressiveReveal.currentBeatIndex ?? 0,
+        completedBeats: Array.isArray(parsed.tutorial.progressiveReveal.completedBeats) ? parsed.tutorial.progressiveReveal.completedBeats : [],
+        dismissed: parsed.tutorial.progressiveReveal.dismissed ?? false,
+      } : undefined,
+    } : undefined,
+    featureFlags: parsed.featureFlags ?? { colonyChemistryLink: false },
   };
 }
 
@@ -151,6 +172,8 @@ export function migrateSave(raw: unknown): SerializedWorldSave {
     objectivesDone: Array.isArray(r.objectivesDone) ? r.objectivesDone : [],
     lettersDone: Array.isArray(r.lettersDone) ? r.lettersDone : [],
     epilogueSeen: (typeof r.epilogueSeen === 'boolean' ? r.epilogueSeen : false),
+    tutorial: undefined,
+    featureFlags: { colonyChemistryLink: false },
   };
 }
 

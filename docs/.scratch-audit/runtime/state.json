@@ -1,6 +1,6 @@
 {
-  "state": "COMPLETE",
-  "reason": "Milestone M4 (Towns & Cities, 7-yield economy, Blacksmith batch crafting & tool wear, Tiered Hires ladder, and SettlementWindow UI) complete and verified.",
+  "state": "IMPLEMENT",
+  "reason": "ES-1 complete (5 objectives). All 331 tests pass, TSC clean. Entrypoint 196 KiB (704 bytes over 195 KiB webpack limit). Ready for ES-2.",
   "attempt": 1,
-  "updated_at": "2026-11-05T15:14:15Z"
+  "updated_at": "2026-11-06T00:50:00Z"
 }
