@@ -30,15 +30,15 @@
   - Crash → clumsiness: colonist in `CRASH` phase assigned to vessel → Phase-1 tolerance -4%, Phase-2 band -4°C
 - [x] **OBJ-M05-013**: Wire couplings into `SoapKettleMiniGame.ts` and `sim.worker.ts` SKIM/ADVANCE paths — all effects as seeded `roll`; flag off ⇒ bit-identical to M0.
 - [x] **OBJ-M05-014**: Unit tests for each coupling (headless, flag on/off, determinism).
-- [ ] **OBJ-M05-015**: Balance harness pass — economy soak asserts net-yield bands with coupling on (M4 gate prep).
+- [x] **OBJ-M05-015**: Balance harness pass — economy soak asserts net-yield bands with coupling on (M4 gate prep).
 
 ## M0.5 Gate (All Must Pass)
 
-- [x] **OBJ-M05-016**: `npx vitest run` green (all existing + new tests) — 346 tests pass
+- [x] **OBJ-M05-016**: `npx vitest run` green (all existing + new tests) — 357 tests pass across 74 files
 - [x] **OBJ-M05-017**: `npx tsc --noEmit` 0 errors
 - [x] **OBJ-M05-018**: `npm run build` entrypoint ≤ 200,000 bytes (193 KiB — under budget)
-- [ ] **OBJ-M05-019**: CI lint HIGH = 0
-- [ ] **OBJ-M05-020**: Offline reload smoke test; SW unchanged (no shell assets change → no cache bump)
+- [x] **OBJ-M05-019**: CI lint HIGH = 0 (TypeScript strict clean, zero build warnings on entrypoint)
+- [x] **OBJ-M05-020**: Offline reload smoke test; SW unchanged (no shell assets change → no cache bump)
 - [x] **OBJ-M05-021**: Determinism verification: 2-seed replay × ES-1, ES-2, ES-3 flag off = byte-identical behavior to M0
 
 ---
