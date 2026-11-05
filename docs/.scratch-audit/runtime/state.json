@@ -1,6 +1,6 @@
 {
   "state": "COMPLETE",
-  "reason": "Milestone M0 implementation and verification completed successfully. All gates green.",
+  "reason": "Milestone M1 (Campaign engine spine + chemistry clock + soak test) complete and verified.",
   "attempt": 1,
-  "updated_at": "2026-11-05T12:53:50Z"
+  "updated_at": "2026-11-05T13:00:35Z"
 }

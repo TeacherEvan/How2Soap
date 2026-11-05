@@ -1,14 +1,14 @@
 {
   "workflow_id": "surgical-implementation-v8",
-  "run_id": "run-20261105-01",
-  "created_at": "2026-11-05T12:48:30Z",
+  "run_id": "run-20261105-02",
+  "created_at": "2026-11-05T12:56:20Z",
   "plan_path": "docs/plans/2026-11-05-civ7-4x-conversion-plan.md",
   "branch": "feat/civ7-4x-v8-m0",
   "status": "COMPLETED",
   "current_state": "COMPLETE",
   "consistency_attempts": 1,
   "verification_attempts": 1,
-  "active_milestone": "M0",
-  "completed_milestones": ["M0"],
-  "next_milestone": "M1"
+  "active_milestone": "M1",
+  "completed_milestones": ["M0", "M1"],
+  "next_milestone": "M2"
 }

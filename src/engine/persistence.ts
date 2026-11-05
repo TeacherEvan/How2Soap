@@ -46,6 +46,8 @@ export interface SerializedWorldSave {
   colony?: SerializedColonyState;
   paddock?: any;
   timedRequests?: any[];
+  experiments?: import('./campaign/experiments').ExperimentQueueState;
+  realm?: import('./campaign/realm').RealmState;
 }
 
 export function serializeSave(save: SerializedWorldSave): string {
@@ -88,6 +90,8 @@ export function deserializeSave(json: string): SerializedWorldSave {
     lettersDone: parsed.lettersDone ?? [],
     epilogueSeen: parsed.epilogueSeen ?? false,
     timedRequests: Array.isArray(parsed.timedRequests) ? parsed.timedRequests : undefined,
+    experiments: parsed.experiments ?? undefined,
+    realm: parsed.realm ?? undefined,
     colony: parsed.colony ? {
       colonists: parsed.colony.colonists ?? [],
       ledger: parsed.colony.ledger ?? [],

@@ -1,32 +1,12 @@
-# TODO.md — Milestone M0 Objectives
+# TODO.md — Milestone M1 Objectives
 
-- [x] **OBJ-001**: Import `windows.css` lazily via launcher and `soapKettle.css` via `SoapKettleModal.ts` (fixes D1, D2).
-  - *Requirement*: AC-001, AC-002
-  - *Validation*: Verify webpack build includes both CSS assets and bundle limit < 200,000 bytes.
-- [x] **OBJ-002**: Fix layout thrashing in `src/ui/timedRequests.css:89` (`transform: scaleX(...)` with `transform-origin: left`) (fixes D4).
-  - *Requirement*: AC-003
-  - *Validation*: Inspect CSS selector and ensure compositor-only property is used.
-- [x] **OBJ-003**: Extend save interfaces in `src/engine/persistence.ts` to support version 3 with colony, paddock, timedRequests, and persistent rngSeed (fixes D5, D6).
-  - *Requirement*: AC-004
-  - *Validation*: Unit tests in `tests/persistence.test.ts` and `tests/saveV3Integrity.test.ts`.
-- [x] **OBJ-004**: Update `src/app/autosave.ts` to include colony and paddock states from runtime `state`, maintaining deterministic `rngSeed` (fixes D5).
-  - *Requirement*: AC-004
-  - *Validation*: Assert snapshot signature and serialized payload structure.
-- [x] **OBJ-005**: Reconcile `src/engine/worldRestore.ts` and `src/engine/sim.worker.ts` for unified restore of colony, paddock, and timed requests (fixes D6, D8).
-  - *Requirement*: AC-005
-  - *Validation*: Verify `LOAD_WORLD` worker command restores full game state without duplicating logic.
-- [x] **OBJ-006**: Bump service worker cache name in `public/sw.js` to `how2soap-v2` (fixes D17).
-  - *Requirement*: AC-006
-  - *Validation*: Verify `public/sw.js` cache string.
-- [x] **OBJ-007**: Add test suite for v2→v3 migration and save round-tripping with colony/paddock/timedRequests.
-  - *Requirement*: AC-007
-  - *Validation*: `npx vitest run` passes all tests.
-- [x] **OBJ-008**: Run full verification gate: `vitest`, `tsc --noEmit`, and `npm run build`.
-  - *Requirement*: AC-007, AC-008, AC-009, AC-010
-  - *Validation*: 0 test failures, 0 TypeScript errors, bundle size < 200,000 bytes.
-- [x] **OBJ-009**: Record and verify SAB byte length consistency.
-  - *Requirement*: AC-010
-  - *Validation*: `tests/memoryLayout.test.ts` passes with 67648 bytes.
-- [x] **OBJ-010**: Generate completion evidence and handoff debrief for Milestone M0.
-  - *Requirement*: AC-001 through AC-010
-  - *Validation*: `docs/.scratch-audit/debrief.md` compiled with full metrics.
+- [ ] **OBJ-M1-001**: Implement `src/engine/campaign/experiments.ts` (turns conversion, concurrency cap, `startExperiment`, `stepExperiments`, deterministic sour mechanics).
+- [ ] **OBJ-M1-002**: Implement `src/engine/campaign/realm.ts` (national indices Health/Safety/Vigor, exposure crash rolls, 5 countries, 3 Estates with 25/10 warnings & deposal).
+- [ ] **OBJ-M1-003**: Extend `src/engine/persistence.ts` with `experiments` and `realm` fields in save v3.
+- [ ] **OBJ-M1-004**: Author unit test suite for `experiments.ts` (queue, concurrency, reservation, completion, sour rolls, determinism).
+- [ ] **OBJ-M1-005**: Author unit test suite for `realm.ts` (indices decay, doses, clothing, weapons, estate warnings, deposals).
+- [ ] **OBJ-M1-006**: Author headless 60-turn soak test verifying save payload size ≤ 512,000 bytes.
+- [ ] **OBJ-M1-007**: Verify 30-turn deterministic replay (byte-identical serialized save).
+- [ ] **OBJ-M1-008**: Run full verification gate (`npx vitest run`, `npx tsc --noEmit`, `npm run build`).
+- [ ] **OBJ-M1-009**: Confirm `tests/memoryLayout.test.ts` invariant (67,648 bytes).
+- [ ] **OBJ-M1-010**: Generate completion evidence, update traceability, and commit M1.
