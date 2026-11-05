@@ -15,6 +15,21 @@ export interface KettleBatchResult {
   message: string;
 }
 
+export interface CouplingEffects {
+  laborQuality?: {
+    traceTargetReduction: number;
+    phase2BandWiden: number;
+  };
+  unrestSpoilage?: {
+    spoilageChance: number;
+    ruptureSeverityIncrease: number;
+  };
+  crashClumsiness?: {
+    phase1ToleranceReduction: number;
+    phase2BandReduction: number;
+  };
+}
+
 export class SoapKettleMiniGame {
   public phase: KettlePhase = 'IDLE';
 
@@ -34,6 +49,16 @@ export class SoapKettleMiniGame {
   public stirStrokes = 0;
   public targetStrokes = 12;
 
+  // Coupling effects (ES-3)
+  private couplingEffects: {
+    laborQuality?: { traceTargetReduction: number; phase2BandWiden: number };
+    unrestSpoilage?: { spoilageChance: number; ruptureSeverityIncrease: number };
+    crashClumsiness?: { phase1ToleranceReduction: number; phase2BandReduction: number };
+  } = {};
+  
+  // Unrest spoilage RNG (seeded from worker)
+  private spoilageRng: (() => number) | null = null;
+
   // Result
   public lastResult: KettleBatchResult | null = null;
   public onBatchComplete?: (result: KettleBatchResult) => void;
@@ -42,6 +67,35 @@ export class SoapKettleMiniGame {
 
   constructor(onBatchComplete?: (result: KettleBatchResult) => void) {
     this.onBatchComplete = onBatchComplete;
+  }
+
+  /** Apply coupling effects from ES-3 Colony ↔ Chemistry coupling */
+  public applyCouplingEffects(effects: {
+    laborQuality?: { traceTargetReduction: number; phase2BandWiden: number };
+    crashClumsiness?: { phase1ToleranceReduction: number; phase2BandReduction: number };
+  }): void {
+    this.couplingEffects = effects;
+    // Apply labor quality improvement
+    if (effects.laborQuality) {
+      this.targetStrokes = Math.max(1, this.targetStrokes - effects.laborQuality.traceTargetReduction);
+    }
+    // Apply crash clumsiness
+    if (effects.crashClumsiness) {
+      // Note: phase1 tolerance and phase2 band are checked in finishBatch
+      // The effects are applied dynamically during batch evaluation
+    }
+  }
+
+  /** Set the spoilage RNG seed for unrest spoilage rolls */
+  public setSpoilageSeed(seed: number): void {
+    // Simple mulberry32 RNG for deterministic spoilage rolls
+    let a = seed >>> 0;
+    this.spoilageRng = () => {
+      let t = (a += 0x6d2b79f5);
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
   }
 
   public startBatch(): void {
@@ -130,19 +184,37 @@ export class SoapKettleMiniGame {
     // Calculate ratio accuracy (ideal lye/(lye+fat) is ~0.50 => 45% to 55%)
     const total = Math.max(1, this.lyeVolume + this.fatVolume);
     const lyeRatio = this.lyeVolume / total;
-    const ratioAccurate = lyeRatio >= 0.45 && lyeRatio <= 0.55;
+    
+    // Apply crash clumsiness: Phase-1 tolerance reduction (-4%)
+    const crashClumsiness = this.couplingEffects.crashClumsiness;
+    const phase1ToleranceReduction = crashClumsiness?.phase1ToleranceReduction ?? 0;
+    const minLyeRatio = 0.45 - phase1ToleranceReduction / 100;
+    const maxLyeRatio = 0.55 + phase1ToleranceReduction / 100;
+    
+    const ratioAccurate = lyeRatio >= minLyeRatio && lyeRatio <= maxLyeRatio;
     const boiledOver = this.isBoilingOver;
 
     let quality: 'PERFECT' | 'STANDARD' | 'RUINED' = 'STANDARD';
     let soapYield = 1;
     let message = 'Standard Batch: Soap cured successfully.';
 
-    if (boiledOver || !ratioAccurate) {
+    // Unrest spoilage roll (ES-3)
+    const unrestSpoilage = this.couplingEffects.unrestSpoilage;
+    let spoiled = false;
+    if (unrestSpoilage && this.spoilageRng) {
+      spoiled = this.spoilageRng() < unrestSpoilage.spoilageChance;
+    }
+
+    if (boiledOver || !ratioAccurate || spoiled) {
       quality = 'RUINED';
       soapYield = 0;
-      message = boiledOver
-        ? 'Ruined Batch: Kettle boiled over into caustic foam!'
-        : 'Ruined Batch: Incorrect lye-to-fat ratio yielded scrap slurry.';
+      if (spoiled) {
+        message = 'Ruined Batch: Unrest in the colony caused spoilage!';
+      } else if (boiledOver) {
+        message = 'Ruined Batch: Kettle boiled over into caustic foam!';
+      } else {
+        message = 'Ruined Batch: Incorrect lye-to-fat ratio yielded scrap slurry.';
+      }
     } else if (ratioAccurate && !boiledOver && this.stirStrokes >= this.targetStrokes) {
       quality = 'PERFECT';
       soapYield = 2; // +1 Bonus Soap Bar

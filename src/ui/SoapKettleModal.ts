@@ -1,5 +1,6 @@
 import './soapKettle.css';
 import { SoapKettleMiniGame, type KettleBatchResult } from './SoapKettleMiniGame';
+import { state } from '../app/state';
 
 export function mountSoapKettleModal(
   container: HTMLElement,
@@ -55,6 +56,14 @@ export function mountSoapKettleModal(
       modal.remove();
     }, 1800);
   });
+  // Apply ES-3 coupling effects
+  if (state.couplingEffects) {
+    game.applyCouplingEffects(state.couplingEffects);
+  }
+  // Set spoilage RNG seed for unrest spoilage rolls
+  if (state.couplingSpoilageSeed !== undefined) {
+    game.setSpoilageSeed(state.couplingSpoilageSeed);
+  }
   game.startBatch();
 
   const statusBanner = modal.querySelector('.kettle-status-banner') as HTMLElement;

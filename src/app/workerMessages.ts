@@ -53,6 +53,11 @@ export type WorkerMessage =
   | {
       type: 'LEDGER_SYNC';
       ledger: any;
+      couplingEffects?: {
+        laborQuality?: { traceTargetReduction: number; phase2BandWiden: number };
+        crashClumsiness?: { phase1ToleranceReduction: number; phase2BandReduction: number };
+      };
+      couplingSpoilageSeed?: number;
     };
 
 function createSeedVessels(): void {
@@ -216,6 +221,14 @@ export function handleWorkerMessage(data: WorkerMessage, options?: { load?: unkn
 
   if (data.type === 'LEDGER_SYNC') {
     state.ledger = data.ledger;
+    // Apply ES-3 coupling effects to mini-game if available
+    if (data.couplingEffects) {
+      state.couplingEffects = data.couplingEffects;
+    }
+    // Store spoilage RNG seed for per-batch spoilage rolls
+    if (data.couplingSpoilageSeed !== undefined) {
+      state.couplingSpoilageSeed = data.couplingSpoilageSeed;
+    }
     // Lazy-load JournalPanel if journal is open
     if (state.activeTab === 'JOURNAL' || document.querySelector('.journal')) {
       import('../ui/JournalPanel').then(({ mountJournal: mj }) => {

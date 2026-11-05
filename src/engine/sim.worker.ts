@@ -99,6 +99,12 @@ import {
   getDayWellSpentBonus,
   type LedgerState,
 } from './campaign/ledger';
+import {
+  computeCouplingEffects,
+  createCouplingRng,
+  type CouplingConfig,
+  type CouplingEffects,
+} from './campaign/couplings';
 
 export interface FullSimState {
   world: WorldState;
@@ -197,6 +203,15 @@ const crisis = createCrisisDirector();
 let lastCrisisSync = '';
 const timedRequests: TimedRequestManager = createTimedRequestManager();
 let ledger: LedgerState = createInitialLedger(rngSeed);
+
+// ES-3 Colony ↔ Chemistry Couplings
+let couplingConfig: CouplingConfig = { enabled: false, rngSeed: 0 };
+let couplingEffects: CouplingEffects = {
+  laborQuality: null,
+  unrestSpoilage: null,
+  crashClumsiness: null,
+};
+let couplingRng: (() => number) | null = null;
 
 function postVessels(): void {
   if (!world) return;
@@ -302,6 +317,8 @@ function postCampaignSync(): void {
   ctx.postMessage({
     type: 'LEDGER_SYNC',
     ledger,
+    couplingEffects,
+    couplingSpoilageSeed: couplingConfig.enabled ? couplingConfig.rngSeed + 0x1234567 : 0,
   });
 }
 
@@ -476,6 +493,11 @@ function advance(hours: number): WorldEvent[] {
         }
       }
 
+      // Recompute ES-3 Colony ↔ Chemistry Couplings after day advancement
+      if (couplingConfig.enabled && couplingRng) {
+        couplingEffects = computeCouplingEffects(couplingConfig, colony);
+      }
+
       // Step Blacksmith tool wear and batch jobs
       const smithRes = stepBlacksmith(blacksmith);
       for (const bJob of smithRes.completedJobs) {
@@ -563,6 +585,11 @@ function handleCommand(command: Command): void {
       crisis.reset(rngSeed, 0);
       colony = createInitialColonyState();
 
+      // Initialize ES-3 Colony ↔ Chemistry Couplings (default disabled)
+      couplingConfig = { enabled: false, rngSeed: rngSeed + 0x9e3779b9 };
+      couplingRng = createCouplingRng(couplingConfig.rngSeed);
+      couplingEffects = computeCouplingEffects(couplingConfig, colony);
+
       syncWorldToShared(world, view);
       if (timer === null) timer = setInterval(tick, 1000 / WORKER_HZ);
       ctx.postMessage({ type: 'READY', rngSeed });
@@ -627,6 +654,16 @@ function handleCommand(command: Command): void {
       crisis.reset(rngSeed, save.tick ?? 0);
       paddock = save.paddock ?? createPaddock();
       colony = restoreColonyFromSave(save);
+
+      // Initialize ES-3 Colony ↔ Chemistry Couplings
+      couplingConfig = {
+        enabled: save.featureFlags?.colonyChemistryLink ?? false,
+        rngSeed: rngSeed + 0x9e3779b9, // Different seed for coupling RNG
+      };
+      couplingRng = createCouplingRng(couplingConfig.rngSeed);
+      // Initialize coupling effects based on current colony state
+      couplingEffects = computeCouplingEffects(couplingConfig, colony);
+
       if (Array.isArray(save.timedRequests)) {
         timedRequests.restore(save.timedRequests);
       }

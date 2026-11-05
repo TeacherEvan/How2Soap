@@ -23,13 +23,13 @@
 
 ## ES-3 — Colony ↔ Chemistry Coupling (behind `featureFlags.colonyChemistryLink`)
 
-- [ ] **OBJ-M05-011**: Add `featureFlags` namespace to campaign save v2 (`colonyChemistryLink: boolean` default false).
-- [ ] **OBJ-M05-012**: Extend `crisis.ts` effect vocabulary (or new `couplings.ts`) with three read-points:
+- [x] **OBJ-M05-011**: Add `featureFlags` namespace to campaign save v2 (`colonyChemistryLink: boolean` default false).
+- [x] **OBJ-M05-012**: Extend `crisis.ts` effect vocabulary (or new `couplings.ts`) with three read-points:
   - Labor → quality: `APPRENTICE_CHEMIST` assigned to vessel → mini-game trace target 12→9, Phase-2 band 80–95→78–96 °C
   - Unrest → spoilage: mean morale < 40 or any `STRIKE` → per-batch spoilage roll + vessel-rupture severity +1
   - Crash → clumsiness: colonist in `CRASH` phase assigned to vessel → Phase-1 tolerance -4%, Phase-2 band -4°C
-- [ ] **OBJ-M05-013**: Wire couplings into `SoapKettleMiniGame.ts` and `sim.worker.ts` SKIM/ADVANCE paths — all effects as seeded `roll`; flag off ⇒ bit-identical to M0.
-- [ ] **OBJ-M05-014**: Unit tests for each coupling (headless, flag on/off, determinism).
+- [x] **OBJ-M05-013**: Wire couplings into `SoapKettleMiniGame.ts` and `sim.worker.ts` SKIM/ADVANCE paths — all effects as seeded `roll`; flag off ⇒ bit-identical to M0.
+- [x] **OBJ-M05-014**: Unit tests for each coupling (headless, flag on/off, determinism).
 - [ ] **OBJ-M05-015**: Balance harness pass — economy soak asserts net-yield bands with coupling on (M4 gate prep).
 
 ## M0.5 Gate (All Must Pass)

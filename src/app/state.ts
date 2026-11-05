@@ -123,6 +123,11 @@ export const state = {
   settlements: null as import('../engine/campaign/settlements').SettlementsState | null,
   blacksmith: null as import('../engine/campaign/blacksmith').BlacksmithState | null,
   ledger: null as import('../engine/campaign/ledger').LedgerState | null,
+  couplingEffects: null as {
+    laborQuality?: { traceTargetReduction: number; phase2BandWiden: number };
+    crashClumsiness?: { phase1ToleranceReduction: number; phase2BandReduction: number };
+  } | null,
+  couplingSpoilageSeed: 0,
   crisis: null as CrisisSnapshot | null,
   strategyMap: null as StrategyMapCanvas | null,
   tutorial: null as TutorialController | null,
