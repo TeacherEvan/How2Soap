@@ -216,6 +216,11 @@ export const ITEMS: readonly ItemDef[] = [
   { id: 'DEER_SINEW', name: 'Animal Sinew Cordage', category: 'material', tier: 1, icon: 'sinew', desc: 'Dried sinew, split and twisted; the thread no awl ever broke.' },
   { id: 'ANIMAL_BONE', name: 'Heavy Femur Bone', category: 'material', tier: 1, icon: 'bone', desc: 'Boar femur, dense as antler; one good awl hides inside it.' },
   { id: 'LEATHER_TUNIC', name: 'Stitched Leather Tunic', category: 'misc', tier: 2, icon: 'leather', affinity: 'soapwright', desc: 'Tanned hide stitched with sinew; provides warmth, public safety, and fends off ague.' },
+
+  // ---- Chemistry, Munitions & Minerals (§6.18.3) ----
+  { id: 'SULFUR', name: 'Powdered Sulfur', category: 'material', tier: 4, icon: 'saltpeter', affinity: 'forgewright', desc: 'Bright yellow elemental sulfur; off-gas fines from sphalerite roasting.' },
+  { id: 'GUNPOWDER', name: 'Corned Gunpowder', category: 'material', tier: 4, icon: 'saltpeter', affinity: 'forgewright', desc: '75:15:10 KNO3:S:Charcoal blend; rapid deflagration mixture.' },
+  { id: 'TNT_CHARGE', name: 'Miner\'s Demo Charge', category: 'misc', tier: 4, icon: 'electrode', affinity: 'forgewright', desc: 'Corned powder with tallow and sawdust binder; fractures deep mineral seams or city gates.' },
 ];
 
 export const ITEM_BY_ID: Readonly<Record<string, ItemDef>> = Object.freeze(
