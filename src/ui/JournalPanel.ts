@@ -1,3 +1,10 @@
+/**
+ * Journal Panel with tabbed interface:
+ * - Chronicle: campaign progress, affinities, letters
+ * - Council: timed requests, town management
+ * - Dispatcher's Desk: Crown's Ledger (ES-2)
+ */
+
 import {
   CHAPTERS,
   LETTERS,
@@ -12,16 +19,19 @@ import {
   affinityRank,
   dominantAffinity,
 } from '../engine/progression';
+import { state, send } from '../app/state';
+import { renderTimedRequestsHTML } from './TimedRequestsWidget';
+import '../styles.css';
 
 export type LetterState = 'locked' | 'available' | 'claimed';
 
-export interface JournalLetterView {
+interface JournalLetterView {
   id: string;
   def: LetterDef;
   state: LetterState;
 }
 
-export interface JournalChapterView {
+interface JournalChapterView {
   id: string;
   def: ChapterDef;
   state: 'done' | 'current' | 'locked';
@@ -32,7 +42,7 @@ export interface JournalChapterView {
   }>;
 }
 
-export interface JournalModel {
+interface JournalModel {
   chapters: JournalChapterView[];
   letters: JournalLetterView[];
   renownLine: string;
@@ -104,8 +114,16 @@ export function buildJournalModel(save: ProgressionState): JournalModel {
   };
 }
 
+let currentTab: 'chronicle' | 'council' | 'ledger' = 'chronicle';
+
 export function mountJournal(tabRoot: HTMLElement, save: ProgressionState): void {
+  currentTab = 'chronicle';
+  renderJournal(tabRoot, save);
+}
+
+function renderJournal(tabRoot: HTMLElement, save: ProgressionState): void {
   const model = buildJournalModel(save);
+  const ledger = state.ledger;
 
   const chaptersHtml = model.chapters
     .map(c => {
@@ -125,7 +143,7 @@ export function mountJournal(tabRoot: HTMLElement, save: ProgressionState): void
     .join('');
 
   const affinityRowsHtml = model.affinities
-    .map(a => {
+    .map((a: { id: AffinityId; name: string; points: number; rank: 0 | 1 | 2 | 3; title: string; color: string }) => {
       const pct = Math.min(100, Math.round((a.points / 150) * 100));
       return `
         <div class="affinity-row" data-affinity="${a.id}">
@@ -166,23 +184,119 @@ export function mountJournal(tabRoot: HTMLElement, save: ProgressionState): void
     })
     .join('');
 
+  // Ledger HTML
+  const ledgerSlotsHtml = ledger?.slots?.map((slot: any) => {
+    const familyBadge = `<span class="ledger-family-badge ${slot.family}">${slot.family}</span>`;
+    const statusClass = `ledger-status-${slot.status}`;
+    const statusText = slot.status.charAt(0).toUpperCase() + slot.status.slice(1);
+    const deadlineText = slot.deadlineDay === ledger?.day ? 'Today' : `Day ${slot.deadlineDay}`;
+    const rewardAffinityText = slot.rewardAffinity
+      ? Object.entries(slot.rewardAffinity).map(([k, v]) => `+${v} ${k}`).join(' · ')
+      : '';
+    const rewardText = `+${slot.rewardRenown} Renown${rewardAffinityText ? ' · ' + rewardAffinityText : ''}`;
+
+    let actionsHtml = '';
+    if (slot.status === 'available') {
+      actionsHtml = `<button class="btn btn-primary btn-sm ledger-accept" data-slot-id="${slot.id}">Accept</button>`;
+    } else if (slot.status === 'accepted') {
+      actionsHtml = `<button class="btn btn-success btn-sm ledger-fulfill" data-slot-id="${slot.id}">Fulfill</button>`;
+    } else if (slot.status === 'fulfilled') {
+      actionsHtml = `<span class="ledger-fulfilled">✓ Fulfilled</span>`;
+    } else {
+      actionsHtml = `<span class="ledger-expired">Expired</span>`;
+    }
+
+    return `
+      <article class="ledger-slot ${slot.family} ${slot.status}">
+        <header>
+          ${familyBadge}
+          <span class="ledger-deadline">Deadline: ${deadlineText}</span>
+        </header>
+        <p class="ledger-text">${slot.text}</p>
+        <footer>
+          <span class="ledger-reward">${rewardText}</span>
+          <span class="${statusClass}">${statusText}</span>
+          ${actionsHtml}
+        </footer>
+      </article>
+    `;
+  }).join('') || '<p class="ledger-empty">No dispatches today. Await the Crown\'s word.</p>';
+
+  const streakHtml = ledger
+    ? `<div class="ledger-streak">Streak: ${ledger.streak} day${ledger.streak !== 1 ? 's' : ''} · Best: ${ledger.bestStreak}</div>`
+    : '';
+
+  const timedRequestsHtml = state.timedRequests ? renderTimedRequestsHTML(state.timedRequests, state.snapshot?.tick ?? 0) : '';
+
   tabRoot.innerHTML = `
     <div class="journal">
-      <section class="journal-chapters">
-        <h3>The Grand Crucible</h3>
-        <ol class="chapter-timeline">${chaptersHtml}</ol>
-      </section>
-      <section class="journal-side">
-        <div class="affinity-block">
-          <h4>Chosen Path</h4>
-          ${affinityRowsHtml}
-          <div class="renown-line">${model.renownLine}</div>
-        </div>
-        <div class="council">
-          <h4>The Council of Chemists</h4>
-          ${lettersHtml}
-        </div>
-      </section>
+      <nav class="journal-tabs" role="tablist" aria-label="Journal sections">
+        <button class="journal-tab ${currentTab === 'chronicle' ? 'active' : ''}" role="tab" aria-selected="${currentTab === 'chronicle'}" data-tab="chronicle">📜 Chronicle</button>
+        <button class="journal-tab ${currentTab === 'council' ? 'active' : ''}" role="tab" aria-selected="${currentTab === 'council'}" data-tab="council">🏛 Council</button>
+        <button class="journal-tab ${currentTab === 'ledger' ? 'active' : ''}" role="tab" aria-selected="${currentTab === 'ledger'}" data-tab="ledger">📋 Dispatcher's Desk</button>
+      </nav>
+
+      <div class="journal-tabpanel" role="tabpanel">
+        <!-- Chronicle Tab -->
+        <section class="journal-panel ${currentTab === 'chronicle' ? 'active' : ''}" data-panel="chronicle" role="tabpanel">
+          <section class="journal-chapters">
+            <h3>The Grand Crucible</h3>
+            <ol class="chapter-timeline">${chaptersHtml}</ol>
+          </section>
+          <section class="journal-side">
+            <div class="affinity-block">
+              <h4>Chosen Path</h4>
+              ${affinityRowsHtml}
+              <div class="renown-line">${model.renownLine}</div>
+            </div>
+            <div class="council">
+              <h4>The Council of Chemists</h4>
+              ${lettersHtml}
+            </div>
+          </section>
+        </section>
+
+        <!-- Council Tab -->
+        <section class="journal-panel ${currentTab === 'council' ? 'active' : ''}" data-panel="council" role="tabpanel">
+          <div class="council-panel">
+            <h3>Town Requests & Missions</h3>
+            ${timedRequestsHtml}
+          </div>
+        </section>
+
+        <!-- Dispatcher's Desk Tab -->
+        <section class="journal-panel ${currentTab === 'ledger' ? 'active' : ''}" data-panel="ledger" role="tabpanel">
+          <div class="ledger-panel">
+            <h3>Dispatcher's Desk</h3>
+            <p class="ledger-intro">Three dispatches from the Crown. Complete all three before dusk for the Crown's favor.</p>
+            ${streakHtml}
+            <div class="ledger-slots">${ledgerSlotsHtml}</div>
+          </div>
+        </section>
+      </div>
     </div>
   `;
+
+  // Attach tab click handlers
+  tabRoot.querySelectorAll('.journal-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      currentTab = (btn as HTMLElement).dataset.tab as 'chronicle' | 'council' | 'ledger';
+      renderJournal(tabRoot, save);
+    });
+  });
+
+  // Attach ledger action handlers
+  tabRoot.querySelectorAll('.ledger-accept').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const slotId = (btn as HTMLElement).dataset.slotId;
+      if (slotId) send({ type: 'ACCEPT_LEDGER_SLOT', slotId });
+    });
+  });
+
+  tabRoot.querySelectorAll('.ledger-fulfill').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const slotId = (btn as HTMLElement).dataset.slotId;
+      if (slotId) send({ type: 'FULFILL_LEDGER_SLOT', slotId });
+    });
+  });
 }

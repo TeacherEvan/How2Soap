@@ -49,6 +49,10 @@ export type WorkerMessage =
       type: 'SIM_ERROR';
       command?: string;
       message: string;
+    }
+  | {
+      type: 'LEDGER_SYNC';
+      ledger: any;
     };
 
 function createSeedVessels(): void {
@@ -207,6 +211,11 @@ export function handleWorkerMessage(data: WorkerMessage, options?: { load?: unkn
 
   if (data.type === 'BLACKSMITH_SYNC') {
     state.blacksmith = data.blacksmith;
+    return;
+  }
+
+  if (data.type === 'LEDGER_SYNC') {
+    state.ledger = data.ledger;
     return;
   }
 

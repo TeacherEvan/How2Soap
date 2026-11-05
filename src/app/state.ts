@@ -122,6 +122,7 @@ export const state = {
   ageProgress: null as import('../engine/campaign/ageProgress').AgeProgressState | null,
   settlements: null as import('../engine/campaign/settlements').SettlementsState | null,
   blacksmith: null as import('../engine/campaign/blacksmith').BlacksmithState | null,
+  ledger: null as import('../engine/campaign/ledger').LedgerState | null,
   crisis: null as CrisisSnapshot | null,
   strategyMap: null as StrategyMapCanvas | null,
   tutorial: null as TutorialController | null,

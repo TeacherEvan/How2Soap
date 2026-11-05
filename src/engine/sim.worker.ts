@@ -91,6 +91,14 @@ import {
   type CrisisId,
 } from './crisis';
 import { createTimedRequestManager, type TimedRequestManager } from './timedRequests';
+import {
+  createInitialLedger,
+  stepLedgerDay,
+  fulfillSlot,
+  acceptSlot,
+  getDayWellSpentBonus,
+  type LedgerState,
+} from './campaign/ledger';
 
 export interface FullSimState {
   world: WorldState;
@@ -143,7 +151,10 @@ type Command =
   | { type: 'FOUND_SETTLEMENT'; name: string; q: number; r: number }
   | { type: 'SET_TOWN_FOCUS'; settlementId: string; focus: import('./campaign/settlements').TownFocus }
   | { type: 'START_BLACKSMITH_BATCH'; recipeId: string; name: string; batchCount: number; turns: number; outputs: Array<{ itemId: string; count: number }> }
-  | { type: 'PLACE_DISTRICT'; settlementId: string; kind: import('./campaign/districts').DistrictKind; q: number; r: number };
+  | { type: 'PLACE_DISTRICT'; settlementId: string; kind: import('./campaign/districts').DistrictKind; q: number; r: number }
+  | { type: 'ACCEPT_LEDGER_SLOT'; slotId: string }
+  | { type: 'FULFILL_LEDGER_SLOT'; slotId: string }
+  | { type: 'REQUEST_LEDGER_SYNC' };
 
 interface WorkerCtx {
   postMessage(message: unknown): void;
@@ -185,6 +196,7 @@ let rng = createSeededRng(rngSeed);
 const crisis = createCrisisDirector();
 let lastCrisisSync = '';
 const timedRequests: TimedRequestManager = createTimedRequestManager();
+let ledger: LedgerState = createInitialLedger(rngSeed);
 
 function postVessels(): void {
   if (!world) return;
@@ -286,6 +298,10 @@ function postCampaignSync(): void {
   ctx.postMessage({
     type: 'BLACKSMITH_SYNC',
     blacksmith,
+  });
+  ctx.postMessage({
+    type: 'LEDGER_SYNC',
+    ledger,
   });
 }
 
@@ -444,6 +460,20 @@ function advance(hours: number): WorldEvent[] {
       }
       if (realmRes.deposalOccurred) {
         events.push({ vesselId: -1, message: `DEPOSAL ENDGAME: Mandate collapsed (${realmRes.deposalOccurred}).` });
+      }
+
+      // Step Crown's Ledger
+      stepLedgerDay(ledger);
+      // Check for "Day Well Spent" bonus after step
+      const dayWellSpent = getDayWellSpentBonus(ledger);
+      if (dayWellSpent) {
+        events.push({ vesselId: -1, message: dayWellSpent.message });
+        if (colony) {
+          // Apply +6 morale to all colonists
+          for (const c of colony.colonists) {
+            c.morale = Math.min(100, c.morale + dayWellSpent.moraleBonus);
+          }
+        }
       }
 
       // Step Blacksmith tool wear and batch jobs
@@ -1298,6 +1328,31 @@ function handleCommand(command: Command): void {
         recomputeSettlementYields(settlements);
         postCampaignSync();
       }
+      break;
+    }
+    case 'ACCEPT_LEDGER_SLOT': {
+      const ok = acceptSlot(ledger, command.slotId);
+      if (ok) {
+        ctx.postMessage({ type: 'EVENTS', events: [{ vesselId: -1, message: 'Dispatch accepted. Complete it before day\'s end.' }] });
+      } else {
+        ctx.postMessage({ type: 'EVENTS', events: [{ vesselId: -1, message: 'Cannot accept — slot not available.' }] });
+      }
+      postCampaignSync();
+      break;
+    }
+    case 'FULFILL_LEDGER_SLOT': {
+      const ok = fulfillSlot(ledger, command.slotId);
+      if (ok) {
+        const slot = ledger.slots.find(s => s.id === command.slotId);
+        ctx.postMessage({ type: 'EVENTS', events: [{ vesselId: -1, message: `Dispatch fulfilled! +${slot?.rewardRenown ?? 0} Renown.` }] });
+      } else {
+        ctx.postMessage({ type: 'EVENTS', events: [{ vesselId: -1, message: 'Cannot fulfill — slot not accepted or already done.' }] });
+      }
+      postCampaignSync();
+      break;
+    }
+    case 'REQUEST_LEDGER_SYNC': {
+      postCampaignSync();
       break;
     }
     default:
