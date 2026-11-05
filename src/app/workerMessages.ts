@@ -155,6 +155,36 @@ export function handleWorkerMessage(data: WorkerMessage, options?: { load?: unkn
   if (data.type === 'REALM_SYNC') {
     state.realm = data.realm;
     updatePlayerUI();
+
+    if (data.realm.deposal && !state.deposalModalShown) {
+      state.deposalModalShown = true;
+      const deposalType = data.realm.deposal;
+      import('../ui/VictoryDeposalOverlay').then(({ openVictoryDeposalModal }) => {
+        import('../engine/campaign/victories').then(({ createInitialVictoryState }) => {
+          import('../engine/campaign/builtWorks').then(({ createInitialBuiltWorks }) => {
+            const vicState = createInitialVictoryState();
+            vicState.deposalOccurred = deposalType;
+            openVictoryDeposalModal({
+              endingType: deposalType,
+              victoryState: vicState,
+              realm: data.realm,
+              settlements: state.settlements ?? { settlements: [], settlementLimit: 3, globalYields: { food: 0, production: 0, trade: 0, discovery: 0, renown: 0, morale: 50, influence: 0 } },
+              builtWorks: createInitialBuiltWorks(),
+              patronId: state.patron?.patronId ?? null,
+              turn: state.player?.day ?? 1,
+              onMuseumMode: () => {
+                vicState.isMuseumMode = true;
+              },
+              onNewWorld: () => {
+                localStorage.removeItem(AUTO_SAVE_KEY);
+                localStorage.removeItem('how2soap.save.v2');
+                location.reload();
+              },
+            });
+          });
+        });
+      });
+    }
     return;
   }
 

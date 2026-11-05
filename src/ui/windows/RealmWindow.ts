@@ -11,6 +11,26 @@
 import type { WindowSpec } from '../WindowManager';
 import { state, send } from '../../app/state';
 import { COUNTRIES } from '../../engine/campaign/realm';
+import {
+  evaluateVictoryEligibilities,
+  calculateTestOfTimeScore,
+  type CampaignVictoryState,
+  type VictoryType,
+} from '../../engine/campaign/victories';
+import { createInitialBuiltWorks } from '../../engine/campaign/builtWorks';
+
+let localVictoryState: CampaignVictoryState = {
+  scores: { dominion: 35, tourism: 28, gdp: 42, innovation: 50 },
+  undertowStance: 'IGNORE',
+  penicillinConsignmentsDelivered: 2,
+  frontierThreatsPacified: 2,
+  tradeConvoysCompleted: 3,
+  dispatchesMastered: 4,
+  claimedVictory: null,
+  deposalOccurred: null,
+  turnCompleted: null,
+  isMuseumMode: false,
+};
 
 export const spec: WindowSpec = {
   id: 'realm',
@@ -27,6 +47,25 @@ export const spec: WindowSpec = {
     const crown = realm ? realm.estates.crown : 60;
     const army = realm ? realm.estates.army : 60;
     const pub = realm ? realm.estates.public : 60;
+
+    const settlementsState = state.settlements ?? { settlements: [], settlementLimit: 3, globalYields: { food: 0, production: 0, trade: 0, discovery: 0, renown: 0, morale: 50, influence: 0 } };
+    const builtWorksState = createInitialBuiltWorks();
+    const currentAge = state.ageProgress?.currentAge ?? 1;
+
+    const eligibilities = evaluateVictoryEligibilities(
+      localVictoryState,
+      realm ?? { countryId: country.id, turn: 1, health, safety, vigor, doseExposure: 0, doseImmunityTurns: 0, tunicsDeliveredTotal: 0, guardsAssignedTotal: 0, estates: { crown, army, public: pub, crownWarned25: false, crownWarned10: false, armyWarned25: false, armyWarned10: false, publicWarned25: false, publicWarned10: false }, deposal: null },
+      settlementsState,
+      currentAge,
+      builtWorksState,
+    );
+
+    const scoreCalc = calculateTestOfTimeScore(
+      localVictoryState,
+      realm ?? { countryId: country.id, turn: 1, health, safety, vigor, doseExposure: 0, doseImmunityTurns: 0, tunicsDeliveredTotal: 0, guardsAssignedTotal: 0, estates: { crown, army, public: pub, crownWarned25: false, crownWarned10: false, armyWarned25: false, armyWarned10: false, publicWarned25: false, publicWarned10: false }, deposal: null },
+      settlementsState,
+      state.player?.day ?? 1,
+    );
 
     body.innerHTML = `
       <div class="realm-window-container" style="display: flex; flex-direction: column; gap: 1rem; padding: 0.5rem;">
@@ -100,6 +139,58 @@ export const spec: WindowSpec = {
             </button>
           </div>
         </section>
+
+        <!-- Test of Time & Victory Paths Ledger (§6.10, §6.18.5, M8) -->
+        <section class="realm-victories" style="margin-top: 0.5rem; background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.08); border-radius: 6px; padding: 0.8rem;">
+          <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.6rem;">
+            <h3 style="margin: 0; font-size: 0.95rem; color: #e5b567;">Test of Time: Victory Horizons</h3>
+            <span style="font-size: 0.8rem; color: #5aa5ff;">Campaign Score: ${scoreCalc.totalScore} (${scoreCalc.rankTitle})</span>
+          </div>
+
+          <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5rem; margin-bottom: 0.8rem; font-size: 0.8rem; text-align: center;">
+            <div style="background: rgba(255,255,255,0.02); padding: 0.4rem; border-radius: 4px;">
+              <div style="color: var(--muted);">Dominion</div>
+              <strong style="color: #e06c75;">${localVictoryState.scores.dominion}</strong>
+            </div>
+            <div style="background: rgba(255,255,255,0.02); padding: 0.4rem; border-radius: 4px;">
+              <div style="color: var(--muted);">Tourism</div>
+              <strong style="color: #98c379;">${localVictoryState.scores.tourism}</strong>
+            </div>
+            <div style="background: rgba(255,255,255,0.02); padding: 0.4rem; border-radius: 4px;">
+              <div style="color: var(--muted);">GDP</div>
+              <strong style="color: #e5b567;">${localVictoryState.scores.gdp}</strong>
+            </div>
+            <div style="background: rgba(255,255,255,0.02); padding: 0.4rem; border-radius: 4px;">
+              <div style="color: var(--muted);">Innovation</div>
+              <strong style="color: #61afef;">${localVictoryState.scores.innovation}</strong>
+            </div>
+          </div>
+
+          <div class="victories-list" style="display: flex; flex-direction: column; gap: 0.5rem;">
+            ${eligibilities
+              .map(
+                (v) => `
+              <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.02); border: 1px solid ${v.eligible ? 'rgba(152,195,121,0.4)' : 'rgba(255,255,255,0.05)'}; padding: 0.5rem 0.8rem; border-radius: 4px;">
+                <div style="flex: 1; padding-right: 0.5rem;">
+                  <div style="font-weight: bold; font-size: 0.85rem; color: ${v.eligible ? '#98c379' : '#abb2bf'};">${v.title}</div>
+                  <div style="font-size: 0.75rem; color: var(--muted);">${v.description}</div>
+                  ${
+                    v.missingRequirements && v.missingRequirements.length > 0
+                      ? `<div style="font-size: 0.75rem; color: #e5c07b; margin-top: 0.2rem;">Missing: ${v.missingRequirements.join(' · ')}</div>`
+                      : '<div style="font-size: 0.75rem; color: #98c379; margin-top: 0.2rem;">✓ All requirements fulfilled! Ready to claim.</div>'
+                  }
+                </div>
+                <div>
+                  <button class="btn-surgical btn-claim-victory" data-victory="${v.type}" ${v.eligible ? '' : 'disabled'} style="padding: 4px 10px; font-size: 0.75rem; ${v.eligible ? 'background: #98c379; color: #12151c; font-weight: bold;' : 'opacity: 0.5;'}">
+                    Claim
+                  </button>
+                </div>
+              </div>
+            `,
+              )
+              .join('')}
+          </div>
+        </section>
       </div>
     `;
 
@@ -111,6 +202,32 @@ export const spec: WindowSpec = {
     });
     body.querySelector('#btn-distribute-weapons')?.addEventListener('click', () => {
       send({ type: 'DISTRIBUTE_WEAPONS', weaponsCount: 1 });
+    });
+
+    body.querySelectorAll<HTMLButtonElement>('.btn-claim-victory').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const vicType = btn.dataset.victory as VictoryType;
+        import('../VictoryDeposalOverlay').then(({ openVictoryDeposalModal }) => {
+          openVictoryDeposalModal({
+            endingType: vicType,
+            victoryState: localVictoryState,
+            realm: realm ?? { countryId: country.id, turn: 1, health, safety, vigor, doseExposure: 0, doseImmunityTurns: 0, tunicsDeliveredTotal: 0, guardsAssignedTotal: 0, estates: { crown, army, public: pub, crownWarned25: false, crownWarned10: false, armyWarned25: false, armyWarned10: false, publicWarned25: false, publicWarned10: false }, deposal: null },
+            settlements: settlementsState,
+            builtWorks: builtWorksState,
+            patronId: state.patron?.patronId ?? null,
+            turn: state.player?.day ?? 1,
+            onMuseumMode: () => {
+              localVictoryState.isMuseumMode = true;
+              localVictoryState.claimedVictory = vicType;
+            },
+            onNewWorld: () => {
+              localStorage.removeItem('how2soap.save.v3');
+              localStorage.removeItem('how2soap.save.v2');
+              location.reload();
+            },
+          });
+        });
+      });
     });
   },
 };

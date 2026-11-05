@@ -14,6 +14,9 @@ import { InfluenceState, executePowerAction, PowerAction } from '../../engine/ca
 import { NAMED_CORRESPONDENTS, CorrespondenceState } from '../../engine/campaign/correspondence';
 import { BUILT_WORKS_DEFS, createInitialBuiltWorks, constructBuiltWork, BuiltWorksState } from '../../engine/campaign/builtWorks';
 import { createInitialMissions, executeMission, MissionsState, MissionVerb } from '../../engine/campaign/missions';
+import type { UndertowStance } from '../../engine/campaign/victories';
+
+let currentUndertowStance: UndertowStance = 'IGNORE';
 
 let mockInfluence: InfluenceState = {
   currentInfluencePool: 35,
@@ -102,7 +105,7 @@ function renderStances(): string {
   ];
 
   return `
-    <div class="stance-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem;">
+    <div class="stance-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
       ${stances
         .map(
           (s) => `
@@ -116,6 +119,34 @@ function renderStances(): string {
       `,
         )
         .join('')}
+    </div>
+
+    <!-- The Undertow (Dissident Movement & Republic Victory Path, §6.29) -->
+    <div class="undertow-section" style="background: rgba(198,120,221,0.05); border: 1px solid rgba(198,120,221,0.25); border-radius: 6px; padding: 1rem;">
+      <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.5rem;">
+        <strong style="font-size: 1.1rem; color: #c678dd;">⚖️ The Undertow (Dissident Movement)</strong>
+        <span style="font-size: 0.8rem; text-transform: uppercase; padding: 2px 8px; border-radius: 10px; background: rgba(198,120,221,0.2); color: #c678dd;">
+          Stance: ${currentUndertowStance}
+        </span>
+      </div>
+      <p style="font-size: 0.85rem; color: #c9d1d9; margin: 0 0 0.8rem; line-height: 1.5;">
+        A clandestine confederation of tanners, soapmakers, and pamphleteers operating in the shadow of the Court.
+        Aligning with them unlocks the radical Age III alternate victory: <em>The Republic of Compound</em>.
+      </p>
+      <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+        <button class="btn-surgical btn-undertow" data-stance="FEED" style="padding: 4px 10px; font-size: 0.8rem;">
+          Feed (Leak Court Secrets)
+        </button>
+        <button class="btn-surgical btn-undertow" data-stance="JOIN" style="padding: 4px 10px; font-size: 0.8rem; background: rgba(198,120,221,0.2);">
+          Join (Lead The Undertow)
+        </button>
+        <button class="btn-surgical btn-undertow" data-stance="SUPPRESS" style="padding: 4px 10px; font-size: 0.8rem;">
+          Suppress (Armed Crackdown)
+        </button>
+        <button class="btn-surgical btn-undertow" data-stance="IGNORE" style="padding: 4px 10px; font-size: 0.8rem;">
+          Ignore (Wait & Watch)
+        </button>
+      </div>
     </div>
   `;
 }
@@ -299,13 +330,26 @@ export const spec: WindowSpec = {
     const content = body.querySelector('#influence-tab-content') as HTMLElement;
     const tabBtns = body.querySelectorAll<HTMLButtonElement>('.tab-btn');
 
+    const attachStanceActions = () => {
+      body.querySelectorAll<HTMLButtonElement>('.btn-undertow').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          currentUndertowStance = btn.dataset.stance as UndertowStance;
+          content.innerHTML = renderStances();
+          attachStanceActions();
+        });
+      });
+    };
+    attachStanceActions();
+
     tabBtns.forEach((btn) => {
       btn.addEventListener('click', () => {
         tabBtns.forEach((b) => b.classList.remove('active'));
         btn.classList.add('active');
         const tab = btn.dataset.tab;
-        if (tab === 'stance') content.innerHTML = renderStances();
-        else if (tab === 'powers') {
+        if (tab === 'stance') {
+          content.innerHTML = renderStances();
+          attachStanceActions();
+        } else if (tab === 'powers') {
           content.innerHTML = renderPowers();
           attachPowerActions(body);
         } else if (tab === 'threats') content.innerHTML = renderThreats();
