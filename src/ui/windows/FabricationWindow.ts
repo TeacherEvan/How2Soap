@@ -25,6 +25,7 @@ export const spec: WindowSpec = {
           <div class="fab-tier-filter" role="group" aria-label="Feasibility filter">
             <button class="fab-tier-chip active" data-filter="all">All recipes</button>
             <button class="fab-tier-chip" data-filter="craftable">Craftable now</button>
+            <button class="fab-tier-chip" data-filter="daybook">The Day Book (In Flight)</button>
           </div>
           <div class="fab-list" role="listbox" aria-label="Recipes"></div>
         </div>
@@ -56,6 +57,10 @@ export const spec: WindowSpec = {
 
     const visibleRecipes = () => {
       const q = search.value.trim().toLowerCase();
+      if (filter === 'daybook') {
+        const queuedIds = (state.experiments?.experiments ?? []).map((e) => e.recipeId);
+        return FABRICATION_RECIPES.filter((r) => queuedIds.includes(r.id));
+      }
       return FABRICATION_RECIPES.filter((recipe) => {
         if (filter === 'craftable' && !assess(recipe.id).feasible) return false;
         if (!q) return true;

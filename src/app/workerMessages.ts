@@ -23,6 +23,9 @@ export type WorkerMessage =
   | { type: 'EVENTS'; events: Array<{ vesselId: number; message: string }> }
   | { type: 'PLAYER_SYNC'; player: any; inventory: any & { items?: Array<{ id: string; count: number; massKg: number }> }; paddock?: any }
   | { type: 'COLONY_SYNC'; colony: any }
+  | { type: 'EXPERIMENTS_SYNC'; experiments: any }
+  | { type: 'REALM_SYNC'; realm: any }
+  | { type: 'TURN_RECAP'; turn: number; events: Array<{ vesselId: number; message: string }>; benchLedger: any[] }
   | { type: 'OBJECTIVE'; kind: 'recipe' | 'eat' | 'treat' | 'harvest' | 'flag'; target: string }
   | {
       type: 'CRISIS_SYNC';
@@ -139,6 +142,28 @@ export function handleWorkerMessage(data: WorkerMessage, options?: { load?: unkn
     if (state.strategyMap) {
       state.strategyMap.update(data.colony, minuteOfDay);
     }
+    return;
+  }
+
+  if (data.type === 'EXPERIMENTS_SYNC') {
+    state.experiments = data.experiments;
+    return;
+  }
+
+  if (data.type === 'REALM_SYNC') {
+    state.realm = data.realm;
+    updatePlayerUI();
+    return;
+  }
+
+  if (data.type === 'TURN_RECAP') {
+    import('../ui/TurnRecapModal').then(({ openTurnRecapModal }) => {
+      openTurnRecapModal({
+        turn: data.turn,
+        events: data.events,
+        benchLedger: data.benchLedger,
+      });
+    });
     return;
   }
 

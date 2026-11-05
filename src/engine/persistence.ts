@@ -48,6 +48,8 @@ export interface SerializedWorldSave {
   timedRequests?: any[];
   experiments?: import('./campaign/experiments').ExperimentQueueState;
   realm?: import('./campaign/realm').RealmState;
+  patron?: import('./campaign/patron').PatronState;
+  ageProgress?: import('./campaign/ageProgress').AgeProgressState;
 }
 
 export function serializeSave(save: SerializedWorldSave): string {
@@ -92,6 +94,8 @@ export function deserializeSave(json: string): SerializedWorldSave {
     timedRequests: Array.isArray(parsed.timedRequests) ? parsed.timedRequests : undefined,
     experiments: parsed.experiments ?? undefined,
     realm: parsed.realm ?? undefined,
+    patron: parsed.patron ?? undefined,
+    ageProgress: parsed.ageProgress ?? undefined,
     colony: parsed.colony ? {
       colonists: parsed.colony.colonists ?? [],
       ledger: parsed.colony.ledger ?? [],

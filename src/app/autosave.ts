@@ -64,6 +64,10 @@ export function buildSaveSnapshot(): SerializedWorldSave {
     } : undefined,
     paddock: state.paddock,
     timedRequests: state.timedRequests,
+    experiments: state.experiments ?? undefined,
+    realm: state.realm ?? undefined,
+    patron: state.patron ?? undefined,
+    ageProgress: state.ageProgress ?? undefined,
   };
 }
 

@@ -47,11 +47,15 @@
             <span id="val-renown-title">L1 · Scrub Apprentice</span>
             <svg class="renown-ring" viewBox="0 0 36 36"><circle class="ring-bg" cx="18" cy="18" r="15.5"/><circle class="ring-fg" id="ring-renown-fg" cx="18" cy="18" r="15.5"/></svg>
           </div>
+          <div class="hud-chip" id="hud-health" role="progressbar" aria-valuenow="60" aria-valuemin="0" aria-valuemax="100" title="Public Health (The Wasting)">Health <b id="val-health">60%</b></div>
+          <div class="hud-chip" id="hud-safety" role="progressbar" aria-valuenow="60" aria-valuemin="0" aria-valuemax="100" title="Public Safety">Safety <b id="val-safety">60%</b></div>
+          <div class="hud-chip" id="hud-vigor" role="progressbar" aria-valuenow="50" aria-valuemin="0" aria-valuemax="100" title="Hearth Vigor (Stimulants)">Vigor <b id="val-vigor">50%</b></div>
+          <div class="hud-chip" id="hud-mandate" role="button" tabindex="0" title="The Three Estates Mandate (Key 6)">Mandate <b id="val-mandate">60%</b></div>
         </div>
         <div class="controls">
-          <button id="pause" class="ghost">Pause</button>
-          <button id="sleep1" class="ghost">Sleep 1 h</button>
-          <button id="sleep8" class="ghost">Sleep 8 h</button>
+          <button id="end-turn" class="primary" title="End Turn (Space / Enter)">End Turn ▸</button>
+          <button id="skip-turns" class="ghost" title="March 8 Turns">March ×8</button>
+          <button id="dawn-report" class="ghost" title="Inspect Dawn Forecast">Dawn Report</button>
           <button id="reset" class="ghost danger">New world</button>
         </div>
       </header>
