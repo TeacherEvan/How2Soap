@@ -30,6 +30,7 @@ export const spec: WindowSpec = {
       focus: 'GROWING',
       isCapital: true,
       buildings: [{ id: 'bld_hearth', name: 'Camp Hearth', age: 1, yields: { food: 2, production: 2 } }],
+      districts: [],
       workedHexes: ['0,0'],
       overbuilt: [],
       foundedCampaignDay: 1,

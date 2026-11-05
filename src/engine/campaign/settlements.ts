@@ -49,6 +49,7 @@ export interface Settlement {
   focus?: TownFocus;
   isCapital: boolean;
   buildings: BuildingInstance[];
+  districts: import('./districts').UrbanDistrict[];
   workedHexes: string[];
   overbuilt: string[];
   foundedCampaignDay: number;
@@ -81,6 +82,17 @@ export function createInitialSettlementsState(capitalName = 'The Hearth'): Settl
         name: 'Camp Hearth',
         age: 1,
         yields: { food: 2, production: 2, trade: 1, discovery: 1, renown: 1, morale: 5, influence: 1 },
+      },
+    ],
+    districts: [
+      {
+        id: 'district_hearth_center',
+        kind: 'CAMP_CENTER',
+        q: 0,
+        r: 0,
+        buildings: [],
+        isQuarter: false,
+        isUniqueQuarter: false,
       },
     ],
     workedHexes: ['0,0'],
@@ -128,6 +140,17 @@ export function foundSettlement(
     focus: 'GROWING',
     isCapital: false,
     buildings: [],
+    districts: [
+      {
+        id: `district_${params.name.toLowerCase().replace(/\s+/g, '_')}_center`,
+        kind: 'CITY_CENTER',
+        q: params.q,
+        r: params.r,
+        buildings: [],
+        isQuarter: false,
+        isUniqueQuarter: false,
+      },
+    ],
     workedHexes: [`${params.q},${params.r}`],
     overbuilt: [],
     foundedCampaignDay: params.currentDay,

@@ -78,6 +78,9 @@ import {
   stepBlacksmith,
   type BlacksmithState,
 } from './campaign/blacksmith';
+import {
+  placeDistrict,
+} from './campaign/districts';
 import { restoreColonyFromSave, restoreWorldFromSave } from './worldRestore';
 import {
   createCrisisDirector,
@@ -136,7 +139,8 @@ type Command =
   | { type: 'DISTRIBUTE_WEAPONS'; weaponsCount: number }
   | { type: 'FOUND_SETTLEMENT'; name: string; q: number; r: number }
   | { type: 'SET_TOWN_FOCUS'; settlementId: string; focus: import('./campaign/settlements').TownFocus }
-  | { type: 'START_BLACKSMITH_BATCH'; recipeId: string; name: string; batchCount: number; turns: number; outputs: Array<{ itemId: string; count: number }> };
+  | { type: 'START_BLACKSMITH_BATCH'; recipeId: string; name: string; batchCount: number; turns: number; outputs: Array<{ itemId: string; count: number }> }
+  | { type: 'PLACE_DISTRICT'; settlementId: string; kind: import('./campaign/districts').DistrictKind; q: number; r: number };
 
 interface WorkerCtx {
   postMessage(message: unknown): void;
@@ -1173,6 +1177,22 @@ ctx.onmessage = (event: MessageEvent<Command>) => {
       });
       ctx.postMessage({ type: 'EVENTS', events: [{ vesselId: -1, message: `Forging batch: ${job.name} (x${job.batchCount}) queued.` }] });
       postCampaignSync();
+      break;
+    }
+    case 'PLACE_DISTRICT': {
+      const s = settlements.settlements.find((item) => item.id === command.settlementId);
+      if (!s) {
+        ctx.postMessage({ type: 'EVENTS', events: [{ vesselId: -1, message: 'Settlement not found for district placement.' }] });
+        break;
+      }
+      const res = placeDistrict(s.districts, command.kind, { q: command.q, r: command.r });
+      if (!res.ok) {
+        ctx.postMessage({ type: 'EVENTS', events: [{ vesselId: -1, message: `Cannot place district: ${res.error}` }] });
+      } else {
+        ctx.postMessage({ type: 'EVENTS', events: [{ vesselId: -1, message: `Founded ${command.kind} district at (${command.q}, ${command.r}).` }] });
+        recomputeSettlementYields(settlements);
+        postCampaignSync();
+      }
       break;
     }
     default:
