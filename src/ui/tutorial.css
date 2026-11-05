@@ -281,7 +281,7 @@
 #tutorial-spotlight-ring {
   position: fixed;
   pointer-events: none;
-  z-index: 9000;
+  z-index: 998;
   border: 3px solid #ffd166;
   border-radius: 8px;
   box-shadow: 0 0 0 9999px rgba(10, 8, 6, 0.72), 0 0 18px #ffd166;
@@ -291,4 +291,30 @@
 @keyframes spotlight-pulse {
   0%, 100% { outline-color: var(--accent); box-shadow: 0 0 0 0 rgba(224, 164, 88, 0.4); }
   50% { outline-color: #ffe082; box-shadow: 0 0 0 6px rgba(224, 164, 88, 0.0); }
+}
+
+@media (max-width: 720px) {
+  .tutorial-modal-body {
+    flex-direction: column;
+    padding: 10px;
+    gap: 12px;
+  }
+  .tutorial-right-col {
+    border-left: none;
+    border-top: 1px solid var(--line);
+    padding-left: 0;
+    padding-top: 12px;
+  }
+  .tutorial-coachmark {
+    width: 92vw;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 8px 12px;
+    bottom: 8px;
+  }
+  .coachmark-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
 }

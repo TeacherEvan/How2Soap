@@ -106,6 +106,7 @@ export function buildSaveSnapshot(): SerializedWorldSave {
     ageProgress: state.ageProgress ?? undefined,
     settlements: state.settlements ?? undefined,
     blacksmith: state.blacksmith ?? undefined,
+    tutorial: state.tutorial ? state.tutorial.snapshot() : undefined,
   };
 }
 

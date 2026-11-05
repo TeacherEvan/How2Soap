@@ -7,6 +7,7 @@ import {
 import { globalOverlayStack } from './overlayStack';
 import { audio } from './audio';
 import type { WorldSnapshot } from '../engine/memoryLayout';
+import { computeVesselPhdTelemetry, type PhdTelemetryData } from '../engine/phdTelemetry';
 
 // Asset references
 import terrainMapImg from '../assets/tutorial/blender_terrain_map.png';
@@ -31,6 +32,7 @@ export class TutorialController {
   private activeLessonId: string | null = 'beg_1_forage';
   private completedLessonIds = new Set<string>();
   private phdTelemetryEnabled = false;
+  private coachmarkDismissed = false;
   private modalEl: HTMLElement | null = null;
   private currentOverlayEntry: { id: string; close: () => void } | null = null;
   private coachmarkEl: HTMLElement | null = null;
@@ -39,6 +41,65 @@ export class TutorialController {
   constructor(private readonly options: TutorialControllerOptions) {
     this.createHudTrigger();
     this.createCoachmarkDom();
+  }
+
+  public snapshot() {
+    return {
+      activeTier: this.activeTier,
+      activeLessonId: this.activeLessonId,
+      completedLessonIds: Array.from(this.completedLessonIds),
+      phdTelemetryEnabled: this.phdTelemetryEnabled,
+      coachmarkDismissed: this.coachmarkDismissed,
+    };
+  }
+
+  public restore(save?: {
+    activeTier?: TutorialTierId;
+    activeLessonId?: string | null;
+    completedLessonIds?: string[];
+    phdTelemetryEnabled?: boolean;
+    coachmarkDismissed?: boolean;
+  }): void {
+    if (!save) return;
+    if (save.activeTier) this.activeTier = save.activeTier;
+    if (save.activeLessonId !== undefined) this.activeLessonId = save.activeLessonId;
+    if (Array.isArray(save.completedLessonIds)) {
+      this.completedLessonIds = new Set(save.completedLessonIds);
+    }
+    if (typeof save.phdTelemetryEnabled === 'boolean') {
+      this.phdTelemetryEnabled = save.phdTelemetryEnabled;
+    }
+    if (typeof save.coachmarkDismissed === 'boolean') {
+      this.coachmarkDismissed = save.coachmarkDismissed;
+    }
+    this.updateHudTierBadge();
+    this.updateCoachmark();
+  }
+
+  public computePhdTelemetry(vesselIndex: number, snapshot: WorldSnapshot): PhdTelemetryData {
+    return computeVesselPhdTelemetry(vesselIndex, snapshot);
+  }
+
+  public destroy(): void {
+    this.clearSpotlight();
+    if (this.spotlightRingEl) {
+      this.spotlightRingEl.remove();
+      this.spotlightRingEl = null;
+    }
+    if (this.modalEl) {
+      this.modalEl.remove();
+      this.modalEl = null;
+    }
+    if (this.coachmarkEl) {
+      this.coachmarkEl.remove();
+      this.coachmarkEl = null;
+    }
+    const btn = document.getElementById('btn-open-tutorial');
+    if (btn) btn.remove();
+    if (this.currentOverlayEntry) {
+      globalOverlayStack.remove(this.currentOverlayEntry);
+      this.currentOverlayEntry = null;
+    }
   }
 
   public getActiveTier(): TutorialTierId {
@@ -82,6 +143,7 @@ export class TutorialController {
 
   public openAcademyModal(): void {
     if (this.modalEl) this.modalEl.remove();
+    this.clearSpotlight();
 
     this.modalEl = document.createElement('div');
     this.modalEl.id = 'tutorial-modal-overlay';
@@ -108,6 +170,7 @@ export class TutorialController {
         this.currentOverlayEntry = null;
       }
     }
+    this.updateCoachmark();
   }
 
   private renderAcademyModalContent(): void {
@@ -180,7 +243,7 @@ export class TutorialController {
                   const done = this.completedLessonIds.has(l.id);
                   const isCur = l.id === this.activeLessonId;
                   return `
-                    <div class="lesson-item-card ${isCur ? 'active' : ''} ${done ? 'completed' : ''}" data-lesson-id="${l.id}">
+                    <div class="lesson-item-card ${isCur ? 'active' : ''} ${done ? 'completed' : ''}" data-lesson-id="${l.id}" role="button" tabindex="0" aria-label="Step ${l.stepNumber}: ${l.title}">
                       <div class="lesson-item-header">
                         <span class="lesson-num">${l.stepNumber}</span>
                         <span class="lesson-name">${l.title}</span>
@@ -220,12 +283,19 @@ export class TutorialController {
     // Wire lesson item clicks
     const lessonCards = this.modalEl.querySelectorAll('.lesson-item-card');
     lessonCards.forEach((card) => {
-      (card as HTMLElement).onclick = (e) => {
+      const selectLesson = (e: Event) => {
         const lid = (e.currentTarget as HTMLElement).getAttribute('data-lesson-id');
         if (lid) {
           this.activeLessonId = lid;
           this.renderAcademyModalContent();
           this.updateCoachmark();
+        }
+      };
+      (card as HTMLElement).onclick = selectLesson;
+      (card as HTMLElement).onkeydown = (e: KeyboardEvent) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          selectLesson(e);
         }
       };
     });
@@ -280,6 +350,48 @@ export class TutorialController {
 
   public updateCoachmark(): void {
     if (!this.coachmarkEl) return;
+    if (this.coachmarkDismissed) {
+      this.coachmarkEl.classList.add('hidden');
+      this.clearSpotlight();
+      return;
+    }
+
+    const tierLessons = TUTORIAL_LESSONS.filter((l) => l.tier === this.activeTier);
+    const allTierDone = tierLessons.every((l) => this.completedLessonIds.has(l.id));
+
+    if (allTierDone) {
+      this.coachmarkEl.classList.remove('hidden');
+      this.coachmarkEl.innerHTML = `
+        <div class="coachmark-content">
+          <div class="coachmark-badge" style="color:#7fc98b;">
+            🎉 Tier Complete!
+          </div>
+          <div class="coachmark-hint">You have completed all lessons in this tier. Open the Academy to advance.</div>
+        </div>
+        <div class="coachmark-actions">
+          <button id="coachmark-open-modal" class="btn btn-primary btn-sm">
+            Field Manual
+          </button>
+          <button id="coachmark-dismiss-btn" class="btn btn-secondary btn-sm" title="Dismiss coachmark">
+            ✕ Dismiss
+          </button>
+        </div>
+      `;
+      const btnManual = this.coachmarkEl.querySelector('#coachmark-open-modal') as HTMLElement | null;
+      if (btnManual) {
+        btnManual.onclick = () => this.openAcademyModal();
+      }
+      const btnDismiss = this.coachmarkEl.querySelector('#coachmark-dismiss-btn') as HTMLElement | null;
+      if (btnDismiss) {
+        btnDismiss.onclick = () => {
+          this.coachmarkDismissed = true;
+          this.updateCoachmark();
+        };
+      }
+      this.clearSpotlight();
+      return;
+    }
+
     const lesson = TUTORIAL_LESSONS.find((l) => l.id === this.activeLessonId);
     if (!lesson) {
       this.coachmarkEl.classList.add('hidden');
@@ -302,6 +414,9 @@ export class TutorialController {
         <button id="coachmark-open-modal" class="btn btn-primary btn-sm">
           Field Manual
         </button>
+        <button id="coachmark-dismiss-btn" class="btn btn-secondary btn-sm" title="Dismiss coachmark">
+          ✕
+        </button>
       </div>
     `;
 
@@ -322,6 +437,14 @@ export class TutorialController {
     const btnManual = this.coachmarkEl.querySelector('#coachmark-open-modal') as HTMLElement | null;
     if (btnManual) {
       btnManual.onclick = () => this.openAcademyModal();
+    }
+
+    const btnDismiss = this.coachmarkEl.querySelector('#coachmark-dismiss-btn') as HTMLElement | null;
+    if (btnDismiss) {
+      btnDismiss.onclick = () => {
+        this.coachmarkDismissed = true;
+        this.updateCoachmark();
+      };
     }
 
     this.applySpotlight(lesson.spotlightSelector);
@@ -389,46 +512,4 @@ export class TutorialController {
   }
 }
 
-/**
- * Pure thermodynamic calculation for Tier III PhD Telemetry Mode
- */
-export function computeVesselPhdTelemetry(
-  vesselIndex: number,
-  snapshot: WorldSnapshot,
-): {
-  tempK: number;
-  ph: number;
-  sidMolL: number;
-  arrheniusRateK: number;
-  newtonCoolingWatts: number;
-} {
-  const tBase = vesselIndex * 8;
-  const tempK = snapshot.telemetry[tBase + 0] ?? 288.15;
-  const ph = snapshot.telemetry[tBase + 1] ?? 7.0;
-
-  // SID estimate from pH quadratic relation: [H+] = 10^(-pH)
-  const hConc = Math.pow(10, -Math.min(14, Math.max(0, ph)));
-  const kw = 1e-14;
-  const ohConc = kw / Math.max(1e-15, hConc);
-  const sidMolL = ohConc - hConc;
-
-  // Arrhenius rate constant for saponification: k(T) = A * exp(-Ea / RT)
-  // Tripalmitin Ea ≈ 48,000 J/mol, A ≈ 1.2e7 L/(mol*s)
-  const R = 8.314;
-  const Ea = 48000;
-  const A = 1.2e7;
-  const arrheniusRateK = A * Math.exp(-Ea / (R * Math.max(200, tempK)));
-
-  // Newton cooling loss Q = U * A * (T - T_amb)
-  const U_A = 12.5; // W/K
-  const ambientK = 288.15;
-  const newtonCoolingWatts = Math.max(0, U_A * (tempK - ambientK));
-
-  return {
-    tempK,
-    ph,
-    sidMolL,
-    arrheniusRateK,
-    newtonCoolingWatts,
-  };
-}
+export { computeVesselPhdTelemetry };

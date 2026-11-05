@@ -1165,11 +1165,13 @@ function handleCommand(command: Command): void {
         const v0 = world.vessels[0];
         if (v0) {
           for (const sp of cmd.vesselSpecies) {
-            let specIdx: number | undefined;
-            for (const [idx, spec] of SPECIES_BY_INDEX.entries()) {
-              if (spec.code === sp.speciesId || (spec as any).id === sp.speciesId) {
-                specIdx = idx;
-                break;
+            let specIdx: number | undefined = (SPECIES as Record<string, number>)[sp.speciesId];
+            if (specIdx === undefined) {
+              for (const [idx, spec] of SPECIES_BY_INDEX.entries()) {
+                if (spec.code === sp.speciesId || (spec as any).id === sp.speciesId) {
+                  specIdx = idx;
+                  break;
+                }
               }
             }
             if (specIdx !== undefined) {

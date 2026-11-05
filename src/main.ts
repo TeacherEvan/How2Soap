@@ -207,15 +207,27 @@ function startWorld(options?: { load?: SerializedWorldSave }): void {
   });
 
   // Instantiate 3-Tier Tutorial & Compendium Academy Controller
+  if (state.tutorial) {
+    state.tutorial.destroy();
+    state.tutorial = null;
+  }
   import('./ui/TutorialController').then(({ TutorialController: TC }) => {
     state.tutorial = new TC({
       onDispatchWorkerCommand: (cmd) => send(cmd),
       onSwitchTab: (tabKey) => {
-        if (tabKey === 'workbench') switchTab('REACTIONS');
+        if (tabKey === 'explorer') {
+          const explorerEl = document.getElementById('biome-panel-container');
+          if (explorerEl) {
+            explorerEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        } else if (tabKey === 'workbench') switchTab('REACTIONS');
         else if (tabKey === 'strategy') switchTab('STRATEGY');
         else if (tabKey === 'council') switchTab('JOURNAL');
       },
     });
+    if (options?.load?.tutorial) {
+      state.tutorial.restore(options.load.tutorial);
+    }
     state.tutorial.updateCoachmark();
   });
 

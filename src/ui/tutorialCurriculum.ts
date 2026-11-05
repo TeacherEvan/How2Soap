@@ -119,12 +119,13 @@ export const TUTORIAL_LESSONS: TutorialLesson[] = [
     },
     isComplete: (ctx) => {
       const items = ctx.state?.inventory?.items ?? [];
-      const hasSoap = items.some((it: any) => it.id.includes('SOAP'));
+      const hasSoap = items.some((it: any) => it.id === 'BAR_SOAP');
       if (hasSoap) return true;
       if (!ctx.snapshot) return false;
-      // Check vessel moles for any soap
-      const v0moles = ctx.snapshot.moles.subarray(0, 64);
-      return Array.from(v0moles).some((m) => m > 0.05);
+      // Check vessel moles for synthesized soap salts (K_STEARATE = 15, NA_STEARATE = 16)
+      const kStearate = ctx.snapshot.moles[15] ?? 0;
+      const naStearate = ctx.snapshot.moles[16] ?? 0;
+      return (kStearate + naStearate) > 0.05;
     },
   },
   {
@@ -159,7 +160,7 @@ export const TUTORIAL_LESSONS: TutorialLesson[] = [
     subtitle: 'Reduce caloric extraction cost by matching mineral hardness',
     plateKey: 'MINES',
     tabTarget: 'explorer',
-    spotlightSelector: '[data-tab="explorer"]',
+    spotlightSelector: '#biome-panel-container',
     summaryHtml: `Mining ores with bare hands inflicts massive caloric drain. Harvesting cost scales with <code>(Mohs_rock / Mohs_tool)^2 / MA_tool</code>. Craft flint or bronze tools to harvest mineral seams sustainably.`,
     formulaHtml: `<code>E_harvest = E_base &times; max(0.5, (Mohs_rock / Mohs_tool)^2) / MA_tool</code>`,
     actionHint: 'Craft or equip a knapped flint or bronze pick/axe.',
@@ -182,7 +183,7 @@ export const TUTORIAL_LESSONS: TutorialLesson[] = [
     subtitle: 'Prospect Malachite (Cu, Mohs 4.0) and Cassiterite (Sn, Mohs 6.5)',
     plateKey: 'MINES',
     tabTarget: 'explorer',
-    spotlightSelector: '[data-tab="explorer"]',
+    spotlightSelector: '#biome-panel-container',
     summaryHtml: `Consult Plate II's cutaway mine survey. Malachite copper seams reside in upper limestone strata; heavy cassiterite tin oxides lie deeper within metamorphic granitic beds.`,
     formulaHtml: `Malachite: <code>Cu2CO3(OH)2</code> · Cassiterite: <code>SnO2</code>`,
     actionHint: 'Prospect and harvest raw copper or tin ore from mineral nodes.',
@@ -205,7 +206,7 @@ export const TUTORIAL_LESSONS: TutorialLesson[] = [
     subtitle: 'Alloy copper with tin at 1,350 K for high mechanical advantage',
     plateKey: 'ELEMENTS',
     tabTarget: 'workbench',
-    spotlightSelector: '[data-tab="workbench"]',
+    spotlightSelector: '[data-tab="REACTIONS"]',
     summaryHtml: `Smelt 88% Copper with 12% Tin at 1,350 K in a refractory crucible. Bronze provides Mohs hardness 6.0 and Mechanical Advantage 2.8, unlocking advanced machinery.`,
     formulaHtml: `Alloy ratio: <code>88 Cu : 12 Sn</code> · Melting point: <code>~1,220 K &ndash; 1,350 K</code>`,
     actionHint: 'Smelt copper and tin ingots to forge high-grade bronze.',
@@ -217,7 +218,13 @@ export const TUTORIAL_LESSONS: TutorialLesson[] = [
     },
     isComplete: (ctx) => {
       const items = ctx.state?.inventory?.items ?? [];
-      return items.some((it: any) => it.id.includes('COPPER_INGOT') || it.id.includes('TIN_INGOT'));
+      const hasBronzeItem = items.some((it: any) => it.id && it.id.startsWith('BRONZE_'));
+      const tools = ctx.state?.inventory?.tools ?? {};
+      const hasBronzeTool = Object.values(tools).some((t: any) => t && t.id && t.id.startsWith('BRONZE_'));
+      if (hasBronzeItem || hasBronzeTool) return true;
+      if (!ctx.snapshot) return false;
+      // SPECIES.BRONZE is index 23
+      return (ctx.snapshot.moles[23] ?? 0) > 0.05;
     },
   },
   {
@@ -228,7 +235,7 @@ export const TUTORIAL_LESSONS: TutorialLesson[] = [
     subtitle: 'Recruit specialists and establish high-speed trade trails (+20% SPD)',
     plateKey: 'TERRAIN',
     tabTarget: 'strategy',
-    spotlightSelector: '[data-tab="strategy"]',
+    spotlightSelector: '[data-tab="STRATEGY"]',
     summaryHtml: `Open the Strategy Map. Recruit Foragers, Miners, or Herbalists in the Command Dock. As workers traverse the wilderness between Hearth (0,0) and resource nodes, desire paths form naturally, boosting travel speed up to +20%.`,
     formulaHtml: `Speed bonus: <code>M_trail = 1.0 + 0.20 &times; (wear / 255)</code>`,
     actionHint: 'Navigate to Strategy Map and recruit your first worker in the Command Dock.',
@@ -248,7 +255,7 @@ export const TUTORIAL_LESSONS: TutorialLesson[] = [
     subtitle: 'Balance wage contracts and manage stimulant boost & crash cycles',
     plateKey: 'TIERS',
     tabTarget: 'strategy',
-    spotlightSelector: '[data-tab="strategy"]',
+    spotlightSelector: '[data-tab="STRATEGY"]',
     summaryHtml: `Process daily payroll with food, metals, or soap. Administer Willow Tea or Mint Tonic for temporary +30% work boosts—but beware the crash phase: speed drops and morale dips (-8), risking strikes if morale drops below 20.`,
     formulaHtml: `Strike threshold: <code>Morale &lt; 20</code> · Boost &rarr; Crash (-8 Morale)`,
     actionHint: 'Configure wage contracts or administer a stimulant from the Strategy Map.',
@@ -345,18 +352,27 @@ export const TUTORIAL_LESSONS: TutorialLesson[] = [
     plateKey: 'MINES',
     tabTarget: 'workbench',
     spotlightSelector: '#vessel-list',
-    summaryHtml: `Connect Vessel #0's vapor manifold to Vessel #1 using <code>condenserTargetVesselId</code>. Boil volatile ethanol or nitric acid vapors and condense high-purity distillate into the receiving vessel.`,
+    summaryHtml: `Connect Vessel #0's vapor manifold to Vessel #1 using <code>condenserTargetVesselId</code>. Boil volatile ethanol or aqueous fractions and condense high-purity distillate into the receiving vessel.`,
     formulaHtml: `Raoult's Law: <code>P_i = x_i &middot; P_i^*</code> · Condensation efficiency &gt; 95%`,
-    actionHint: 'Configure a condenser target vessel and boil off volatile fractions.',
+    actionHint: 'Configure a condenser target vessel and distill liquid across vessels.',
     practiceGrant: {
-      items: [
-        { itemId: 'SULFURIC_ACID_BOTTLE', count: 1, massKg: 0.5 },
-        { itemId: 'DISTILLED_WATER', count: 2, massKg: 1.0 },
+      vesselSpecies: [
+        { speciesId: 'WATER', moles: 25.0 },
+        { speciesId: 'ETHANOL', moles: 5.0 },
       ],
+      vesselTempK: 355.0,
     },
     isComplete: (ctx) => {
       const items = ctx.state?.inventory?.items ?? [];
-      return items.some((it: any) => it.id.includes('ACID') || it.id.includes('DISTILLED') || it.id.includes('ETHANOL'));
+      if (items.some((it: any) => it.id === 'ETHANOL_DISINFECTANT')) return true;
+      const v0 = ctx.state?.vessels?.[0];
+      const hasCondenser = v0 && typeof v0.condenserTargetVesselId === 'number' && v0.condenserTargetVesselId >= 0;
+      if (ctx.snapshot && hasCondenser) {
+        const destIdx = v0.condenserTargetVesselId;
+        const destMoles = ctx.snapshot.moles.subarray(destIdx * 64, (destIdx + 1) * 64);
+        return Array.from(destMoles).some((m) => m > 0.05);
+      }
+      return Boolean(hasCondenser);
     },
   },
   {
@@ -372,11 +388,20 @@ export const TUTORIAL_LESSONS: TutorialLesson[] = [
     formulaHtml: `Faraday's Law: <code>&Delta;n_Na = (V - V_decomp) &middot; &Delta;t / (R_cell &middot; F &middot; z)</code>`,
     actionHint: 'Apply &gt; 5.0 V across molten lye to isolate elemental sodium.',
     practiceGrant: {
-      items: [{ itemId: 'SODIUM_METAL', count: 1, massKg: 0.1 }],
+      vesselTempK: 600.0,
+      vesselSpecies: [{ speciesId: 'NAOH', moles: 5.0 }],
     },
     isComplete: (ctx) => {
       const items = ctx.state?.inventory?.items ?? [];
-      return items.some((it: any) => it.id === 'SODIUM_METAL');
+      if (items.some((it: any) => it.id === 'SODIUM_METAL')) return true;
+      const v0 = ctx.state?.vessels?.[0];
+      const highVolts = v0 && (v0.appliedVolts ?? 0) >= 4.5;
+      if (ctx.snapshot) {
+        // SPECIES.SODIUM_METAL is index 37
+        const naMoles = ctx.snapshot.moles[37] ?? 0;
+        if (naMoles > 0.05) return true;
+      }
+      return Boolean(highVolts && ctx.snapshot && (ctx.snapshot.telemetry[0] ?? 0) >= 590);
     },
   },
 ];

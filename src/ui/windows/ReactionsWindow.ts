@@ -102,6 +102,14 @@ const BENCH_HTML = `
         <div class="readout"><span>Pressure</span><strong class="bench-pressure">—</strong></div>
         <div class="readout"><span>Liquid</span><strong class="bench-volume">—</strong></div>
       </div>
+      <div class="phd-telemetry-panel" style="display:none; background:rgba(18,24,30,0.85); border:1px solid #3b82f6; border-radius:6px; padding:6px 10px; margin-bottom:0.5rem; font-size:0.75rem; color:#bfdbfe;">
+        <div style="font-weight:600; color:#60a5fa; margin-bottom:2px;">🔬 PhD Telemetry (Tier III)</div>
+        <div style="display:flex; justify-content:space-between; gap:8px;">
+          <span>SID: <strong class="phd-sid">—</strong></span>
+          <span>Arrhenius k: <strong class="phd-arrhenius">—</strong></span>
+          <span>Newton Cooling: <strong class="phd-cooling">—</strong></span>
+        </div>
+      </div>
       <div class="bench-sparkline-box">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.25rem;">
           <span style="font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--muted)">Telemetry History (T / P / pH)</span>
@@ -162,6 +170,22 @@ function renderBench(body: HTMLElement, snapshot: Snapshot): void {
   body.querySelector<HTMLElement>('.bench-ph')!.textContent = volume > 0.01 ? ph.toFixed(2) : '—';
   body.querySelector<HTMLElement>('.bench-pressure')!.textContent = `${pressure.toFixed(0)} kPa`;
   body.querySelector<HTMLElement>('.bench-volume')!.textContent = `${volume.toFixed(2)} L`;
+
+  const phdPanel = body.querySelector<HTMLElement>('.phd-telemetry-panel');
+  if (phdPanel) {
+    if (state.tutorial?.isPhdTelemetryEnabled()) {
+      phdPanel.style.display = 'block';
+      const phd = state.tutorial.computePhdTelemetry(index, snapshot);
+      const sidEl = phdPanel.querySelector('.phd-sid');
+      const arrEl = phdPanel.querySelector('.phd-arrhenius');
+      const coolEl = phdPanel.querySelector('.phd-cooling');
+      if (sidEl) sidEl.textContent = `${phd.sidMolL >= 0 ? '+' : ''}${phd.sidMolL.toExponential(2)} mol/L`;
+      if (arrEl) arrEl.textContent = phd.arrheniusRateK.toExponential(2);
+      if (coolEl) coolEl.textContent = `${phd.newtonCoolingWatts.toFixed(1)} W`;
+    } else {
+      phdPanel.style.display = 'none';
+    }
+  }
 
   // Update sparkline ring buffer (max 30 samples)
   sparklineHistory.push({ tempK: temperatureK, ph, pressureKpa: pressure });

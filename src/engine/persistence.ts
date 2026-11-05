@@ -52,6 +52,13 @@ export interface SerializedWorldSave {
   ageProgress?: import('./campaign/ageProgress').AgeProgressState;
   settlements?: import('./campaign/settlements').SettlementsState;
   blacksmith?: import('./campaign/blacksmith').BlacksmithState;
+  tutorial?: {
+    activeTier: 'BEGINNER' | 'INTERMEDIATE' | 'PHD';
+    activeLessonId: string | null;
+    completedLessonIds: string[];
+    phdTelemetryEnabled: boolean;
+    coachmarkDismissed: boolean;
+  };
 }
 
 export function serializeSave(save: SerializedWorldSave): string {
