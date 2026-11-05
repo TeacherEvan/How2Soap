@@ -5,24 +5,29 @@
 | **Audit Date** | 2026-11-05 |
 | **Audited Scope** | `src/` (102 TS modules, 20,838 LOC), `tests/` (62 suites), `public/`, `webpack.config.js`, `vercel.json`, CI (scanner: **170 code files, 23,931 effective LOC**) |
 | **Tech Stack & Runtime** | TypeScript 5.4, Webpack 5, Vitest 3, 10 Hz Web Worker + `SharedArrayBuffer`/SeqLock, Canvas 2D, Web Audio, PWA, COOP/COEP, Vercel static |
-| **HEAD / Tracked Mutation** | `1fee8ba338c181a9e262b327e71c52681410b729` / **`git diff HEAD` empty (VERIFIED)** |
+| **Audited Tree / Report Commit** | `1fee8ba338c181a9e262b327e71c52681410b729` / report commit `3a44139` |
+| **Post-Audit Remediation Reviewed** | `bdd03fa` (2026-11-05 18:21) — see **§7**; current tree is **69 suites / 319 tests**, build green at ~195 KiB |
+| **Tracked Mutation** | **`git diff HEAD` empty at both audit boundaries (VERIFIED)** |
 | **Scanner Digest** | pre `cf42911e4f464697…`, post `a1472ce80a24ac09…` — **differs only because a user-authored untracked plan appeared mid-audit** (`docs/plans/OPTIONAL implementation_plan.md`, mtime 17:28:25, not created by this audit, excluded from scope) |
-| **Deterministic Health Score** | **`66 / 100`** (`D_raw = 131`, `D_scaled = 26.78`, `P_test = 7.2`, `M_kill = 52%`, `LOC_eff = 23,931`) |
-| **Vibe-Debt Risk Level** | **`HIGH`** (`S = 66`, but `N_P0 = 1`) |
-| **Gate Results** | `npx tsc --noEmit` **0 errors**; `npx vitest run` **62 files / 312 tests pass**; `npm run build` **green** — entrypoint **197,202 / 200,000 bytes (98.6%)** |
+| **Deterministic Health Score** | **`64 / 100`** (`D_raw = 141`, `D_scaled = 28.82`, `P_test = 7.2`, `M_kill = 52%`, `LOC_eff = 23,931`) — **score is for `1fee8ba`; §7 reviews the fix commit without re-scoring** |
+| **Vibe-Debt Risk Level** | **`HIGH`** (`S = 64`, `N_P0 = 1`) |
+| **Gate Results at Audit** | `npx tsc --noEmit` **0 errors**; `npx vitest run` **62 files / 312 tests pass**; `npm run build` **green** — entrypoint **197,202 / 200,000 bytes (98.6%)** |
+| **Score Sensitivity** | src-only LOC (20,838) → **62**; `M_kill` 45–60% → **62–65**; risk stays **HIGH** because `N_P0 = 1` |
+
+> **Review correction (2026-11-05):** a self-review found a missed **P1-10** (`REQUEST_SYNC` dereferences null request slots every tick) and added the residual P3 register. The original score of 66 was therefore optimistic; it is corrected to **64**. A separate fix commit, `bdd03fa`, landed after the audit — its scope and residuals are reviewed in **§7**. Do not read the findings below as the current-tree state without that section.
 
 ---
 
 ## 1. Executive Architecture & Vibe-Debt Triage
 
-The engine core is genuinely strong: a correct SeqLock over a frozen 67,648-byte SAB, a deterministic seeded worker, a real calorimetry/Arrhenius/Faraday model, and a well-factored `src/app/` orchestration layer that fixes the previous audit's God-file finding. The dominant failure mode is no longer math — it is **state ownership at the seams**. The save path drops every vessel's thermal/electrical state, the autosave timer is starved by its own 10 Hz input, and the entire Civ VII campaign layer (Ages, influence, missions, built works, victories) is either imported only by tests or rendered from hardcoded mock objects inside the windows. A second failure mode is **per-tick UI amplification**: 10 Hz `PLAYER_SYNC`/`COLONY_SYNC` drive four full `innerHTML` rebuilds per 100 ms, and `ADVANCE` during "March ×8" emits 1,920 sync messages that each trigger another full rebuild. Third: **no worker error boundary exists** — a malformed save or a 33rd vessel turns the simulation into a silent, permanent error loop with no user-visible recovery. The suite is broad (312 tests) but tests the codecs and pure engines far more than the schedulers, command side effects, and UI lifecycles where these defects live.
+The engine core is genuinely strong: a correct SeqLock over a frozen 67,648-byte SAB, a deterministic seeded worker, a real calorimetry/Arrhenius/Faraday model, and a well-factored `src/app/` orchestration layer that fixes the previous audit's God-file finding. The dominant failure mode is no longer math — it is **state ownership at the seams**. The save path drops every vessel's thermal/electrical state, the autosave timer is starved by its own 10 Hz input, and the entire Civ VII campaign layer (Ages, influence, missions, built works, victories) is either imported only by tests or rendered from hardcoded mock objects inside the windows. A second failure mode is **per-tick UI amplification**: 10 Hz `PLAYER_SYNC`/`COLONY_SYNC` drive four full `innerHTML` rebuilds per 100 ms; `ADVANCE` during "March ×8" emits 1,920 sync messages; and the `REQUEST_SYNC` handler dereferences null slots on most ticks. Third: **no worker error boundary exists at the audit target** — a malformed save or a 33rd vessel turns the simulation into a silent, permanent error loop with no user-visible recovery. The suite is broad (312 tests) but tests the codecs and pure engines far more than the schedulers, command side effects, and UI lifecycles where these defects live. A post-audit commit (`bdd03fa`) fixes the P0 and most P1s, but leaves P1-10, the 10 Hz churn, the mock campaign layer, and several partial fixes; §7 is the authoritative current-tree status.
 
 | Severity Tier | Count | Deduction Weight | Primary Failure Domains |
 | :--- | :--- | :--- | :--- |
 | **P0 — Critical (Data Loss)** | **1** | `-18` ea | Autosave never fires during active play (`src/app/autosave.ts:76-99`) |
-| **P1 — High (State Loss / Frame Budget / Crash)** | **9** | `-8` ea | Vessel state not persisted; 1,920-message ADVANCE flood; 10 Hz DOM churn; no worker error boundary; consume-before-validate; fictional SAB fallback; unwired campaign layer; 32-vessel ceiling; gzip bomb |
+| **P1 — High (State Loss / Frame Budget / Crash)** | **10** | `-8` ea | Vessel state not persisted; 1,920-message ADVANCE flood; 10 Hz DOM churn; no worker error boundary; consume-before-validate; fictional SAB fallback; unwired campaign layer; 32-vessel ceiling; gzip bomb; null-slot `REQUEST_SYNC` crash |
 | **P2 — Medium (Split-Brain / Debt / A11y)** | **12** | `-3` ea | Map CSS mismatch, touch/DPR, keyboard conflict, dual `ever` maps, phantom idle jobs, `any` save schema, per-tick payload churn, dead UI modules, O(N²) boids, payload/budget, listener leak, `aria-live` spam |
-| **P3 — Low (DX / Spec Drift)** | **5** | `-1` ea | Magic-number chemistry, semantic ARIA misuse, timer drift, 6 kg hand-slot rule unenforced, dead no-op block |
+| **P3 — Low (DX / Spec Drift)** | **7** | `-1` ea | Magic-number chemistry, ARIA misuse, timer drift, 6 kg hand-slot rule, unescaped DOM sinks, unbounded log, dead no-op block |
 
 ### High-Risk File Telemetry Hotspots
 
@@ -63,8 +68,8 @@ The engine core is genuinely strong: a correct SeqLock over a frozen 67,648-byte
 ### Lens 2 — Frame-Budget & Performance Engineer
 
 - **[P1-2] `ADVANCE` floods the UI with 1,920 sync messages** — `src/engine/sim.worker.ts:381-385,389-397`, `src/app/workerMessages.ts:238-249`, `src/app/panels.ts:173-276`
-  - **Root Cause Mechanism:** `stepSingleTick()` unconditionally calls `postRequestSync()` and `postCrisisSync()`; `advance(hours)` loops `hours × WORKER_HZ` times. "March ×8" = 192 h × 10 = **1,920 steps → 1,920 `REQUEST_SYNC` messages**, each handled by a **full `updatePlayerUI()` rebuild**.
-  - **Trigger:** Press "March ×8" (`main.ts:236-238`). The worker computes for ~1–3 s, then the main thread processes 1,920 DOM rebuilds. End Turn (24 h) is 240 rebuilds.
+  - **Root Cause Mechanism:** `stepSingleTick()` unconditionally calls `postRequestSync()` and `postCrisisSync()`; `advance(hours)` loops `hours × WORKER_HZ` times. "March ×8" = 192 h × 10 = **1,920 steps → 1,920 `REQUEST_SYNC` messages**. Each message hits a handler that either throws on a null slot (P1-10) or, when all three slots are occupied, performs a full `updatePlayerUI()` rebuild.
+  - **Trigger:** Press "March ×8" (`main.ts:236-238`). The worker computes for ~1–3 s, then the main thread processes 1,920 message dispatches — a mix of uncaught `TypeError`s and full DOM rebuilds. End Turn (24 h) is 240 dispatches.
   - **Fix:** Add a `batchDepth` flag in the worker: suppress request/crisis posts inside `advance`, emit one sync at the end; coalesce in `handleWorkerMessage` with a scheduled microtask/rAF flush.
   - **Measured:** 192 h × 10 Hz = 1,920 (see Appendix).
 
@@ -95,6 +100,11 @@ The engine core is genuinely strong: a correct SeqLock over a frozen 67,648-byte
 ### Lens 4 — Concurrency, Async & Determinism Engineer
 
 - **SAB read/write protocol is correct** — `src/engine/memoryLayout.ts:104-140`: odd/even SeqLock, retry cap, cached last snapshot. No torn-read defect found.
+- **[P1-10] `REQUEST_SYNC` dereferences null request slots on most ticks** — `src/app/workerMessages.ts:238-249`, `src/engine/sim.worker.ts:295-300`, `src/engine/timedRequests.ts:97,116,178`
+  - **Root Cause Mechanism:** `timedRequests.slots` is `Array<TimedRequest | null>` initialized to `[null, null, null]` and set back to `null` on expiry/fulfilment. `postRequestSync` sends the array verbatim. The UI handler guards only on `prevSlots.length > 0`, then executes `if (!slot.active && prevSlots.some(p => p.slot === slot.slot && p.active))` with no null check. `prevSlots` also contains nulls.
+  - **Deterministic Trigger & Failure Mode:** Start a new world and wait ~200 ms. The first sync sets `state.timedRequests` to a length-3 array; the second sync enters the loop with `slot === null` and throws `TypeError: Cannot read properties of null (reading 'active')`. This repeats at 10 Hz whenever any slot is empty (most of the game). `completedRequestsCount` never increments, the handler aborts before `updatePlayerUI()`, and the console fills with uncaught errors. The UI still updates via `PLAYER_SYNC`, which masks the failure.
+  - **Surgical Fix Specification:** `for (const slot of data.slots) { if (!slot) continue; if (!slot.active && prevSlots.some(p => p && p.slot === slot.slot && p.active)) … }`. Add a table-driven test with `[null, null, null]` and `[req, null, null]` as both previous and current payloads; assert no throw and that a genuine active→inactive transition increments the counter.
+
 - **[P0-1] Autosave timer is starved by 10 Hz re-arming** — `src/app/autosave.ts:76-99`, call sites `src/app/workerMessages.ts:112,125`
   - **Root Cause Mechanism:** Every `requestAutoSave()` call executes `clearTimeout(autoSaveTimer)` and re-arms a 2,000 ms timeout. `PLAYER_SYNC` arrives every 100 ms, so the timer is cleared **20 times** before it can fire. `lastSaveSignature` is only assigned inside the callback, so the "unchanged" early-return never triggers.
   - **Deterministic Trigger & Failure Mode:** Normal unpaused play → autosave never writes. Crash, force-quit, or power loss loses the entire session; only `visibilitychange` (tab hide) saves. Pausing or dying stops the ticks, which is the only reason a save ever lands.
@@ -109,7 +119,7 @@ The engine core is genuinely strong: a correct SeqLock over a frozen 67,648-byte
   - **Fix:** Store bound handlers and `removeEventListener` in `destroy()`; add an `AbortController` and pass `{ signal }` to every listener.
 - **[P1-9] Gzip import materializes the whole payload before the 5 MB check** — `src/engine/persistence.ts:208-222`
   - **Root Cause:** `await new Response(ds.readable).arrayBuffer()` allocates the full decompressed output; `MAX_DECOMPRESSED_BYTES` is compared **after** allocation.
-  - **Trigger:** Paste a small gzip bomb into "Import Save" → multi-GB allocation → tab OOM.
+  - **Trigger:** Paste a small gzip bomb into "Import Save" → multi-GB allocation → OOM/`RangeError` (tab crash or DoS).
   - **Fix:** Read the stream chunk-by-chunk, abort as soon as the running total exceeds the cap, then decode.
 
 ### Lens 6 — Security & Trust-Boundary Engineer
@@ -130,7 +140,7 @@ The engine core is genuinely strong: a correct SeqLock over a frozen 67,648-byte
 
 - **[P1-5] Consume-before-validate destroys player items** — `src/engine/sim.worker.ts:622-661,789-792,840-849,1007-1038`
   - **Root Cause:** `ADMINISTER_STIMULANT` removes the item, then calls `administerStimulant()`, whose `false` path only prints a failure message; `CHARGE_ITEM` removes any unknown item and (for non-mapped ids) adds no moles, then prints "Charged" **twice**; `FABRICATE` ignores `addItemToContainer` for the camp-cache fallback; `EQUIP_TOOL` ignores the failure to store the previous tool.
-  - **Trigger:** Dose a colonist already on a stimulant; charge `WOOD_BRANCH`; fabricate with all containers full; equip a second tool with no free slot.
+  - **Trigger:** Charge any non-reagent item (`WOOD_BRANCH`, `MEAT_RAW`, a tool) — reachable from the inventory panel; fabricate with all containers full; equip a second tool with no free slot. The stimulant ordering is contract-level: `administerStimulant` returns `false` only for an item with no `stimulantSpec`, which the current UI does not send, but the item is deducted before that check. (The post-audit `bdd03fa` fixes the stimulant and unknown-reagent paths; the fabrication/equip paths remain — see §7.)
   - **Fix:** Compute a validated plan first (does the effect apply? will every output fit?), then commit mutations atomically; return `{ok, reason}` before any `count--`.
 
 - **[P1-6] The SAB fallback is fictional** — `src/main.ts:98-104`
@@ -159,6 +169,10 @@ The engine core is genuinely strong: a correct SeqLock over a frozen 67,648-byte
 - **[P2-2] No touch/pointer support and no `devicePixelRatio` scaling on the strategy map** — `src/ui/StrategyMapCanvas.ts:157-166,175-216`, `src/styles.css:1466-1470`
   - **Root Cause:** Only `mousedown`/`mousemove`/`mouseup`/`wheel`/`click` are bound; pan/pinch are impossible on touch. `resizeCanvas` sets the backing store to CSS pixels, so it is blurry on 2×/3× displays; the canvas is CSS-stretched (`width/height: 100%`) between resizes.
   - **Fix:** Use Pointer Events with `setPointerCapture`, a two-pointer pinch gesture, `canvas.width = rect.width * dpr`, `ctx.scale(dpr, dpr)`, and a `ResizeObserver`.
+- **[P2-12] `aria-live="polite"` banners region is rewritten at 10 Hz** — `public/index.html:63`, `src/app/panels.ts:220-223`
+  - **Root Cause:** `#banners` is a polite live region; `updatePlayerUI()` replaces its `innerHTML` on every `PLAYER_SYNC` (10 Hz), even when `bannerModel()` returns identical text.
+  - **Failure Mode:** AT that treats subtree replacement as a change can re-announce the same banner ~10×/s, and every AT must recompute the region continuously. Severity is AT-dependent; the DOM churn is deterministic.
+  - **Fix:** Render only when the banner model changes; keep stable nodes and update `textContent`; set `aria-live="off"` during the patch and restore it after a short debounce.
 - **Keyboard conflict on the Mandate chip** — see P2-3 below.
 
 ### Lens 10 — Cognitive Load & AI-Context Maintainability Engineer
@@ -173,8 +187,18 @@ The engine core is genuinely strong: a correct SeqLock over a frozen 67,648-byte
   - **Fix:** `const REAGENT_GRAMS: Record<string, {species, grams, molarMass}>` and a single `takeItem(inventory, itemId, count): Taken | null` helper returning what was actually removed.
 
 - **[P2-8] Dead UI subtree + unused runtime dependency** — `src/ui/StrategyMap3D.ts` (150), `src/ui/GLTFLoader.ts` (56), `src/ui/CivBuildPanel.ts` (124), `src/ui/TheTurningOverlay.ts` (126), `src/ui/kinetics.ts` (48)
-  - **Root Cause:** No production or test import references these files. `three` is therefore **never bundled** (no `WebGLRenderer` in `dist`), contradicting AGENTS' claim that it is the single lazy-loaded runtime dependency.
+  - **Root Cause:** No production or test import references these files. `three` is therefore **never bundled** (no `WebGLRenderer` in `dist`), contradicting AGENTS' claim that it is the single lazy-loaded runtime dependency. The dependency is also declared as `^0.160.0`, not the "pinned `three@0.160.0`" the invariant claims.
   - **Fix:** Delete the dead files and drop `three`/`@types/three` from `package.json`, or wire one of them (the in-flight plan proposes revitalizing `StrategyMap3D`) and add an import-graph test.
+
+#### Residual P3 Register
+
+| ID | Defect | Coordinates | Mechanism | Fix |
+| :--- | :--- | :--- | :--- | :--- |
+| **P3-2** | `aria-pressed` on a generic `<div>` | `src/ui/ToolAndInventoryPanel.ts:120` | State is ignored without `role="button"`; AT cannot perceive equipped/empty | Render a `<button aria-pressed>` per slot |
+| **P3-3** | Fixed-rate `setInterval` with no drift compensation | `src/engine/sim.worker.ts:516,586` | A delayed tick permanently loses wall-clock time; sim slows under load | Accumulator + `performance.now()` catch-up |
+| **P3-4** | Unbounded `state.log` retention | `src/app/views.ts:141-149` and all `state.log.push` callers | Every event is retained forever; only the last 8 are rendered | Ring buffer capped at 200 entries |
+| **P3-6** | Unescaped `innerHTML` from save-controlled strings | `src/app/views.ts:31,146-148` | Vessel labels, colonist names, and log messages are interpolated; CSP blocks script but not DOM/style injection | Escape or switch to `textContent` |
+| **P3-7** | Dead no-op paddock block | `src/engine/sim.worker.ts:202-204` | `if (paddock && …) { /* paddock tracking */ }` does nothing | Delete |
 
 ---
 
@@ -187,7 +211,7 @@ The engine core is genuinely strong: a correct SeqLock over a frozen 67,648-byte
   - **0** `vi.mock` module mocks (good), but 40 `vi.fn`/`spyOn` and 39 `as any` fixtures.
   - 59 / 102 modules have no same-named test file; the worker command layer, autosave scheduler, `workerMessages`, `panels`, and both campaign windows are effectively unprotected.
   - **11 engine modules (1,721 LOC) are imported only by tests** — their green suites protect code no player can reach (counted as zero shipped coverage per the rubric).
-  - 5 tests in `workerCommandsBugfix.test.ts` re-implement the worker loop inline and assert on the copy, not the production code.
+  - **Four tests** in `workerCommandsBugfix.test.ts` re-implement the worker loop inline and assert on the copy, not the production code.
 
 | Implementation Module | Critical Functions / Branches | Paired Test File | Pathologies Detected | Mental Mutants Killed (M1–M4) | High-Priority Missing Assertions |
 | :--- | :--- | :--- | :--- | :--- | :--- |
@@ -208,7 +232,8 @@ The engine core is genuinely strong: a correct SeqLock over a frozen 67,648-byte
 
 - **P0-1:** No test imports `src/app/autosave.ts`; only the pure `snapshotSignature` helper is tested. The timer contract ("a save must eventually land under continuous input") was never stated.
 - **P1-1:** `saveV3Integrity.test.ts` builds a vessel with only `id/material/capacityL/moles` and asserts only `world.vessels.length === 1`. No deep-equal, so every omitted thermal field passes.
-- **P1-2:** `workerDispatch.test.ts:71-78` asserts `ADVANCE` "does not throw"; it never counts `REQUEST_SYNC` messages or measures UI work.
+- **P1-2:** `workerDispatch.test.ts:71-78` asserts `ADVANCE` "does not throw" and that `PLAYER_SYNC` is posted at least twice; it never counts `REQUEST_SYNC` messages or measures UI work.
+- **P1-10:** No test ever sends a `REQUEST_SYNC` payload containing `null` slots; the UI dispatcher has no test file at all.
 - **P1-3:** `strategyMapCanvas.test.ts` stubs `getContext('2d')` and uses a hand-rolled DOM; there is no timer or render-count assertion, so 10 Hz rebuilds are invisible.
 - **P1-4:** The suite tests a corrupt SAB (`INIT` throws) but not a corrupt save; nothing asserts that the worker survives and reports an error.
 - **P1-5:** `workerCommandsBugfix.test.ts` re-implements the equip/eat/treatment loops inline (lines 123-136, 182-195, 209-220) and asserts on the copy. The real worker's consume-before-validate order is never exercised.
@@ -219,13 +244,14 @@ The engine core is genuinely strong: a correct SeqLock over a frozen 67,648-byte
 
 1. **Autosave scheduler (`tests/autosaveScheduler.test.ts`):** fake timers; dispatch `PLAYER_SYNC` every 100 ms for 10 s → assert `localStorage.setItem` called **≥1** within 2.5 s and **≤1 per 2 s**; mutate inventory while paused → assert a write is requested; throw on `setItem` → assert no unhandled rejection.
 2. **Save fidelity (`tests/saveFidelity.test.ts`):** table-driven `VesselState` fixtures → `buildSaveSnapshot` → `restoreWorldFromSave` → deep-equal on `temperatureK`, `heaterWatts`, `condenserTargetVesselId`, `appliedVolts`, `cellResistanceOhm`, `pressureKPa`, `ruptured`, `headspaceClosed`. Include `closed` vs `headspaceClosed` explicitly.
-3. **Command conservation (`tests/workerConservation.test.ts`):** for every item-consuming command, assert `countBefore − countAfter === consumed` **and** the effect exists, or no mutation at all. Cases: unknown reagent, already-stimmed colonist, full containers, tool swap with no free slot.
+3. **Command conservation (`tests/workerConservation.test.ts`):** for every item-consuming command, assert `countBefore − countAfter === consumed` **and** the effect exists, or no mutation at all. Cases: **unknown reagent with the item present in inventory**, invalid stimulant id with the item present, full containers during `FABRICATE`, tool swap with no free slot. (An empty-inventory case proves nothing — the pre-fix code also refuses it.)
 4. **Error containment (`tests/workerResilience.test.ts`):** `LOAD_WORLD` with `vessels:[null]`, `material:'PLASTIC'`, `temperatureK:NaN` → assert a `SIM_ERROR` message and that a following `INIT` still reaches `READY`.
 5. **Advance budget (`tests/advanceBudget.test.ts`):** `ADVANCE {hours:192}` → assert `REQUEST_SYNC` count ≤ 2 (not 1,920) and `TURN_RECAP` once.
 6. **Vessel ceiling (`tests/vesselCap.test.ts`):** create 33 vessels → 33rd returns an EVENTS rejection; `renderReactionsSummary` with index 32 does not throw (finite guard).
 7. **Campaign wiring (`tests/campaignWiring.test.ts`):** static import-graph assertion — every `WINDOWS` entry's module must import its engine module and contain no `mock`/`local` state object; `FOUND_SETTLEMENT`, `PLACE_DISTRICT`, `START_BLACKSMITH_BATCH` must appear in a UI module.
 8. **Gzip cap (`tests/importBomb.test.ts`):** compress 6 MB of zeros → `decompressBase64ToSave` rejects with the 5 MB error **before** materializing the full output (instrument a stream chunk counter).
 9. **Map lifecycle (`tests/strategyMapLifecycle.test.ts`):** construct → destroy → assert `removeEventListener` called for `mousemove`/`mouseup`; assert `update()` on a hidden container performs no `innerHTML` writes.
+10. **`REQUEST_SYNC` null slots (`tests/requestSyncNulls.test.ts`):** dispatch `slots:[null,null,null]` and `[active,null,null]` as both previous and current payloads → assert no throw, and a genuine active→inactive transition increments `completedRequestsCount`.
 
 ---
 
@@ -368,8 +394,8 @@ state.worker.onerror = (e) => showSimError(e.message);   // + "Start new world" 
 ### Commands Run (read-only vs source)
 
 ```bash
-git status --porcelain                          # clean at start; 259 tracked files
-git rev-parse HEAD                              # 1fee8ba338c181a9e262b327e71c52681410b729
+git status --porcelain                          # clean at audit start; 259 tracked files
+git rev-parse HEAD                              # 1fee8ba338c181a9e262b327e71c52681410b729 (audit target)
 npx tsc --noEmit                                # 0 errors
 npx vitest run                                  # 62 files, 312 tests, all pass (9.92 s)
 rm -rf dist && npm run build                    # green; Entrypoint main 193 KiB
@@ -380,12 +406,16 @@ python3 import-graph scan                       # 11 engine modules with zero pr
 node /tmp/opencode/audit/autosave_sim.js        # 10 s active = 0 writes; pause + 2.5 s = 1 write
 git diff --stat HEAD                            # empty (VERIFIED ZERO TRACKED MUTATION)
 git status --porcelain                          # only the pre-existing untracked user plan
+# Post-audit remediation review (§7):
+git log --oneline -1                            # bdd03fa (18 files, +665/−92)
+npx tsc --noEmit && npx vitest run              # 0 errors; 69 files / 319 tests
+npm run build                                   # green; Entrypoint ~195 KiB (<1 KB headroom)
 ```
 
 ### Zero-Mutation Statement
 
-- **Tracked source/config/test files modified: 0.** `git diff HEAD` is empty; HEAD is unchanged.
-- The scanner digest changed between pre and post **only** because an untracked user-authored file appeared during the session: `docs/plans/OPTIONAL implementation_plan.md` (10,037 bytes, mtime `2026-11-05 17:28:25`, created by an external process, not by this audit). It was not read into scope, edited, or committed.
+- **Tracked source/config/test files modified by this audit: 0.** At both audit boundaries `git diff HEAD` against `1fee8ba` was empty. `3a44139` adds this report; `bdd03fa` is an external remediation commit reviewed in §7 (it changes source, not the audit's baseline).
+- The scanner digest changed between pre and post **only** because an untracked user-authored file appeared during the session: `docs/plans/OPTIONAL implementation_plan.md` (10,037 bytes, mtime `2026-11-05 17:28:25`, created by an external process, not by this audit). It was **not audited**; its first 20 lines were inspected only to identify the cause of the digest delta. It was not edited or committed.
 - `dist/` was deleted and rebuilt to verify the bundle budget; it is gitignored and untracked. No source file was touched.
 - The only addition from this audit is this report.
 
@@ -398,8 +428,69 @@ git status --porcelain                          # only the pre-existing untracke
 | P2-6: silent command drops / no exhaustive dispatch | **Fixed** | `assertNeverCommand` + handlers for `EQUIP_TOOL`/`HARVEST_PART` |
 | P3-6: paddock never stepped | **Fixed** | `sim.worker.ts:343-368` daily `stepPaddockDay` |
 | P2-5: `main.ts` God file | **Fixed** | split into `src/app/{state,autosave,panels,views,workerMessages,launcher,splash}.ts` |
-| `worker.onerror` absent | **STILL OPEN (recurrence)** | no `onerror`/`onmessageerror` anywhere in `src` |
+| `worker.onerror` absent | **STILL OPEN at `1fee8ba`** | no `onerror`/`onmessageerror` anywhere in `src`; **fixed in `bdd03fa`**, see §7 |
 | innerHTML escaping / XSS pattern | **STILL OPEN** | `renderLog` `innerHTML` with unescaped messages; `renderVessels` with save `label` |
-| — | **New P0/P1 debt** | autosave starvation, thermal-state loss, 10 Hz DOM churn, mock campaign layer, vessel ceiling, gzip bomb |
+| — | **New P0/P1 debt** | autosave starvation, thermal-state loss, 10 Hz DOM churn, mock campaign layer, vessel ceiling, gzip bomb, null-slot `REQUEST_SYNC` crash |
 
-**Bottom line:** the engine and the previous audit's P1 fixes are real, but the Civ VII conversion added a large, tested, **unreachable/mocked** campaign layer on top of a save path that no longer preserves what the simulation computes. Restore state ownership first; wire or delete the campaign surface second; then re-run this audit to re-score.
+---
+
+## 7. Post-Audit Remediation Review (`bdd03fa`)
+
+Commit `bdd03fa` (**"fix(core): resolve P0 autosave starvation, vessel persistence loss, and worker reliability bottlenecks"**, 2026-11-05 18:21) landed 18 files, +665/−92, including 7 new test suites. This section reviews that commit against the audit findings; it is **not** a fresh audit and does not re-score the tree.
+
+**Current-tree gates:** `npx tsc --noEmit` **0 errors**; `npx vitest run` **69 files / 319 tests pass**; `npm run build` **green**, entrypoint **~195 KiB (~199.25 KB), <1 KB headroom** under the 200,000-byte gate.
+
+### 7.1 Finding Status
+
+| Finding | Status at `bdd03fa` | Evidence / residual risk |
+| :--- | :--- | :--- |
+| **P0-1** Autosave starvation | **FIXED** | Leading-edge throttle with `if (autoSaveTimer !== null) return`; `lastSaveWriteMs`; `seed` added to signature. `autosaveScheduler` fails on pre-fix (0 writes), passes now. Residual: signature still omits inventory/colony, so a paused equip/inventory change is not dirtied until hide. |
+| **P1-1** Vessel state loss | **PARTIAL** | Thermal, pressure, heater, flags (`closed`/`ruptured`), condenser, volts, resistance now serialize; `closed` alias accepted. `precipitated` is still discarded (`autosave.ts` "harmlessly re-settles"), and `moles` values/length are still unvalidated. `saveFidelity` covers the new fields but not `precipitated`/`moles`. The save is still reconstructed from the UI snapshot rather than a worker-owned save command; that is the durable fix. |
+| **P1-2** 1,920-message ADVANCE flood | **FIXED** | `batchDepth` suppresses per-tick `REQUEST_SYNC`/`CRISIS_SYNC` and emits once after the loop. `advanceBudget` fails pre-fix (1,920), passes now. |
+| **P1-3** 10 Hz full-DOM rebuild | **OPEN** | No hash/diff, no hidden-tab skip. `PLAYER_SYNC` still rewrites inventory/banners/requests 10×/s; `COLONY_SYNC` still calls `renderDock()`. |
+| **P1-4** No worker error boundary | **PARTIAL** | Command dispatch is wrapped; `SIM_ERROR` posts to a toast/log; `worker.onerror`/`onmessageerror` added. **`tick()` and `syncWorldToShared` remain outside the boundary**, so a bad material/NaN in loaded state still throws on every interval tick; `LOAD_WORLD` assigns `view` before restore, so a throw can leave new view + old/null world; the UI surfaces a toast but offers no recovery/terminate. |
+| **P1-5** Consume-before-validate | **PARTIAL** | Stimulant now found before deduction and decremented only after `ok`; unknown reagents are rejected before removal. **`FABRICATE` outputs, `EQUIP_TOOL` previous tool, `SKIM` bars, and crisis `itemGain` still ignore `addItemToContainer` failure**; `CHARGE_ITEM` removal is still non-atomic across containers and skips `campCache`. |
+| **P1-6** Fictional SAB fallback | **FIXED (honest hard-fail)** | `crossOriginIsolated && typeof SharedArrayBuffer !== 'undefined'`; badge says "COOP/COEP required"; toast + thrown error. No fallback is implemented, which is acceptable only if every host sets the headers. |
+| **P1-7** Unwired/mock campaign layer | **OPEN** | No campaign state was added; `InfluenceWindow`/`RealmWindow` mock objects and the 11 test-only engine modules are untouched. |
+| **P1-8** 32-vessel ceiling | **FIXED** | Worker rejects at `MAX_VESSELS`; UI disables the add button; `renderReactionsSummary` guards finite/length. `vesselCap` tests the UI render path but **not** the worker rejection. |
+| **P1-9** Gzip bomb | **FIXED (gzip path)** | Stream reader checks the running total before merging. `importBomb` passes, but it would also pass pre-fix (6 MB materializes then throws the same message); the **legacy bare-base64 path is still unbounded**. |
+| **P1-10** Null-slot `REQUEST_SYNC` crash | **OPEN** | The handler at `src/app/workerMessages.ts:250-262` is unchanged: `!slot.active` with `slot === null` still throws at 10 Hz. This is the highest-severity bug in the current tree. |
+| **P2-1** Map CSS mismatch | **FIXED** | TS emits `.map-controls-overlay`/`.map-btn`; `.strategy-canvas-wrapper` added to the wrapper rule. |
+| **P2-3** Mandate keyboard | **FIXED** | Global Space handler excludes `[role="button"], button`; chip gets Enter/Space + `stopPropagation`. |
+| **P2-11** Map listener leak | **FIXED** | One `AbortController` signal on canvas + window listeners; `destroy()` aborts. |
+| **P2-2/4/5/6/7/8/9/10/12, P3-1…7** | **OPEN** | As reported; no changes in `bdd03fa`. |
+
+### 7.2 Regression-Test Review (Does Each New Test Prove the Fix?)
+
+| New/updated suite | Would it fail on `1fee8ba`? | Verdict |
+| :--- | :--- | :--- |
+| `autosaveScheduler.test.ts` | **Yes** — pre-fix writes 0 times | Strong |
+| `saveFidelity.test.ts` | **Yes** — fields absent | Strong for the fields it covers; missing `precipitated`/`moles` |
+| `advanceBudget.test.ts` | **Yes** — pre-fix emits 1,920 | Strong |
+| `workerResilience.test.ts` | **Yes** — pre-fix throws out of `onmessage` | Strong for invalid `INIT`; **missing malformed `LOAD_WORLD`** (the actual P1-4 trigger) |
+| `workerDispatch.test.ts` (updated) | **Yes** — pre-fix throws instead of `SIM_ERROR` | Strong |
+| `vesselCap.test.ts` | **Yes** — pre-fix `renderReactionsSummary` throws at index 33 | Strong for the UI guard; **does not test the worker cap** |
+| `workerConservation.test.ts` | **No** — unknown item with an empty inventory is refused by the pre-fix code too, and neither version posts "Charged" | **Weak / tautological**; must add the item to inventory first |
+| `importBomb.test.ts` | **No** — 6 MB materializes fine and the pre-fix code throws the same 5 MB error after allocation | **Weak**; does not prove streaming-before-materialization |
+
+**Test-suite verdict:** 5 of 8 are genuine regression proofs; 2 are tautological with respect to the defect; 1 is partial. The new suites also miss the three highest-value current-tree risks: null `REQUEST_SYNC` slots, malformed `LOAD_WORLD`, and `FABRICATE`/`EQUIP` item conservation.
+
+### 7.3 New/Remaining Issues Introduced or Left by the Fix
+
+1. **P1-10 is now the top bug.** It fires every tick, is trivially reproducible, and the new tests do not touch it.
+2. **The entrypoint is at ~99.6% of the 200 KB gate** (≈199.25 KB, <1 KB headroom). The fix consumed the last ~2 KB; the next feature will fail `npm run build` (`hints: 'error'`).
+3. **`tick()` is still outside the error boundary.** The `SIM_ERROR` toast covers commands but not the interval; `worker.onerror` fires every 100 ms for a corrupted world.
+4. **`LOAD_WORLD` can leave split state.** `view` is assigned before `restoreWorldFromSave`; a throw leaves the new view attached to the old/null world. The UI reports `SIM_ERROR` but does not reset or terminate.
+5. **`SET_CONDENSER` contains a dead ternary** — `command.targetId >= 0 ? command.vesselId : command.vesselId` (both branches identical). Harmless today, misleading for the next editor.
+6. **Paused inventory changes still do not dirty the autosave signature** — the fix added `seed`, not inventory/colony/vessel digests.
+
+### 7.4 What the Report Got Wrong (Self-Review Corrections)
+
+- **Missed P1-10.** The original report treated the `REQUEST_SYNC` handler as a perf-only path; it actually throws on null slots before reaching `updatePlayerUI()`. The score is corrected from **66 → 64**.
+- **P1-5 stimulant example was overstated.** `administerStimulant` returns `true` for any valid stimulant item and re-doses; the item-loss path requires an item with no `stimulantSpec`, which the UI does not send. The reachable losses are `CHARGE_ITEM` (non-reagent), `FABRICATE` (full containers), and `EQUIP_TOOL` (no free slot).
+- **"Five tests re-implement the worker inline" was wrong.** Four tests do (equip, previous-tool return, eat, treatment).
+- **`importBomb` was assumed to prove the fix; it does not.** It passes pre- and post-fix because 6 MB is not a bomb.
+- **"Not read into scope" was imprecise.** The untracked plan's first 20 lines were read to identify the digest delta; it was not audited or edited.
+- **The "1,920 full rebuilds" phrasing was too strong.** The handler throws on null slots in most states; only when all three slots are occupied does it reach `updatePlayerUI()`. The dispatch flood is real either way.
+
+**Bottom line (current tree):** `bdd03fa` genuinely fixes the P0 and most of the state-loss/perf P1s, with 5 strong regression tests. The current tree is still **HIGH** risk: P1-10 crashes the request handler every tick, P1-3/P2-7 still burn 10 Hz DOM work, P1-7 leaves most of the Civ VII layer fake, and P1-5 still destroys fabricated output and swapped tools. Fix P1-10 first, then finish P1-5, then wire or delete the campaign surface; re-run this audit for a fresh score.
