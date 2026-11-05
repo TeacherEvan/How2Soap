@@ -116,6 +116,8 @@ export const state = {
   realm: null as import('../engine/campaign/realm').RealmState | null,
   patron: null as import('../engine/campaign/patron').PatronState | null,
   ageProgress: null as import('../engine/campaign/ageProgress').AgeProgressState | null,
+  settlements: null as import('../engine/campaign/settlements').SettlementsState | null,
+  blacksmith: null as import('../engine/campaign/blacksmith').BlacksmithState | null,
   crisis: null as CrisisSnapshot | null,
   strategyMap: null as StrategyMapCanvas | null,
   tutorial: null as TutorialController | null,

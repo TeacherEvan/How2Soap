@@ -215,6 +215,7 @@ export const ITEMS: readonly ItemDef[] = [
   { id: 'LEATHER_SCRAP', name: 'Leather Scrap', category: 'material', tier: 1, icon: 'leather', affinity: 'soapwright', desc: 'Offcut from the cutting table; soaks up acid between pile cells.' },
   { id: 'DEER_SINEW', name: 'Animal Sinew Cordage', category: 'material', tier: 1, icon: 'sinew', desc: 'Dried sinew, split and twisted; the thread no awl ever broke.' },
   { id: 'ANIMAL_BONE', name: 'Heavy Femur Bone', category: 'material', tier: 1, icon: 'bone', desc: 'Boar femur, dense as antler; one good awl hides inside it.' },
+  { id: 'LEATHER_TUNIC', name: 'Stitched Leather Tunic', category: 'misc', tier: 2, icon: 'leather', affinity: 'soapwright', desc: 'Tanned hide stitched with sinew; provides warmth, public safety, and fends off ague.' },
 ];
 
 export const ITEM_BY_ID: Readonly<Record<string, ItemDef>> = Object.freeze(
