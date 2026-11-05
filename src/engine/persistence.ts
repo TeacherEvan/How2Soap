@@ -50,6 +50,8 @@ export interface SerializedWorldSave {
   realm?: import('./campaign/realm').RealmState;
   patron?: import('./campaign/patron').PatronState;
   ageProgress?: import('./campaign/ageProgress').AgeProgressState;
+  settlements?: import('./campaign/settlements').SettlementsState;
+  blacksmith?: import('./campaign/blacksmith').BlacksmithState;
 }
 
 export function serializeSave(save: SerializedWorldSave): string {
@@ -96,6 +98,8 @@ export function deserializeSave(json: string): SerializedWorldSave {
     realm: parsed.realm ?? undefined,
     patron: parsed.patron ?? undefined,
     ageProgress: parsed.ageProgress ?? undefined,
+    settlements: parsed.settlements ?? undefined,
+    blacksmith: parsed.blacksmith ?? undefined,
     colony: parsed.colony ? {
       colonists: parsed.colony.colonists ?? [],
       ledger: parsed.colony.ledger ?? [],

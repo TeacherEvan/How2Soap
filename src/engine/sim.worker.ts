@@ -66,6 +66,18 @@ import {
   applyDistributeWeapons,
   type RealmState,
 } from './campaign/realm';
+import {
+  createInitialSettlementsState,
+  foundSettlement,
+  recomputeSettlementYields,
+  type SettlementsState,
+} from './campaign/settlements';
+import {
+  createBlacksmithState,
+  startBatchJob,
+  stepBlacksmith,
+  type BlacksmithState,
+} from './campaign/blacksmith';
 import { restoreColonyFromSave, restoreWorldFromSave } from './worldRestore';
 import {
   createCrisisDirector,
@@ -121,7 +133,10 @@ type Command =
   | { type: 'FULFILL_REQUEST'; slot: number }
   | { type: 'DISTRIBUTE_STIMULANTS'; commodity: 'WILLOW_TEA' | 'MINT_TONIC' | 'NITROUS_TONIC'; crates: number }
   | { type: 'DISTRIBUTE_CLOTHES'; tunics: number }
-  | { type: 'DISTRIBUTE_WEAPONS'; weaponsCount: number };
+  | { type: 'DISTRIBUTE_WEAPONS'; weaponsCount: number }
+  | { type: 'FOUND_SETTLEMENT'; name: string; q: number; r: number }
+  | { type: 'SET_TOWN_FOCUS'; settlementId: string; focus: import('./campaign/settlements').TownFocus }
+  | { type: 'START_BLACKSMITH_BATCH'; recipeId: string; name: string; batchCount: number; turns: number; outputs: Array<{ itemId: string; count: number }> };
 
 interface WorkerCtx {
   postMessage(message: unknown): void;
@@ -151,6 +166,8 @@ let paddock: Paddock | null = null;
 let colony: ColonyState = createInitialColonyState();
 let experiments: ExperimentQueueState = createExperimentQueue();
 let realm: RealmState = createRealmState();
+let settlements: SettlementsState = createInitialSettlementsState();
+let blacksmith: BlacksmithState = createBlacksmithState();
 let view: SharedWorldView | null = null;
 let paused = false;
 let timer: ReturnType<typeof setInterval> | null = null;
@@ -251,6 +268,14 @@ function postCampaignSync(): void {
   ctx.postMessage({
     type: 'REALM_SYNC',
     realm,
+  });
+  ctx.postMessage({
+    type: 'SETTLEMENTS_SYNC',
+    settlements,
+  });
+  ctx.postMessage({
+    type: 'BLACKSMITH_SYNC',
+    blacksmith,
   });
 }
 
@@ -388,6 +413,28 @@ function advance(hours: number): WorldEvent[] {
       if (realmRes.deposalOccurred) {
         events.push({ vesselId: -1, message: `DEPOSAL ENDGAME: Mandate collapsed (${realmRes.deposalOccurred}).` });
       }
+
+      // Step Blacksmith tool wear and batch jobs
+      const smithRes = stepBlacksmith(blacksmith);
+      for (const bJob of smithRes.completedJobs) {
+        events.push({ vesselId: -1, message: `Blacksmith completed: ${bJob.name} (x${bJob.batchCount})` });
+        if (inventory) {
+          for (const out of bJob.outputs) {
+            addItemToContainer(inventory.campCache, {
+              itemId: out.itemId,
+              count: out.count,
+              massKg: out.count * 0.5,
+              label: bJob.name,
+            });
+          }
+        }
+      }
+      if (smithRes.toolDegraded) {
+        events.push({ vesselId: -1, message: `⚠ Tool wear threshold reached. Maintenance required at the Forge.` });
+      }
+
+      // Recompute settlement yields
+      recomputeSettlementYields(settlements);
     }
 
     ctx.postMessage({
@@ -494,6 +541,12 @@ ctx.onmessage = (event: MessageEvent<Command>) => {
       }
       if (save.realm) {
         realm = save.realm;
+      }
+      if (save.settlements) {
+        settlements = save.settlements;
+      }
+      if (save.blacksmith) {
+        blacksmith = save.blacksmith;
       }
 
       syncWorldToShared(world, view);
@@ -1090,6 +1143,35 @@ ctx.onmessage = (event: MessageEvent<Command>) => {
     case 'DISTRIBUTE_WEAPONS': {
       const res = applyDistributeWeapons(realm, command.weaponsCount);
       ctx.postMessage({ type: 'EVENTS', events: [{ vesselId: -1, message: res.message }] });
+      postCampaignSync();
+      break;
+    }
+    case 'FOUND_SETTLEMENT': {
+      const day = 1 + Math.floor((world?.tick ?? 0) / 240);
+      const res = foundSettlement(settlements, { name: command.name, q: command.q, r: command.r, currentDay: day });
+      ctx.postMessage({ type: 'EVENTS', events: [{ vesselId: -1, message: res.message }] });
+      postCampaignSync();
+      break;
+    }
+    case 'SET_TOWN_FOCUS': {
+      const s = settlements.settlements.find((item) => item.id === command.settlementId);
+      if (s) {
+        s.focus = command.focus;
+        recomputeSettlementYields(settlements);
+        ctx.postMessage({ type: 'EVENTS', events: [{ vesselId: -1, message: `${s.name} focus shifted to ${command.focus}.` }] });
+        postCampaignSync();
+      }
+      break;
+    }
+    case 'START_BLACKSMITH_BATCH': {
+      const job = startBatchJob(blacksmith, {
+        recipeId: command.recipeId,
+        name: command.name,
+        batchCount: command.batchCount,
+        turns: command.turns,
+        outputs: command.outputs,
+      });
+      ctx.postMessage({ type: 'EVENTS', events: [{ vesselId: -1, message: `Forging batch: ${job.name} (x${job.batchCount}) queued.` }] });
       postCampaignSync();
       break;
     }

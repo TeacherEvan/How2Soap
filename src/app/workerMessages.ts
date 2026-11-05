@@ -25,6 +25,8 @@ export type WorkerMessage =
   | { type: 'COLONY_SYNC'; colony: any }
   | { type: 'EXPERIMENTS_SYNC'; experiments: any }
   | { type: 'REALM_SYNC'; realm: any }
+  | { type: 'SETTLEMENTS_SYNC'; settlements: any }
+  | { type: 'BLACKSMITH_SYNC'; blacksmith: any }
   | { type: 'TURN_RECAP'; turn: number; events: Array<{ vesselId: number; message: string }>; benchLedger: any[] }
   | { type: 'OBJECTIVE'; kind: 'recipe' | 'eat' | 'treat' | 'harvest' | 'flag'; target: string }
   | {
@@ -153,6 +155,16 @@ export function handleWorkerMessage(data: WorkerMessage, options?: { load?: unkn
   if (data.type === 'REALM_SYNC') {
     state.realm = data.realm;
     updatePlayerUI();
+    return;
+  }
+
+  if (data.type === 'SETTLEMENTS_SYNC') {
+    state.settlements = data.settlements;
+    return;
+  }
+
+  if (data.type === 'BLACKSMITH_SYNC') {
+    state.blacksmith = data.blacksmith;
     return;
   }
 

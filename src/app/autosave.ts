@@ -68,6 +68,8 @@ export function buildSaveSnapshot(): SerializedWorldSave {
     realm: state.realm ?? undefined,
     patron: state.patron ?? undefined,
     ageProgress: state.ageProgress ?? undefined,
+    settlements: state.settlements ?? undefined,
+    blacksmith: state.blacksmith ?? undefined,
   };
 }
 

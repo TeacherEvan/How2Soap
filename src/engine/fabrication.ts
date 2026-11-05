@@ -239,6 +239,21 @@ export const FABRICATION_RECIPES: ReadonlyArray<FabricationRecipe> = [
     description: 'Craft a waterproof 24-slot backpack, unlocking 40kg portable carrying capacity.',
   },
   {
+    id: 'RECIPE_STITCH_LEATHER_TUNIC',
+    name: 'Stitch Leather Tunic',
+    inputs: [
+      { itemId: 'VEGETABLE_TANNED_LEATHER', count: 1, label: 'Vegetable-Tanned Leather' },
+      { itemId: 'DEER_SINEW', count: 1, label: 'Sinew Cordage' },
+    ],
+    outputs: [
+      { itemId: 'LEATHER_TUNIC', count: 1, label: 'Stitched Leather Tunic' },
+    ],
+    requiredToolSlot: 'STITCHING_MEDICAL',
+    energyCostKcal: 25.0,
+    workTicks: 2,
+    description: 'Stitch warm rot-proof leather tunic for the Hearth Cloth program, increasing Public Safety and morale.',
+  },
+  {
     id: 'CARVE_SOAPSTONE_MOLD',
     name: 'Carve Soapstone Ingot & Utensil Mold',
     inputs: [
