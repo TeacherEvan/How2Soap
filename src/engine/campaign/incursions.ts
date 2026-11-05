@@ -76,6 +76,7 @@ export interface ResolveIncursionResult {
   message: string;
   estateDeltas: { crown: number; army: number; public: number };
   casualties: number;
+  settlementCaptured?: boolean;
 }
 
 export function resolveIncursion(
@@ -84,6 +85,7 @@ export function resolveIncursion(
   choice: IncursionDefenseChoice,
   settlementGuardCount: number,
   tradeOnHand: number,
+  isFrontierSettlement = false,
 ): ResolveIncursionResult {
   const inc = state.activeIncursions.find((item) => item.id === incursionId);
   if (!inc) {
@@ -110,6 +112,18 @@ export function resolveIncursion(
           casualties: 0,
         };
       } else {
+        // Incursion v2 (§6.25): Under-defended frontier settlements can be captured
+        if (isFrontierSettlement && inc.strength >= 3 && settlementGuardCount < 2) {
+          state.yieldedCount += 1;
+          return {
+            success: false,
+            settlementCaptured: true,
+            message: `The garrison of ${inc.targetSettlementName} was overrun by ${inc.attackerFaction}! The settlement has fallen under rival occupation. Reclaim objective initiated! Crown -8, Army -10, Public -8.`,
+            estateDeltas: { crown: -8, army: -10, public: -8 },
+            casualties: 3,
+          };
+        }
+
         return {
           success: true,
           message: `The defense wavered against ${inc.attackerFaction}! Although the attackers withdrew, outer stores were breached. Army -2, Public -4.`,

@@ -200,3 +200,58 @@ export function createFirstCommission(patronId: PatronId, currentTurn: number): 
       };
   }
 }
+
+/**
+ * Patron Arc Endings (§6.22 / §6.18.5)
+ * Authors the 5 patron narrative resolution epilogues across Age III conclusion.
+ */
+export interface PatronEndingHook {
+  patronId: PatronId;
+  patronName: string;
+  endingTitle: string;
+  epilogueProse: string;
+  legacyAttribute: 'MILITARY' | 'CULTURE' | 'SCIENCE' | 'ECONOMIC';
+}
+
+export const PATRON_ENDINGS: readonly PatronEndingHook[] = [
+  {
+    patronId: 'odric_vane',
+    patronName: 'Serjeant Odric Vane',
+    endingTitle: 'Marshal of the Western Sward',
+    epilogueProse: 'Odric stands atop the frontier redoubt, leaning upon a bronze-collared spear that never cracked. The Pale marches were pacified not by terror, but by steel that kept its edge through twenty winters.',
+    legacyAttribute: 'MILITARY',
+  },
+  {
+    patronId: 'madame_serafine',
+    patronName: 'Madame Serafine',
+    endingTitle: 'High Chancellor of the Scented Court',
+    epilogueProse: 'Serafine’s barges glide along the capital canals, perfumed with lavender and laurel. The court dresses in cloths cleansed by your alkali; the Wasting is spoken of only in histories.',
+    legacyAttribute: 'CULTURE',
+  },
+  {
+    patronId: 'sister_aurel',
+    patronName: 'Sister Aurel of the Weir',
+    endingTitle: 'Primate of the Healing River',
+    epilogueProse: 'Aurel’s riverside dispensaries stretch from the estuaries to the mountain passes. Every child drinks salicine tea when the winter shivers strike; your name is carved into every clinic threshold.',
+    legacyAttribute: 'SCIENCE',
+  },
+  {
+    patronId: 'forge_clans',
+    patronName: 'The Forge Clans',
+    endingTitle: 'Sovereign of the Ember Road',
+    epilogueProse: 'The blast furnaces never sleep. Deep shafts blast through the granite strata with controlled sulfur-charges, flooding the Realm with bronze, zinc, and golden currency.',
+    legacyAttribute: 'ECONOMIC',
+  },
+  {
+    patronId: 'hedge_witch',
+    patronName: 'The Hedge-Witch',
+    endingTitle: 'The Quiet Saint of the Hedgerows',
+    epilogueProse: 'She left no monument and demanded no tithe. In the deep woods, travelers find dry firewood, clean salt, and medicinal tinctures left in hollow oaks for whoever walks the path.',
+    legacyAttribute: 'CULTURE',
+  },
+];
+
+export function getPatronEnding(patronId: PatronId | null): PatronEndingHook {
+  const ending = PATRON_ENDINGS.find((p) => p.patronId === patronId);
+  return ending ?? PATRON_ENDINGS[4]; // Default to quiet saint
+}

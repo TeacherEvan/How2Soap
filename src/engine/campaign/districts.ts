@@ -60,6 +60,13 @@ export const DISTRICT_BUILDINGS: readonly DistrictBuildingDef[] = [
     yields: { discovery: 3, influence: 1 },
   },
   {
+    id: 'bld_grand_magnum',
+    name: 'The Grand Magnum (T3 Lab)',
+    districtKind: 'ACADEMIC',
+    age: 3,
+    yields: { discovery: 6, renown: 3 },
+  },
+  {
     id: 'bld_scriptorium',
     name: 'Astrolabe Scriptorium',
     districtKind: 'ACADEMIC',

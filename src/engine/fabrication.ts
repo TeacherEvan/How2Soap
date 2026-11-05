@@ -254,6 +254,38 @@ export const FABRICATION_RECIPES: ReadonlyArray<FabricationRecipe> = [
     description: 'Stitch warm rot-proof leather tunic for the Hearth Cloth program, increasing Public Safety and morale.',
   },
   {
+    id: 'RECIPE_BLEND_GUNPOWDER',
+    name: 'Blend Corned Gunpowder',
+    inputs: [
+      { itemId: 'SALTPETER_CRYSTALS', count: 3, label: 'Saltpeter Crystals (KNO3)' },
+      { itemId: 'SULFUR', count: 1, label: 'Powdered Sulfur' },
+      { itemId: 'CHARCOAL', count: 1, label: 'Hardwood Charcoal' },
+    ],
+    outputs: [
+      { itemId: 'GUNPOWDER', count: 1, label: 'Corned Gunpowder' },
+    ],
+    requiredToolSlot: 'PERCUSSION_MINING',
+    energyCostKcal: 30.0,
+    workTicks: 2,
+    description: 'Carefully grind and blend 75:15:10 saltpeter, sulfur, and charcoal into corned gunpowder grains.',
+  },
+  {
+    id: 'RECIPE_CRAFT_TNT_CHARGE',
+    name: 'Form Demo Charge (TNT)',
+    inputs: [
+      { itemId: 'GUNPOWDER', count: 2, label: 'Corned Gunpowder' },
+      { itemId: 'RAW_ADIPOSE_FAT', count: 1, label: 'Adipose Tallow Binder' },
+      { itemId: 'PINE_SHAVINGS', count: 1, label: 'Pine Shavings Binder Fiber' },
+    ],
+    outputs: [
+      { itemId: 'TNT_CHARGE', count: 1, label: 'Miner\'s Demo Charge' },
+    ],
+    requiredToolSlot: 'CUTTING_SKINNING',
+    energyCostKcal: 35.0,
+    workTicks: 3,
+    description: 'Pack gunpowder with fat binder and pine shavings into a stable demolition charge for Deep Mining or breach defense.',
+  },
+  {
     id: 'CARVE_SOAPSTONE_MOLD',
     name: 'Carve Soapstone Ingot & Utensil Mold',
     inputs: [

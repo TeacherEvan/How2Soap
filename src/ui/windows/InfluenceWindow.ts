@@ -1,16 +1,19 @@
 /**
- * Milestone M6: The Influence Window (Key 9)
- * (§6.29)
+ * Milestone M6/M7: The Influence Window (Key 9)
+ * (§6.29, §6.30)
  *
- * Full window with 4 tabs:
+ * Full window with 5 tabs:
  * 1. Stance (Court, Watch, Towns, Guilds, Frontier clans)
  * 2. Independent Powers (4 Powers, Befriend, Levy, Incite, Incorporate)
- * 3. Threats (The Wasting, Pale Raids, Rival Marches)
- * 4. Correspondence (Letters from the 5 named correspondents)
+ * 3. Threats (The Wasting, Pale Raids, Rival Marches, Cave-Ins)
+ * 4. Built Works (Lime-cement, Leather rope, Casein glue, Acids, Wood-composite, Military engines)
+ * 5. Missions & Operatives (5 operatives, 7 verbs, seeded probability triads)
  */
 import { WindowSpec } from '../WindowManager';
 import { InfluenceState, executePowerAction, PowerAction } from '../../engine/campaign/influence';
 import { NAMED_CORRESPONDENTS, CorrespondenceState } from '../../engine/campaign/correspondence';
+import { BUILT_WORKS_DEFS, createInitialBuiltWorks, constructBuiltWork, BuiltWorksState } from '../../engine/campaign/builtWorks';
+import { createInitialMissions, executeMission, MissionsState, MissionVerb } from '../../engine/campaign/missions';
 
 let mockInfluence: InfluenceState = {
   currentInfluencePool: 35,
@@ -200,6 +203,77 @@ function renderCorrespondence(): string {
   `;
 }
 
+let mockBuiltWorks: BuiltWorksState = createInitialBuiltWorks();
+let mockMissions: MissionsState = createInitialMissions();
+
+function renderBuiltWorks(): string {
+  return `
+    <div style="margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center;">
+      <span>Engineering Canon Completed: <strong style="color: #e5b567; font-size: 1.1rem;">${mockBuiltWorks.engineeringCanonCount}</strong></span>
+      <span>Public Health Infrastructure: <strong style="color: #6ed39e;">+${mockBuiltWorks.activeHealthBonusPerTurn}/turn</strong></span>
+    </div>
+    <div class="built-works-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1rem;">
+      ${BUILT_WORKS_DEFS.map((work) => {
+        const isDone = !!mockBuiltWorks.works[work.id];
+        return `
+          <div style="background: rgba(255,255,255,0.03); border: 1px solid ${isDone ? '#6ed39e' : 'rgba(255,255,255,0.1)'}; border-radius: 6px; padding: 1rem;">
+            <div style="display: flex; justify-content: space-between; align-items: baseline;">
+              <strong style="font-size: 1.05rem;">${work.name}</strong>
+              <span style="font-size: 0.75rem; text-transform: uppercase; padding: 2px 6px; background: ${isDone ? 'rgba(110,211,158,0.15)' : 'rgba(255,255,255,0.08)'}; border-radius: 4px; color: ${isDone ? '#6ed39e' : 'var(--muted)'};">
+                ${isDone ? 'Built' : 'Available'}
+              </span>
+            </div>
+            <div style="font-size: 0.8rem; color: #5aa5ff; margin: 0.35rem 0;">Chemistry: ${work.chemistryRecipe}</div>
+            <p style="font-size: 0.85rem; color: var(--muted); margin: 0.4rem 0;">${work.effectDesc}</p>
+            <div style="font-size: 0.8rem; color: #e5b567; margin-bottom: 0.6rem;">Unlocks: ${work.unlocks}</div>
+            ${
+              isDone
+                ? '<div style="font-size: 0.85rem; color: #6ed39e;">✓ Structural work operational across Realm.</div>'
+                : `<button class="btn-surgical btn-construct-work" data-work="${work.id}" style="padding: 4px 12px; font-size: 0.85rem;">Construct Work</button>`
+            }
+          </div>
+        `;
+      }).join('')}
+    </div>
+  `;
+}
+
+function renderMissions(): string {
+  return `
+    <div style="margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center;">
+      <span>Missions Dispatched: <strong style="color: #5aa5ff; font-size: 1.1rem;">${mockMissions.missionsDispatchedCount}</strong></span>
+      <span>Active Operatives: <strong>${mockMissions.operatives.filter((o) => !o.isDismissed).length} / 5</strong></span>
+    </div>
+    <div class="operatives-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1rem;">
+      ${mockMissions.operatives.map((op) => `
+        <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 1rem;">
+          <div style="display: flex; justify-content: space-between; align-items: baseline;">
+            <strong style="font-size: 1.05rem;">${op.name}</strong>
+            <span style="font-size: 0.75rem; text-transform: uppercase; padding: 2px 6px; background: rgba(90,165,255,0.15); border-radius: 4px; color: #5aa5ff;">${op.role}</span>
+          </div>
+          <div style="font-size: 0.85rem; margin: 0.5rem 0; color: var(--muted);">
+            <div>Skill: <strong>${op.primarySkill} (${op.skillValue}/5)</strong> · Wage: <strong>${op.wagePerTurn} Trade/turn</strong></div>
+            <div>Loyalty: <strong>${op.loyalty}%</strong> · Status: <strong>${op.isDismissed ? '<span style="color:#ff5050;">Dismissed</span>' : 'Active'}</strong></div>
+          </div>
+          ${
+            op.isDismissed
+              ? '<div style="font-size: 0.8rem; color: #ff5050;">Operative dismissed for cowardice of profession.</div>'
+              : `
+              <div style="display: flex; gap: 0.4rem; flex-wrap: wrap; margin-top: 0.5rem;">
+                <button class="btn-surgical btn-mission-exec" data-op="${op.id}" data-verb="SCOUT" style="padding: 3px 8px; font-size: 0.75rem;">Scout</button>
+                <button class="btn-surgical btn-mission-exec" data-op="${op.id}" data-verb="STEAL_SCHEMA" style="padding: 3px 8px; font-size: 0.75rem;">Steal Schema</button>
+                <button class="btn-surgical btn-mission-exec" data-op="${op.id}" data-verb="RAISE_LEVY" style="padding: 3px 8px; font-size: 0.75rem;">Raise Levy</button>
+                <button class="btn-surgical btn-mission-exec" data-op="${op.id}" data-verb="DRESS_WOUND" style="padding: 3px 8px; font-size: 0.75rem;">Dress Wound</button>
+                <button class="btn-surgical btn-mission-exec" data-op="${op.id}" data-verb="SILENCE_PAMPHLETIST" style="padding: 3px 8px; font-size: 0.75rem;">Silence Pamphlet</button>
+              </div>
+            `
+          }
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
 export const spec: WindowSpec = {
   id: 'influence',
   title: 'The Influence Window & Foreign Stance',
@@ -212,6 +286,8 @@ export const spec: WindowSpec = {
           <button class="btn-surgical tab-btn active" data-tab="stance" style="padding: 6px 14px;">Stance</button>
           <button class="btn-surgical tab-btn" data-tab="powers" style="padding: 6px 14px;">Independent Powers</button>
           <button class="btn-surgical tab-btn" data-tab="threats" style="padding: 6px 14px;">Threats & Pressure</button>
+          <button class="btn-surgical tab-btn" data-tab="works" style="padding: 6px 14px;">Built Works</button>
+          <button class="btn-surgical tab-btn" data-tab="missions" style="padding: 6px 14px;">Missions & Operatives</button>
           <button class="btn-surgical tab-btn" data-tab="letters" style="padding: 6px 14px;">Correspondence</button>
         </nav>
         <div id="influence-tab-content" style="flex: 1; overflow-y: auto;">
@@ -233,11 +309,59 @@ export const spec: WindowSpec = {
           content.innerHTML = renderPowers();
           attachPowerActions(body);
         } else if (tab === 'threats') content.innerHTML = renderThreats();
-        else if (tab === 'letters') content.innerHTML = renderCorrespondence();
+        else if (tab === 'works') {
+          content.innerHTML = renderBuiltWorks();
+          attachBuiltWorksActions(body);
+        } else if (tab === 'missions') {
+          content.innerHTML = renderMissions();
+          attachMissionActions(body);
+        } else if (tab === 'letters') content.innerHTML = renderCorrespondence();
       });
     });
   },
 };
+
+function attachBuiltWorksActions(body: HTMLElement) {
+  body.querySelectorAll<HTMLButtonElement>('.btn-construct-work').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const workId = btn.dataset.work!;
+      const res = constructBuiltWork(mockBuiltWorks, workId);
+      mockBuiltWorks = res.state;
+      const content = body.querySelector('#influence-tab-content') as HTMLElement;
+      content.innerHTML = renderBuiltWorks();
+      attachBuiltWorksActions(body);
+      const banner = document.createElement('div');
+      banner.style.padding = '8px';
+      banner.style.marginBottom = '8px';
+      banner.style.background = res.ok ? 'rgba(80,200,120,0.15)' : 'rgba(255,80,80,0.15)';
+      banner.style.border = `1px solid ${res.ok ? '#50c878' : '#ff5050'}`;
+      banner.style.borderRadius = '4px';
+      banner.textContent = res.message;
+      content.prepend(banner);
+    });
+  });
+}
+
+function attachMissionActions(body: HTMLElement) {
+  body.querySelectorAll<HTMLButtonElement>('.btn-mission-exec').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const opId = btn.dataset.op!;
+      const verb = btn.dataset.verb! as MissionVerb;
+      const res = executeMission(mockMissions, opId, verb);
+      const content = body.querySelector('#influence-tab-content') as HTMLElement;
+      content.innerHTML = renderMissions();
+      attachMissionActions(body);
+      const banner = document.createElement('div');
+      banner.style.padding = '8px';
+      banner.style.marginBottom = '8px';
+      banner.style.background = res.success ? 'rgba(80,200,120,0.15)' : 'rgba(255,80,80,0.15)';
+      banner.style.border = `1px solid ${res.success ? '#50c878' : '#ff5050'}`;
+      banner.style.borderRadius = '4px';
+      banner.textContent = res.message;
+      content.prepend(banner);
+    });
+  });
+}
 
 function attachPowerActions(body: HTMLElement) {
   body.querySelectorAll<HTMLButtonElement>('.btn-power-action').forEach((btn) => {
