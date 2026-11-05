@@ -113,11 +113,11 @@ export class StrategyMapCanvas {
     this.container.innerHTML = `
       <div class="strategy-canvas-wrapper">
         <canvas class="strategy-canvas" width="800" height="500"></canvas>
-        <div class="map-controls">
-          <button class="map-ctrl-btn" data-action="zoom-in" title="Zoom In (+)">+</button>
-          <button class="map-ctrl-btn" data-action="zoom-out" title="Zoom Out (-)">−</button>
-          <button class="map-ctrl-btn" data-action="center" title="Center Hearth (Space)">⌂</button>
-          <button class="map-ctrl-btn" data-action="toggle-relief" title="Toggle 3D Relief">⛰</button>
+        <div class="map-controls-overlay">
+          <button class="map-btn" data-action="zoom-in" title="Zoom In (+)">+</button>
+          <button class="map-btn" data-action="zoom-out" title="Zoom Out (-)">−</button>
+          <button class="map-btn" data-action="center" title="Center Hearth (Space)">⌂</button>
+          <button class="map-btn" data-action="toggle-relief" title="Toggle 3D Relief">⛰</button>
         </div>
       </div>
       <aside class="strategy-command-dock" aria-label="Strategy Map & Labor Command Dock">
@@ -165,15 +165,22 @@ export class StrategyMapCanvas {
     }
   }
 
+  private abortController: AbortController | null = new AbortController();
+
   public destroy(): void {
     if (this.animFrameId !== null) {
       cancelAnimationFrame(this.animFrameId);
       this.animFrameId = null;
     }
+    if (this.abortController) {
+      this.abortController.abort();
+      this.abortController = null;
+    }
   }
 
   private initEventListeners(): void {
     const { canvas } = this;
+    const signal = this.abortController?.signal;
 
     canvas.addEventListener('mousedown', (e) => {
       this.isDragging = true;
@@ -181,17 +188,17 @@ export class StrategyMapCanvas {
       this.dragStartY = e.clientY;
       this.panStartX = this.viewport.panX;
       this.panStartY = this.viewport.panY;
-    });
+    }, { signal });
 
     window.addEventListener('mousemove', (e) => {
       if (!this.isDragging) return;
       this.viewport.panX = this.panStartX + (e.clientX - this.dragStartX);
       this.viewport.panY = this.panStartY + (e.clientY - this.dragStartY);
-    });
+    }, { signal });
 
     window.addEventListener('mouseup', () => {
       this.isDragging = false;
-    });
+    }, { signal });
 
     canvas.addEventListener('wheel', (e) => {
       e.preventDefault();
@@ -206,16 +213,16 @@ export class StrategyMapCanvas {
       const newScreen = worldToScreen(worldPos.x, worldPos.y, this.viewport);
       this.viewport.panX += cursorX - newScreen.x;
       this.viewport.panY += cursorY - newScreen.y;
-    }, { passive: false });
+    }, { passive: false, signal });
 
     canvas.addEventListener('click', (e) => {
       const rect = canvas.getBoundingClientRect();
       const screenX = e.clientX - rect.left;
       const screenY = e.clientY - rect.top;
       this.handleNodeClick(screenX, screenY);
-    });
+    }, { signal });
 
-    this.container.querySelectorAll<HTMLButtonElement>('.map-ctrl-btn').forEach((btn) => {
+    this.container.querySelectorAll<HTMLButtonElement>('.map-btn, .map-ctrl-btn').forEach((btn) => {
       btn.addEventListener('click', () => {
         const action = btn.dataset.action;
         if (action === 'zoom-in') this.viewport.zoom = Math.min(1.5, this.viewport.zoom * 1.25);

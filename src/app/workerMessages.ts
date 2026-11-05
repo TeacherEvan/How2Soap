@@ -44,6 +44,11 @@ export type WorkerMessage =
   | {
       type: 'REQUEST_SYNC';
       slots: any[];
+    }
+  | {
+      type: 'SIM_ERROR';
+      command?: string;
+      message: string;
     };
 
 function createSeedVessels(): void {
@@ -73,6 +78,13 @@ function createSeedVessels(): void {
 }
 
 export function handleWorkerMessage(data: WorkerMessage, options?: { load?: unknown }): void {
+  if (data.type === 'SIM_ERROR') {
+    showToast(`Simulation Error: ${data.message}`, 'failure');
+    state.log.push(`SIM_ERROR: ${data.message}`);
+    renderLog();
+    return;
+  }
+
   if (data.type === 'READY') {
     if (data.rngSeed !== undefined) {
       state.rngSeed = data.rngSeed;

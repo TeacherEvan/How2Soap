@@ -1,6 +1,6 @@
-import { addHardwoodAsh, addWaterLiters, type VesselMaterialKey } from './chemistry';
+import { addHardwoodAsh, addWaterLiters, type VesselMaterialKey, type VesselState } from './chemistry';
 import { findVessel } from './world';
-import { SharedWorldView, SAB_BYTE_LENGTH } from './memoryLayout';
+import { SharedWorldView, SAB_BYTE_LENGTH, MAX_VESSELS } from './memoryLayout';
 import {
   createWorld,
   createWorldVessel,
@@ -193,6 +193,9 @@ function postVessels(): void {
       capacityL: vessel.capacityL,
       closed: vessel.headspaceClosed,
       label: labels.get(vessel.id) ?? `Vessel ${vessel.id}`,
+      condenserTargetVesselId: vessel.condenserTargetVesselId,
+      appliedVolts: vessel.appliedVolts,
+      cellResistanceOhm: vessel.cellResistanceOhm,
     })),
   });
 }
@@ -376,15 +379,30 @@ function stepSingleTick(activitySeconds: number = SIM_STEP_SECONDS): WorldEvent[
     for (const msg of crisisEvents.autoResolved) {
       events.push({ vesselId: -1, message: msg });
     }
-    postCrisisSync();
+    if (batchDepth === 0) postCrisisSync();
 
     timedRequests.step(world.tick, (expiredReq) => {
       events.push({ vesselId: -1, message: `⌛ Request expired: ${expiredReq.title}` });
     });
-    postRequestSync();
+    if (batchDepth === 0) postRequestSync();
   }
   return events;
 }
+
+let batchDepth = 0;
+
+const CHARGEABLE_REAGENTS: Record<string, (vessel: VesselState, count: number) => void> = {
+  CHARCOAL: (v, count) => { v.moles[SPECIES.CARBON] += count * (50 / 12.011); },
+  LIMESTONE_ROCK: (v, count) => { v.moles[SPECIES.CACO3] += count * (200 / 100.086); },
+  HALITE_SALT: (v, count) => { v.moles[SPECIES.NACL] += count * (50 / 58.44); },
+  RAW_ADIPOSE_FAT: (v, count) => { v.moles[SPECIES.TRISTEARIN] += count * (150 / 891.5); },
+  MALACHITE_ORE: (v, count) => { v.moles[SPECIES.MALACHITE] += count * (100 / 221.12); },
+  CASSITERITE_ORE: (v, count) => { v.moles[SPECIES.CASSITERITE] += count * (100 / 150.71); },
+  SPHALERITE_ORE: (v, count) => { v.moles[SPECIES.SPHALERITE] += count * (100 / 97.47); },
+  PYRITE_ORE: (v, count) => { v.moles[SPECIES.PYRITE] += count * (100 / 119.98); },
+  SALTPETER_CRYSTALS: (v, count) => { v.moles[SPECIES.KNO3] += count * (50 / 101.1); },
+  WILLOW_BARK: (v, count) => { v.moles[SPECIES.SALICIN] += count * (25 / 286.28); },
+};
 
 function advance(hours: number): WorldEvent[] {
   if (!world || !player) return [];
@@ -392,8 +410,15 @@ function advance(hours: number): WorldEvent[] {
   const steps = Math.max(1, Math.round(hours * WORKER_HZ));
   const events: WorldEvent[] = [];
   const startDay = 1 + Math.floor(world.tick / 240);
-  for (let step = 0; step < steps; step += 1) {
-    events.push(...stepSingleTick(SIM_STEP_SECONDS));
+  batchDepth++;
+  try {
+    for (let step = 0; step < steps; step += 1) {
+      events.push(...stepSingleTick(SIM_STEP_SECONDS));
+    }
+  } finally {
+    batchDepth--;
+    postCrisisSync();
+    postRequestSync();
   }
   const endDay = 1 + Math.floor(world.tick / 240);
   const daysAdvanced = Math.max(0, endDay - startDay);
@@ -468,6 +493,19 @@ function tick(): void {
 
 ctx.onmessage = (event: MessageEvent<Command>) => {
   const command = event.data;
+  try {
+    handleCommand(command);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    ctx.postMessage({
+      type: 'SIM_ERROR',
+      command: command?.type,
+      message,
+    });
+  }
+};
+
+function handleCommand(command: Command): void {
   switch (command.type) {
     case 'INIT': {
       if (command.sab.byteLength !== SAB_BYTE_LENGTH) {
@@ -565,6 +603,13 @@ ctx.onmessage = (event: MessageEvent<Command>) => {
     }
     case 'CREATE_VESSEL': {
       if (!world) return;
+      if (world.vessels.length >= MAX_VESSELS) {
+        ctx.postMessage({
+          type: 'EVENTS',
+          events: [{ vesselId: command.id, message: `Cannot create vessel: maximum limit of ${MAX_VESSELS} reached.` }],
+        });
+        break;
+      }
       createWorldVessel(
         world,
         command.id,
@@ -598,8 +643,11 @@ ctx.onmessage = (event: MessageEvent<Command>) => {
       break;
     }
     case 'SET_CONDENSER': {
-      const vessel = world && findVessel(world, command.vesselId);
-      if (vessel) vessel.condenserTargetVesselId = command.targetId;
+      const vessel = world && findVessel(world, command.targetId >= 0 ? command.vesselId : command.vesselId);
+      if (vessel) {
+        vessel.condenserTargetVesselId = command.targetId;
+        postVessels();
+      }
       break;
     }
     case 'SET_VOLTS': {
@@ -609,6 +657,7 @@ ctx.onmessage = (event: MessageEvent<Command>) => {
         if (command.resistanceOhm !== undefined) {
           vessel.cellResistanceOhm = Math.max(0.01, command.resistanceOhm);
         }
+        postVessels();
       }
       break;
     }
@@ -616,6 +665,7 @@ ctx.onmessage = (event: MessageEvent<Command>) => {
       const vessel = world && findVessel(world, command.vesselId);
       if (vessel) {
         vessel.headspaceClosed = command.closed;
+        postVessels();
       }
       break;
     }
@@ -623,6 +673,11 @@ ctx.onmessage = (event: MessageEvent<Command>) => {
       const vessel = world && findVessel(world, command.vesselId);
       if (!vessel || !inventory) break;
       const count = command.count || 1;
+      const chargeFn = CHARGEABLE_REAGENTS[command.itemId];
+      if (!chargeFn) {
+        ctx.postMessage({ type: 'EVENTS', events: [{ vesselId: command.vesselId, message: `${command.itemId} cannot be charged as a chemical reagent.` }] });
+        break;
+      }
       const removed =
         removeItemFromContainer(inventory.backpack, command.itemId, count) ||
         removeItemFromContainer(inventory.bareHands, command.itemId, count);
@@ -631,31 +686,7 @@ ctx.onmessage = (event: MessageEvent<Command>) => {
         break;
       }
 
-      // Convert solid reagent items into corresponding vessel moles
-      if (command.itemId === 'CHARCOAL') {
-        vessel.moles[SPECIES.CARBON] += count * (50 / 12.011); // ~50g C per piece
-      } else if (command.itemId === 'LIMESTONE_ROCK') {
-        vessel.moles[SPECIES.CACO3] += count * (200 / 100.086); // ~200g
-      } else if (command.itemId === 'HALITE_SALT') {
-        vessel.moles[SPECIES.NACL] += count * (50 / 58.44); // ~50g
-      } else if (command.itemId === 'RAW_ADIPOSE_FAT') {
-        vessel.moles[SPECIES.TRISTEARIN] += count * (150 / 891.5); // ~150g
-      } else if (command.itemId === 'MALACHITE_ORE') {
-        vessel.moles[SPECIES.MALACHITE] += count * (100 / 221.12);
-      } else if (command.itemId === 'CASSITERITE_ORE') {
-        vessel.moles[SPECIES.CASSITERITE] += count * (100 / 150.71);
-      } else if (command.itemId === 'SPHALERITE_ORE') {
-        vessel.moles[SPECIES.SPHALERITE] += count * (100 / 97.47);
-      } else if (command.itemId === 'PYRITE_ORE') {
-        vessel.moles[SPECIES.PYRITE] += count * (100 / 119.98);
-      } else if (command.itemId === 'SALTPETER_CRYSTALS') {
-        vessel.moles[SPECIES.KNO3] += count * (50 / 101.1);
-      } else if (command.itemId === 'WILLOW_BARK') {
-        vessel.moles[SPECIES.SALICIN] += count * (25 / 286.28);
-      } else {
-        ctx.postMessage({ type: 'EVENTS', events: [{ vesselId: command.vesselId, message: `Charged ${count}x ${command.itemId}` }] });
-      }
-
+      chargeFn(vessel, count);
       ctx.postMessage({ type: 'EVENTS', events: [{ vesselId: command.vesselId, message: `Charged ${count}x ${command.itemId} into Vessel #${command.vesselId}` }] });
       postPlayerAndInventory();
       break;
@@ -1007,28 +1038,31 @@ ctx.onmessage = (event: MessageEvent<Command>) => {
     case 'ADMINISTER_STIMULANT': {
       const c = colony.colonists.find(col => col.id === command.colonistId);
       if (c && inventory) {
-        // Deduct stimulant item from inventory
-        let removed = false;
+        // Find stimulant in inventory first before removing
+        let foundContainer = null;
+        let foundSlotIndex = -1;
         for (const container of [inventory.bareHands, inventory.backpack, inventory.campCache]) {
           for (let i = 0; i < container.slots.length; i++) {
             const s = container.slots[i];
             if (s && s.itemId === command.stimulantId) {
-              s.count--;
-              if (s.count <= 0) container.slots[i] = null;
-              removed = true;
+              foundContainer = container;
+              foundSlotIndex = i;
               break;
             }
           }
-          if (removed) break;
+          if (foundContainer) break;
         }
 
-        if (!removed) {
+        if (!foundContainer || foundSlotIndex === -1) {
           ctx.postMessage({ type: 'EVENTS', events: [{ vesselId: -1, message: `No ${command.stimulantId} in inventory to administer` }] });
           return;
         }
 
         const ok = administerStimulant(c, command.stimulantId);
         if (ok) {
+          const s = foundContainer.slots[foundSlotIndex]!;
+          s.count--;
+          if (s.count <= 0) foundContainer.slots[foundSlotIndex] = null;
           ctx.postMessage({ type: 'EVENTS', events: [{ vesselId: -1, message: `Administered ${command.stimulantId} to ${c.name}` }] });
         } else {
           ctx.postMessage({ type: 'EVENTS', events: [{ vesselId: -1, message: `Failed to administer stimulant ${command.stimulantId}` }] });
@@ -1198,4 +1232,4 @@ ctx.onmessage = (event: MessageEvent<Command>) => {
     default:
       assertNeverCommand(command);
   }
-};
+}

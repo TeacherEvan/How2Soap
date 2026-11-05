@@ -12,12 +12,15 @@ import type { TutorialController } from '../ui/TutorialController';
 import { initialProgression } from '../engine/progression';
 import type { CrisisSnapshot } from '../engine/crisis';
 
-interface VesselMeta {
+export interface VesselMeta {
   id: number;
   material: string;
   capacityL: number;
   closed: boolean;
   label: string;
+  condenserTargetVesselId?: number;
+  appliedVolts?: number;
+  cellResistanceOhm?: number;
 }
 
 export interface Snapshot {

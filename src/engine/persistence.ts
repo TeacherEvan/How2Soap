@@ -214,12 +214,35 @@ export async function decompressBase64ToSave(base64: string): Promise<Serialized
     const writer = ds.writable.getWriter();
     writer.write(bytes);
     writer.close();
-    const decompressedBuffer = await new Response(ds.readable).arrayBuffer();
+
     const MAX_DECOMPRESSED_BYTES = 5 * 1024 * 1024; // 5 MB safety limit
-    if (decompressedBuffer.byteLength > MAX_DECOMPRESSED_BYTES) {
-      throw new Error(`Decompressed save exceeds 5MB limit (${decompressedBuffer.byteLength} bytes)`);
+    const reader = ds.readable.getReader();
+    const chunks: Uint8Array[] = [];
+    let totalBytes = 0;
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        if (value) {
+          totalBytes += value.byteLength;
+          if (totalBytes > MAX_DECOMPRESSED_BYTES) {
+            throw new Error(`Decompressed save exceeds 5MB limit (${totalBytes} bytes)`);
+          }
+          chunks.push(value);
+        }
+      }
+    } finally {
+      reader.releaseLock();
     }
-    jsonText = new TextDecoder().decode(decompressedBuffer);
+
+    const merged = new Uint8Array(totalBytes);
+    let offset = 0;
+    for (const chunk of chunks) {
+      merged.set(chunk, offset);
+      offset += chunk.byteLength;
+    }
+    jsonText = new TextDecoder().decode(merged);
   } else {
     jsonText = decodeURIComponent(escape(binary));
   }

@@ -1,7 +1,7 @@
 /**
  * Autosave: debounced snapshot writer + flush on tab hide.
  */
-import { MAX_SPECIES } from '../engine/memoryLayout';
+import { MAX_SPECIES, TELEMETRY, FLAG_CLOSED, FLAG_RUPTURED } from '../engine/memoryLayout';
 import { snapshotSignature } from '../engine/saveSignature';
 import type { SerializedWorldSave } from '../engine/persistence';
 import { state } from './state';
@@ -10,6 +10,8 @@ export const AUTO_SAVE_KEY = 'how2soap.save.v3';
 
 let lastSaveSignature = '';
 let autoSaveTimer: number | null = null;
+let lastSaveWriteMs = 0;
+const MIN_AUTOSAVE_INTERVAL_MS = 2000;
 
 export function buildSaveSnapshot(): SerializedWorldSave {
   const rngSeed = state.rngSeed || ((Math.random() * 0xffffffff) >>> 0);
@@ -34,15 +36,49 @@ export function buildSaveSnapshot(): SerializedWorldSave {
     inventory: state.inventory,
     vessels: state.vessels.map((v, i) => {
       let moles: number[] = [];
-      if (state.snapshot && state.snapshot.moles) {
-        moles = Array.from(state.snapshot.moles.slice(i * MAX_SPECIES, (i + 1) * MAX_SPECIES));
+      let temperatureK = state.player.ambientTempK ?? 288.15;
+      let pressureKPa = 101.325;
+      let heaterWatts = 0;
+      let ruptured = false;
+      let headspaceClosed = v.closed;
+
+      if (state.snapshot) {
+        if (state.snapshot.moles) {
+          moles = Array.from(state.snapshot.moles.slice(i * MAX_SPECIES, (i + 1) * MAX_SPECIES));
+        }
+        if (state.snapshot.telemetry) {
+          const base = i * 8;
+          const t = state.snapshot.telemetry[base + TELEMETRY.TEMP_K];
+          if (Number.isFinite(t) && t > 0) temperatureK = t;
+
+          const p = state.snapshot.telemetry[base + TELEMETRY.PRESSURE_KPA];
+          if (Number.isFinite(p) && p > 0) pressureKPa = p;
+
+          const hw = state.snapshot.telemetry[base + TELEMETRY.HEATER_W];
+          if (Number.isFinite(hw) && hw >= 0) heaterWatts = hw;
+
+          const flags = state.snapshot.telemetry[base + TELEMETRY.FLAGS];
+          if (Number.isFinite(flags)) {
+            const f = flags | 0;
+            headspaceClosed = (f & FLAG_CLOSED) !== 0;
+            ruptured = (f & FLAG_RUPTURED) !== 0;
+          }
+        }
       }
       return {
         id: v.id,
         material: v.material,
         capacityL: v.capacityL,
-        closed: v.closed,
+        headspaceClosed,
+        closed: headspaceClosed, // Legacy compatibility
         label: v.label,
+        temperatureK,
+        pressureKPa,
+        heaterWatts,
+        condenserTargetVesselId: v.condenserTargetVesselId ?? -1,
+        ruptured,
+        appliedVolts: v.appliedVolts ?? 0,
+        cellResistanceOhm: v.cellResistanceOhm ?? 2.0,
         moles,
         precipitated: [], // precipitated cloudiness resets on Continue; harmlessly re-settles
       };
@@ -77,25 +113,29 @@ export function requestAutoSave(): void {
   const currentSig = snapshotSignature({
     tick: state.snapshot?.tick ?? 0,
     glucose: state.player?.glucoseKcal ?? 0,
-    seed: 0,
+    seed: state.rngSeed ?? 0,
     day: state.player?.day ?? 1,
   });
 
   if (currentSig === lastSaveSignature) return;
 
-  if (autoSaveTimer !== null) {
-    window.clearTimeout(autoSaveTimer);
-  }
+  // Leading-edge throttle + max-wait: if an autosave timer is already armed, do NOT clear/re-arm it!
+  if (autoSaveTimer !== null) return;
+
+  const elapsed = Date.now() - lastSaveWriteMs;
+  const delay = Math.max(0, MIN_AUTOSAVE_INTERVAL_MS - elapsed);
 
   autoSaveTimer = window.setTimeout(() => {
+    autoSaveTimer = null;
     try {
       const snap = buildSaveSnapshot();
       localStorage.setItem(AUTO_SAVE_KEY, JSON.stringify(snap));
       lastSaveSignature = currentSig;
+      lastSaveWriteMs = Date.now();
     } catch {
       // Storage quota or private browsing limitation
     }
-  }, 2000);
+  }, delay);
 }
 
 /** Flush a save immediately when the tab is hidden (PWA/Alt-Tab survival). */

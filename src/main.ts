@@ -95,15 +95,26 @@ function startWorld(options?: { load?: SerializedWorldSave }): void {
     state.worker = null;
   }
 
-  const isIsolated = window.crossOriginIsolated;
-  isoBadge.textContent = isIsolated ? 'Isolated (SAB active)' : 'Fallback (simulated SAB)';
+  const isIsolated = window.crossOriginIsolated && typeof SharedArrayBuffer !== 'undefined';
+  isoBadge.textContent = isIsolated ? 'Isolated (SAB active)' : 'Unisolated (COOP/COEP required)';
   isoBadge.classList.toggle('good', isIsolated);
   isoBadge.classList.toggle('warn', !isIsolated);
+
+  if (!isIsolated) {
+    showToast('Cross-Origin Isolation (COOP/COEP) required for SharedArrayBuffer simulation.', 'failure');
+    throw new Error('Simulation halted: SharedArrayBuffer unavailable without Cross-Origin Isolation headers.');
+  }
 
   const sab = new SharedArrayBuffer(SAB_BYTE_LENGTH);
   state.view = new SharedWorldView(sab);
 
   state.worker = new Worker(new URL('./engine/sim.worker.ts', import.meta.url));
+  state.worker.onerror = (err) => {
+    showToast(`Worker Fatal Error: ${err.message || 'Worker failure'}`, 'failure');
+  };
+  state.worker.onmessageerror = () => {
+    showToast('Worker serialization error encountered.', 'failure');
+  };
   state.worker.onmessage = (event: MessageEvent<WorkerMessage>) =>
     handleWorkerMessage(event.data, options);
 
@@ -250,7 +261,7 @@ function bindActions(): void {
   }
 
   document.addEventListener('keydown', (e) => {
-    if (e.target && (e.target as HTMLElement).closest('input, select, textarea, [contenteditable="true"]')) return;
+    if (e.target && (e.target as HTMLElement).closest('input, select, textarea, [contenteditable="true"], [role="button"], button')) return;
     if (e.code === 'Space' && !e.ctrlKey && !e.metaKey && !e.altKey) {
       e.preventDefault();
       triggerEndTurn(24);
@@ -261,6 +272,13 @@ function bindActions(): void {
   if (mandateChip) {
     mandateChip.addEventListener('click', () => {
       void openWindowById('realm');
+    });
+    mandateChip.addEventListener('keydown', (e) => {
+      if (e.code === 'Space' || e.code === 'Enter') {
+        e.preventDefault();
+        e.stopPropagation();
+        void openWindowById('realm');
+      }
     });
   }
   $('reset').addEventListener('click', () => {

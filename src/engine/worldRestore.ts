@@ -9,20 +9,38 @@ export function restoreWorldFromSave(save: SerializedWorldSave, labels?: Map<num
   world.tick = save.tick ?? 0;
   world.simSeconds = (save.tick ?? 0) * 360; // consistent with SIM_STEP_SECONDS
   for (const raw of (save.vessels as any[]) ?? []) {
+    if (!raw) continue;
+    const isClosed = raw.headspaceClosed !== undefined ? !!raw.headspaceClosed : !!raw.closed;
+    const tempK = typeof raw.temperatureK === 'number' && Number.isFinite(raw.temperatureK) && raw.temperatureK > 0
+      ? raw.temperatureK
+      : (save.ambientTempK ?? 288.15);
+    const pressure = typeof raw.pressureKPa === 'number' && Number.isFinite(raw.pressureKPa) && raw.pressureKPa > 0
+      ? raw.pressureKPa
+      : 101.325;
+    const heater = typeof raw.heaterWatts === 'number' && Number.isFinite(raw.heaterWatts) && raw.heaterWatts >= 0
+      ? raw.heaterWatts
+      : 0;
+    const volts = typeof raw.appliedVolts === 'number' && Number.isFinite(raw.appliedVolts) && raw.appliedVolts >= 0
+      ? raw.appliedVolts
+      : 0;
+    const resistance = typeof raw.cellResistanceOhm === 'number' && Number.isFinite(raw.cellResistanceOhm) && raw.cellResistanceOhm > 0
+      ? raw.cellResistanceOhm
+      : 2;
+
     world.vessels.push({
       id: raw.id,
       material: raw.material as VesselMaterialKey,
       capacityL: raw.capacityL,
-      headspaceClosed: !!raw.headspaceClosed,
-      temperatureK: raw.temperatureK ?? (save.ambientTempK ?? 288.15),
+      headspaceClosed: isClosed,
+      temperatureK: tempK,
       moles: new Float64Array(raw.moles ?? []),
       precipitated: new Float64Array(raw.precipitated ?? []),
-      heaterWatts: raw.heaterWatts ?? 0,
-      condenserTargetVesselId: raw.condenserTargetVesselId ?? -1,
-      pressureKPa: raw.pressureKPa ?? 101.325,
+      heaterWatts: heater,
+      condenserTargetVesselId: typeof raw.condenserTargetVesselId === 'number' ? raw.condenserTargetVesselId : -1,
+      pressureKPa: pressure,
       ruptured: !!raw.ruptured,
-      appliedVolts: raw.appliedVolts ?? 0,
-      cellResistanceOhm: raw.cellResistanceOhm ?? 0,
+      appliedVolts: volts,
+      cellResistanceOhm: resistance,
     });
     if (labels && raw.label) {
       labels.set(raw.id, raw.label);

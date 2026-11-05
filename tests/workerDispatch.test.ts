@@ -52,9 +52,10 @@ describe('sim.worker.ts command dispatch', () => {
     expect(posted.some((m) => m.type === 'COLONY_SYNC')).toBe(true);
   });
 
-  it('INIT with a corrupt SharedArrayBuffer throws instead of corrupting state', async () => {
-    const { send } = await bootWorker();
-    expect(() => send({ type: 'INIT', sab: new SharedArrayBuffer(16) })).toThrow(/Bad SAB size/);
+  it('INIT with a corrupt SharedArrayBuffer posts SIM_ERROR instead of corrupting state', async () => {
+    const { posted, send } = await bootWorker();
+    send({ type: 'INIT', sab: new SharedArrayBuffer(16) });
+    expect(posted.some((m) => m.type === 'SIM_ERROR' && m.message.includes('Bad SAB size'))).toBe(true);
   });
 
   it('CREATE_VESSEL then CHARGE_ITEM reports missing inventory item honestly', async () => {

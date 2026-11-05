@@ -43,10 +43,15 @@ export function renderVessels(): void {
   const addBucket = document.createElement('button');
   addBucket.className = 'add-vessel';
   addBucket.textContent = '+ Wooden bucket (5 L)';
-  addBucket.addEventListener('click', () => {
-    const id = nextVesselId();
-    send({ type: 'CREATE_VESSEL', id, material: 'WOOD', capacityL: 5, label: 'Wooden Bucket' });
-  });
+  if (state.vessels.length >= 32) {
+    addBucket.disabled = true;
+    addBucket.title = 'Vessel limit reached (max 32 vessels)';
+  } else {
+    addBucket.addEventListener('click', () => {
+      const id = nextVesselId();
+      send({ type: 'CREATE_VESSEL', id, material: 'WOOD', capacityL: 5, label: 'Wooden Bucket' });
+    });
+  }
   vesselList.append(addBucket);
 }
 
@@ -93,17 +98,17 @@ export function renderReactionsSummary(snapshot: Snapshot): void {
   }
   const index = selectedIndex();
   const base = index * 8;
-  const temperatureK = snapshot.telemetry[base + TELEMETRY.TEMP_K];
-  const ph = snapshot.telemetry[base + TELEMETRY.PH];
-  const pressure = snapshot.telemetry[base + TELEMETRY.PRESSURE_KPA];
-  const volume = snapshot.telemetry[base + TELEMETRY.VOLUME_L];
+  const temperatureK = base < snapshot.telemetry.length ? snapshot.telemetry[base + TELEMETRY.TEMP_K] : undefined;
+  const ph = base < snapshot.telemetry.length ? snapshot.telemetry[base + TELEMETRY.PH] : undefined;
+  const pressure = base < snapshot.telemetry.length ? snapshot.telemetry[base + TELEMETRY.PRESSURE_KPA] : undefined;
+  const volume = base < snapshot.telemetry.length ? snapshot.telemetry[base + TELEMETRY.VOLUME_L] : undefined;
 
   vesselTitle.textContent = vessel.label;
   vesselSub.textContent = `${MATERIAL_LABEL[vessel.material] ?? vessel.material} · ${vessel.closed ? 'closed headspace' : 'open'}`;
-  rsTemp.textContent = `${temperatureK.toFixed(1)} K`;
-  rsPh.textContent = volume > 0.01 ? ph.toFixed(2) : '—';
-  rsPressure.textContent = `${pressure.toFixed(0)} kPa`;
-  rsVolume.textContent = `${volume.toFixed(2)} L`;
+  rsTemp.textContent = typeof temperatureK === 'number' && Number.isFinite(temperatureK) ? `${temperatureK.toFixed(1)} K` : '—';
+  rsPh.textContent = typeof ph === 'number' && Number.isFinite(ph) && (volume ?? 0) > 0.01 ? ph.toFixed(2) : '—';
+  rsPressure.textContent = typeof pressure === 'number' && Number.isFinite(pressure) ? `${pressure.toFixed(0)} kPa` : '—';
+  rsVolume.textContent = typeof volume === 'number' && Number.isFinite(volume) ? `${volume.toFixed(2)} L` : '—';
 }
 
 export function renderQuest(snapshot: Snapshot): void {
