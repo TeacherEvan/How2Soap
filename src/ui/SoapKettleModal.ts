@@ -1,3 +1,4 @@
+import './soapKettle.css';
 import { SoapKettleMiniGame, type KettleBatchResult } from './SoapKettleMiniGame';
 
 export function mountSoapKettleModal(

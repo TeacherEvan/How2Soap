@@ -22,6 +22,7 @@ const WINDOWS: Launchable[] = [
 export async function openWindowById(id: string): Promise<boolean> {
   const entry = WINDOWS.find((w) => w.id === id);
   if (!entry) return false;
+  await import('../ui/windows/windows.css');
   const mod = await entry.load();
   WindowManager.open(mod.spec);
   return true;

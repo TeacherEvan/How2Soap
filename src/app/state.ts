@@ -75,6 +75,7 @@ export const state = {
   log: [] as string[],
   paused: false,
   deathModalShown: false,
+  rngSeed: 0,
   player: {
     glucoseKcal: 1200,
     adiposeKcal: 15000,

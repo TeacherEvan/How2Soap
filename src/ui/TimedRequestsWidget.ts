@@ -64,7 +64,7 @@ export function renderTimedRequestsWidget(
                 </div>
               </div>
               <div class="req-progress-bar-wrap">
-                <div class="req-progress-fill" style="width: ${pct}%; background: ${barColor};"></div>
+                <div class="req-progress-fill" style="transform: scaleX(${Math.max(0, Math.min(1, pct / 100))}); background: ${barColor};"></div>
               </div>
               <div class="req-actions-row">
                 <span class="req-timer-text">${remaining}s remaining</span>

@@ -45,6 +45,7 @@ export interface SerializedWorldSave {
   epilogueSeen: boolean;
   colony?: SerializedColonyState;
   paddock?: any;
+  timedRequests?: any[];
 }
 
 export function serializeSave(save: SerializedWorldSave): string {
@@ -86,6 +87,7 @@ export function deserializeSave(json: string): SerializedWorldSave {
     objectivesDone: parsed.objectivesDone ?? [],
     lettersDone: parsed.lettersDone ?? [],
     epilogueSeen: parsed.epilogueSeen ?? false,
+    timedRequests: Array.isArray(parsed.timedRequests) ? parsed.timedRequests : undefined,
     colony: parsed.colony ? {
       colonists: parsed.colony.colonists ?? [],
       ledger: parsed.colony.ledger ?? [],

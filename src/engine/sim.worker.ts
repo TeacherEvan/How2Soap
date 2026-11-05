@@ -53,7 +53,7 @@ import {
   type ColonistArchetype,
   type WageContract,
 } from './colony';
-import { restoreColonyFromSave } from './worldRestore';
+import { restoreColonyFromSave, restoreWorldFromSave } from './worldRestore';
 import {
   createCrisisDirector,
   type CrisisContext,
@@ -371,7 +371,7 @@ ctx.onmessage = (event: MessageEvent<Command>) => {
 
       syncWorldToShared(world, view);
       if (timer === null) timer = setInterval(tick, 1000 / WORKER_HZ);
-      ctx.postMessage({ type: 'READY' });
+      ctx.postMessage({ type: 'READY', rngSeed });
       postPlayerAndInventory();
       postColonySync();
       postCrisisSync();
@@ -380,29 +380,7 @@ ctx.onmessage = (event: MessageEvent<Command>) => {
     case 'LOAD_WORLD': {
       const save = command.save;
       view = new SharedWorldView(command.sab);
-      world = createWorld(save.ambientTempK ?? 288.15);
-      world.tick = save.tick ?? 0;
-      world.simSeconds = (save.tick ?? 0) * SIM_STEP_SECONDS;
-      for (const raw of (save.vessels as any[]) ?? []) {
-        world.vessels.push({
-          id: raw.id,
-          material: raw.material,
-          capacityL: raw.capacityL,
-          headspaceClosed: !!raw.headspaceClosed,
-          temperatureK: raw.temperatureK ?? (save.ambientTempK ?? 288.15),
-          moles: new Float64Array(raw.moles ?? []),
-          precipitated: new Float64Array(raw.precipitated ?? []),
-          heaterWatts: raw.heaterWatts ?? 0,
-          condenserTargetVesselId: raw.condenserTargetVesselId ?? -1,
-          pressureKPa: raw.pressureKPa ?? 101.325,
-          ruptured: !!raw.ruptured,
-          appliedVolts: raw.appliedVolts ?? 0,
-          cellResistanceOhm: raw.cellResistanceOhm ?? 0,
-        });
-        if (raw.label) {
-          labels.set(raw.id, raw.label);
-        }
-      }
+      world = restoreWorldFromSave(save, labels);
       player = createPlayerMetabolism(save.player?.clothingIclo ?? 0.05);
       Object.assign(player, save.player);
       if (save.inventory && (save.inventory as any).bareHands && Array.isArray((save.inventory as any).bareHands.slots)) {
@@ -445,10 +423,13 @@ ctx.onmessage = (event: MessageEvent<Command>) => {
       crisis.reset(rngSeed, save.tick ?? 0);
       paddock = save.paddock ?? createPaddock();
       colony = restoreColonyFromSave(save);
+      if (Array.isArray(save.timedRequests)) {
+        timedRequests.restore(save.timedRequests);
+      }
 
       syncWorldToShared(world, view);
       if (timer === null) timer = setInterval(tick, 1000 / WORKER_HZ);
-      ctx.postMessage({ type: 'READY' });
+      ctx.postMessage({ type: 'READY', rngSeed });
       postVessels();
       postPlayerAndInventory();
       postColonySync();

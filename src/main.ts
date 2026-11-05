@@ -265,7 +265,7 @@ function bootFlow(): void {
   });
   requestAnimationFrame(frame);
 
-  const existingSave = localStorage.getItem(AUTO_SAVE_KEY);
+  const existingSave = localStorage.getItem(AUTO_SAVE_KEY) || localStorage.getItem('how2soap.save.v2');
   if (existingSave) {
     try {
       const raw = JSON.parse(existingSave);
@@ -294,6 +294,7 @@ function bootFlow(): void {
           },
           onNewWorld: () => {
             localStorage.removeItem(AUTO_SAVE_KEY);
+            localStorage.removeItem('how2soap.save.v2');
             state.progression = initialProgression();
             StoryMode.prologue(() => {
               startWorld();

@@ -4,7 +4,7 @@
  * Navigations use network-first so deploys roll out immediately;
  * the cached shell keeps the game fully playable offline.
  */
-const VERSION = 'how2soap-v1';
+const VERSION = 'how2soap-v2';
 const SHELL = ['/', '/index.html', '/favicon.svg', '/manifest.webmanifest'];
 
 self.addEventListener('install', (event) => {

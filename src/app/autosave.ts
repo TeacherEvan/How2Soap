@@ -6,15 +6,15 @@ import { snapshotSignature } from '../engine/saveSignature';
 import type { SerializedWorldSave } from '../engine/persistence';
 import { state } from './state';
 
-export const AUTO_SAVE_KEY = 'how2soap.save.v2';
+export const AUTO_SAVE_KEY = 'how2soap.save.v3';
 
 let lastSaveSignature = '';
 let autoSaveTimer: number | null = null;
 
 export function buildSaveSnapshot(): SerializedWorldSave {
-  const rngSeed = (Math.random() * 0xffffffff) >>> 0;
+  const rngSeed = state.rngSeed || ((Math.random() * 0xffffffff) >>> 0);
   return {
-    version: 2,
+    version: 3,
     timestamp: Date.now(),
     tick: state.snapshot ? state.snapshot.tick : 0,
     day: state.player.day ?? 1,
@@ -55,6 +55,15 @@ export function buildSaveSnapshot(): SerializedWorldSave {
     objectivesDone: state.progression.objectivesDone ?? [],
     lettersDone: state.progression.lettersDone ?? [],
     epilogueSeen: false,
+    colony: state.colony ? {
+      colonists: state.colony.colonists ?? [],
+      ledger: state.colony.ledger ?? [],
+      desirePathGrid: Array.from(state.colony.desirePathGrid ?? []),
+      nextColonistId: state.colony.nextColonistId ?? 1,
+      lastDecayTick: state.colony.lastDecayTick,
+    } : undefined,
+    paddock: state.paddock,
+    timedRequests: state.timedRequests,
   };
 }
 

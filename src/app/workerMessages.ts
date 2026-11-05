@@ -18,7 +18,7 @@ import { updatePlayerUI, updatePaddockUI } from './panels';
 import { requestAutoSave, AUTO_SAVE_KEY } from './autosave';
 
 export type WorkerMessage =
-  | { type: 'READY' }
+  | { type: 'READY'; rngSeed?: number }
   | { type: 'VESSELS'; vessels: typeof state.vessels }
   | { type: 'EVENTS'; events: Array<{ vesselId: number; message: string }> }
   | { type: 'PLAYER_SYNC'; player: any; inventory: any & { items?: Array<{ id: string; count: number; massKg: number }> }; paddock?: any }
@@ -69,6 +69,9 @@ function createSeedVessels(): void {
 
 export function handleWorkerMessage(data: WorkerMessage, options?: { load?: unknown }): void {
   if (data.type === 'READY') {
+    if (data.rngSeed !== undefined) {
+      state.rngSeed = data.rngSeed;
+    }
     // LOAD_WORLD also emits READY — only seed fresh worlds.
     if (!options?.load) {
       createSeedVessels();
@@ -122,6 +125,7 @@ export function handleWorkerMessage(data: WorkerMessage, options?: { load?: unkn
       state.deathModalShown = true;
       StoryMode.death('sepsis', { days: state.player.day ?? 1, renown: state.progression.renown }, () => {
         localStorage.removeItem(AUTO_SAVE_KEY);
+        localStorage.removeItem('how2soap.save.v2');
         location.reload();
       });
     }
@@ -234,6 +238,7 @@ export function handleWorkerMessage(data: WorkerMessage, options?: { load?: unkn
               onFreeCraft: () => {},
               onNewWorld: () => {
                 localStorage.removeItem(AUTO_SAVE_KEY);
+        localStorage.removeItem('how2soap.save.v2');
                 location.reload();
               },
             },
