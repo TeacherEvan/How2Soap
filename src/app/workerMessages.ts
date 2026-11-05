@@ -7,7 +7,7 @@ import { applyProgressEventsWithSensor, levelFromRenown, type ObjectiveSensor } 
 import { CHAPTERS } from '../data/story';
 import { StoryMode } from '../ui/StoryMode';
 import { showToast } from '../ui/Toast';
-import { mountJournal } from '../ui/JournalPanel';
+// JournalPanel is dynamically imported for code-splitting
 import { audio } from '../ui/audio';
 import { state, speciesMoles, send } from './state';
 import { tabJournal } from './dom';
@@ -216,6 +216,13 @@ export function handleWorkerMessage(data: WorkerMessage, options?: { load?: unkn
 
   if (data.type === 'LEDGER_SYNC') {
     state.ledger = data.ledger;
+    // Lazy-load JournalPanel if journal is open
+    if (state.activeTab === 'JOURNAL' || document.querySelector('.journal')) {
+      import('../ui/JournalPanel').then(({ mountJournal: mj }) => {
+        const tabJournal = document.getElementById('tab-journal');
+        if (tabJournal) mj(tabJournal, state.progression);
+      });
+    }
     return;
   }
 
@@ -343,6 +350,8 @@ export function handleWorkerMessage(data: WorkerMessage, options?: { load?: unkn
   }
 
   if (state.activeTab === 'JOURNAL') {
-    mountJournal(tabJournal, state.progression);
+    import('../ui/JournalPanel').then(({ mountJournal: mj }) => {
+      mj(tabJournal, state.progression);
+    });
   }
 }

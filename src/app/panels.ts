@@ -9,7 +9,7 @@ import {
   renderPaddockTab,
   type WorkbenchTab,
 } from '../ui/WorkbenchCanvas';
-import { mountJournal } from '../ui/JournalPanel';
+// JournalPanel is dynamically imported for code-splitting
 import { bannerModel, treatmentModel } from '../ui/panelModels';
 import { levelFromRenown } from '../engine/progression';
 import { calculateHarvestTotalCostKcal, type HarvestablePart, type BiomeSpeciesNode } from '../data/biomeNodes';
@@ -116,7 +116,10 @@ export function switchTab(tab: WorkbenchTab): void {
       }
       state.strategyMap?.resizeCanvas();
     } else if (tab === 'JOURNAL') {
-      mountJournal(tabJournal, state.progression);
+      // Lazy-load JournalPanel for code-splitting
+      import('../ui/JournalPanel').then(({ mountJournal }) => {
+        mountJournal(tabJournal, state.progression);
+      });
     }
   };
 

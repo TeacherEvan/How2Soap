@@ -136,7 +136,7 @@ export function rotateSlots(state: LedgerState, rngSeedOverride?: number): void 
 
 export function fulfillSlot(state: LedgerState, slotId: string): boolean {
   const slot = state.slots.find(s => s.id === slotId);
-  if (!slot || slot.status !== 'available' && slot.status !== 'accepted') return false;
+  if (!slot || slot.status !== 'accepted') return false;
   slot.status = 'fulfilled';
   return true;
 }

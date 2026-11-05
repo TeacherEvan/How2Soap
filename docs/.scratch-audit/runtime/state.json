@@ -1,6 +1,6 @@
 {
   "state": "IMPLEMENT",
-  "reason": "ES-1 complete, ES-2 Crown's Ledger v1 implemented (ledger.ts, worker integration, Dispatcher's Desk tab). ES-3 pending. All 331 tests pass, TSC clean. Entrypoint 206 KiB (11 KiB over 195 KiB webpack limit — expected for ES-2 major feature).",
+  "reason": "ES-1 complete, ES-2 Crown's Ledger v1 complete with lazy-loaded JournalPanel (193 KiB entrypoint). All 346 tests pass, TSC clean. ES-2 determinism tests pass. ES-3 pending.",
   "attempt": 1,
-  "updated_at": "2026-11-06T01:15:00Z"
+  "updated_at": "2026-11-06T01:45:00Z"
 }

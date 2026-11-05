@@ -18,8 +18,8 @@
 - [x] **OBJ-M05-006**: Revive `src/engine/mandates.ts` as `src/engine/campaign/ledger.ts` — `LedgerSlot` type (id, family: 'craft'|'care'|'civic', text, deadlineDay, rewardRenown, rewardAffinity, status), `LedgerState` (day, slots[3], streak, bestStreak), `createInitialLedger`, `stepLedgerDay`, `rotateSlots`, `fulfillSlot`.
 - [x] **OBJ-M05-007**: Wire ledger into `sim.worker.ts` — `ADVANCE` command calls `stepLedgerDay` on day rollover; new message `LEDGER_SYNC` posts ledger state to UI.
 - [x] **OBJ-M05-008**: Add "Dispatcher's Desk" tab to `JournalPanel.ts` — renders 3 rotating slots, family badge, deadline, reward, accept/fulfill buttons; streak display; "Day Well Spent" event on all-three completion (+6 morale all colonists, recap line).
-- [ ] **OBJ-M05-009**: Seed determinism: ledger RNG from worker's seeded RNG; 2-seed replay produces byte-identical ledger state; save round-trip clean in v2 (pre-M1 migration proof).
-- [ ] **OBJ-M05-010**: Unit tests for ledger rotation, fulfillment, streak, determinism replay.
+- [x] **OBJ-M05-009**: Seed determinism: ledger RNG from worker's seeded RNG; 2-seed replay produces byte-identical ledger state; save round-trip clean in v2 (pre-M1 migration proof).
+- [x] **OBJ-M05-010**: Unit tests for ledger rotation, fulfillment, streak, determinism replay.
 
 ## ES-3 — Colony ↔ Chemistry Coupling (behind `featureFlags.colonyChemistryLink`)
 
@@ -34,9 +34,9 @@
 
 ## M0.5 Gate (All Must Pass)
 
-- [x] **OBJ-M05-016**: `npx vitest run` green (all existing + new tests) — 331 tests pass
+- [x] **OBJ-M05-016**: `npx vitest run` green (all existing + new tests) — 346 tests pass
 - [x] **OBJ-M05-017**: `npx tsc --noEmit` 0 errors
-- [~] **OBJ-M05-018**: `npm run build` entrypoint ≤ 200,000 bytes (ES-1: 196 KiB; ES-2: 206 KiB — over budget, expected for major feature)
+- [x] **OBJ-M05-018**: `npm run build` entrypoint ≤ 200,000 bytes (193 KiB — under budget)
 - [ ] **OBJ-M05-019**: CI lint HIGH = 0
 - [ ] **OBJ-M05-020**: Offline reload smoke test; SW unchanged (no shell assets change → no cache bump)
 - [x] **OBJ-M05-021**: Determinism verification: 2-seed replay × ES-1, ES-2, ES-3 flag off = byte-identical behavior to M0
