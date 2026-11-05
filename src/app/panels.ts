@@ -193,6 +193,29 @@ export function updatePlayerUI(): void {
     ringRenownFg.style.strokeDashoffset = `${offset}`;
   }
 
+  // Update Realm Strip Chips
+  if (state.realm) {
+    const healthEl = document.getElementById('val-health');
+    const safetyEl = document.getElementById('val-safety');
+    const vigorEl = document.getElementById('val-vigor');
+    const mandateEl = document.getElementById('val-mandate');
+    const hudHealth = document.getElementById('hud-health');
+    const hudSafety = document.getElementById('hud-safety');
+    const hudVigor = document.getElementById('hud-vigor');
+    const hudMandate = document.getElementById('hud-mandate');
+
+    if (healthEl) healthEl.textContent = `${state.realm.health}%`;
+    if (safetyEl) safetyEl.textContent = `${state.realm.safety}%`;
+    if (vigorEl) vigorEl.textContent = `${state.realm.vigor}%`;
+    const minEstate = Math.min(state.realm.estates.crown, state.realm.estates.army, state.realm.estates.public);
+    if (mandateEl) mandateEl.textContent = `${minEstate}%`;
+
+    if (hudHealth) hudHealth.setAttribute('aria-valuenow', String(state.realm.health));
+    if (hudSafety) hudSafety.setAttribute('aria-valuenow', String(state.realm.safety));
+    if (hudVigor) hudVigor.setAttribute('aria-valuenow', String(state.realm.vigor));
+    if (hudMandate) hudMandate.setAttribute('aria-valuenow', String(minEstate));
+  }
+
   // Update banners
   const banners = bannerModel(state.player, state.crisis);
   bannersRow.innerHTML = banners

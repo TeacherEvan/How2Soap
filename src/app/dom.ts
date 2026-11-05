@@ -33,7 +33,10 @@ export const rsPressure = $('rs-pressure');
 export const rsVolume = $('rs-volume');
 export const questList = $('quest');
 export const logList = $('log');
-export const pauseButton = $<HTMLButtonElement>('pause');
+export const pauseButton = document.getElementById('pause') as HTMLButtonElement | null;
+export const endTurnButton = document.getElementById('end-turn') as HTMLButtonElement | null;
+export const skipTurnsButton = document.getElementById('skip-turns') as HTMLButtonElement | null;
+export const dawnReportButton = document.getElementById('dawn-report') as HTMLButtonElement | null;
 
 export const biomePanel = $('biome-panel-container');
 export const toolInvPanel = $('tool-inv-container');

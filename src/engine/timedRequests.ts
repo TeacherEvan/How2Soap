@@ -90,6 +90,7 @@ export interface TimedRequestManager {
     inventory: Record<string, number>,
     currentTick: number,
   ): { success: boolean; speedMultiplier: number; rewardRenown: number } | null;
+  restore(savedSlots: Array<TimedRequest | null>): void;
 }
 
 export function createTimedRequestManager(): TimedRequestManager {
@@ -99,6 +100,12 @@ export function createTimedRequestManager(): TimedRequestManager {
 
   return {
     slots,
+    restore(savedSlots: Array<TimedRequest | null>): void {
+      if (!Array.isArray(savedSlots)) return;
+      for (let i = 0; i < 3; i++) {
+        slots[i] = savedSlots[i] ?? null;
+      }
+    },
     step(currentTick: number, onExpired?: (req: TimedRequest) => void): void {
       // Check active requests for expiration
       for (let i = 0; i < 3; i++) {

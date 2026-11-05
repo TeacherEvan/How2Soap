@@ -53,7 +53,20 @@ import {
   type ColonistArchetype,
   type WageContract,
 } from './colony';
-import { restoreColonyFromSave } from './worldRestore';
+import {
+  createExperimentQueue,
+  stepExperiments,
+  type ExperimentQueueState,
+} from './campaign/experiments';
+import {
+  createRealmState,
+  stepRealmTurn,
+  applyDistributeStimulants,
+  applyDistributeClothes,
+  applyDistributeWeapons,
+  type RealmState,
+} from './campaign/realm';
+import { restoreColonyFromSave, restoreWorldFromSave } from './worldRestore';
 import {
   createCrisisDirector,
   type CrisisContext,
@@ -105,7 +118,10 @@ type Command =
   | { type: 'SET_WAGE_CONTRACT'; colonistId: string; wageContract: WageContract }
   | { type: 'GRANT_TUTORIAL_REAGENTS'; items?: Array<{ itemId: string; count?: number; massKg?: number }>; vesselSpecies?: Array<{ speciesId: string; moles: number }>; vesselTempK?: number }
   | { type: 'CRISIS_CHOICE'; crisisId: CrisisId; choiceId: string }
-  | { type: 'FULFILL_REQUEST'; slot: number };
+  | { type: 'FULFILL_REQUEST'; slot: number }
+  | { type: 'DISTRIBUTE_STIMULANTS'; commodity: 'WILLOW_TEA' | 'MINT_TONIC' | 'NITROUS_TONIC'; crates: number }
+  | { type: 'DISTRIBUTE_CLOTHES'; tunics: number }
+  | { type: 'DISTRIBUTE_WEAPONS'; weaponsCount: number };
 
 interface WorkerCtx {
   postMessage(message: unknown): void;
@@ -133,6 +149,8 @@ let player: PlayerMetabolismState | null = null;
 let inventory: InventoryState | null = null;
 let paddock: Paddock | null = null;
 let colony: ColonyState = createInitialColonyState();
+let experiments: ExperimentQueueState = createExperimentQueue();
+let realm: RealmState = createRealmState();
 let view: SharedWorldView | null = null;
 let paused = false;
 let timer: ReturnType<typeof setInterval> | null = null;
@@ -222,6 +240,17 @@ function postColonySync(): void {
       nextColonistId: colony.nextColonistId,
       lastDecayTick: colony.lastDecayTick,
     },
+  });
+}
+
+function postCampaignSync(): void {
+  ctx.postMessage({
+    type: 'EXPERIMENTS_SYNC',
+    experiments,
+  });
+  ctx.postMessage({
+    type: 'REALM_SYNC',
+    realm,
   });
 }
 
@@ -333,12 +362,46 @@ function advance(hours: number): WorldEvent[] {
   if (player.dead) return [];
   const steps = Math.max(1, Math.round(hours * WORKER_HZ));
   const events: WorldEvent[] = [];
+  const startDay = 1 + Math.floor(world.tick / 240);
   for (let step = 0; step < steps; step += 1) {
     events.push(...stepSingleTick(SIM_STEP_SECONDS));
   }
+  const endDay = 1 + Math.floor(world.tick / 240);
+  const daysAdvanced = Math.max(0, endDay - startDay);
+
+  const benchLedger: Array<{ label: string; turnsLeft: number; done: boolean }> = [];
+  if (daysAdvanced > 0) {
+    for (let d = 0; d < daysAdvanced; d++) {
+      const expRes = stepExperiments(experiments, startDay + d);
+      for (const comp of expRes.completed) {
+        benchLedger.push({ label: comp.recipeName || comp.recipeId, turnsLeft: 0, done: true });
+        events.push({ vesselId: -1, message: `Finished experiment: ${comp.recipeName || comp.recipeId}` });
+      }
+      for (const q of experiments.experiments) {
+        benchLedger.push({ label: q.recipeName || q.recipeId, turnsLeft: q.turnsLeft, done: false });
+      }
+
+      const realmRes = stepRealmTurn(realm, () => rng.next());
+      for (const warn of realmRes.warnings) {
+        events.push({ vesselId: -1, message: warn });
+      }
+      if (realmRes.deposalOccurred) {
+        events.push({ vesselId: -1, message: `DEPOSAL ENDGAME: Mandate collapsed (${realmRes.deposalOccurred}).` });
+      }
+    }
+
+    ctx.postMessage({
+      type: 'TURN_RECAP',
+      turn: endDay,
+      events,
+      benchLedger,
+    });
+  }
+
   if (view) syncWorldToShared(world, view);
   postPlayerAndInventory();
   postColonySync();
+  postCampaignSync();
   return events;
 }
 
@@ -371,7 +434,7 @@ ctx.onmessage = (event: MessageEvent<Command>) => {
 
       syncWorldToShared(world, view);
       if (timer === null) timer = setInterval(tick, 1000 / WORKER_HZ);
-      ctx.postMessage({ type: 'READY' });
+      ctx.postMessage({ type: 'READY', rngSeed });
       postPlayerAndInventory();
       postColonySync();
       postCrisisSync();
@@ -380,29 +443,7 @@ ctx.onmessage = (event: MessageEvent<Command>) => {
     case 'LOAD_WORLD': {
       const save = command.save;
       view = new SharedWorldView(command.sab);
-      world = createWorld(save.ambientTempK ?? 288.15);
-      world.tick = save.tick ?? 0;
-      world.simSeconds = (save.tick ?? 0) * SIM_STEP_SECONDS;
-      for (const raw of (save.vessels as any[]) ?? []) {
-        world.vessels.push({
-          id: raw.id,
-          material: raw.material,
-          capacityL: raw.capacityL,
-          headspaceClosed: !!raw.headspaceClosed,
-          temperatureK: raw.temperatureK ?? (save.ambientTempK ?? 288.15),
-          moles: new Float64Array(raw.moles ?? []),
-          precipitated: new Float64Array(raw.precipitated ?? []),
-          heaterWatts: raw.heaterWatts ?? 0,
-          condenserTargetVesselId: raw.condenserTargetVesselId ?? -1,
-          pressureKPa: raw.pressureKPa ?? 101.325,
-          ruptured: !!raw.ruptured,
-          appliedVolts: raw.appliedVolts ?? 0,
-          cellResistanceOhm: raw.cellResistanceOhm ?? 0,
-        });
-        if (raw.label) {
-          labels.set(raw.id, raw.label);
-        }
-      }
+      world = restoreWorldFromSave(save, labels);
       player = createPlayerMetabolism(save.player?.clothingIclo ?? 0.05);
       Object.assign(player, save.player);
       if (save.inventory && (save.inventory as any).bareHands && Array.isArray((save.inventory as any).bareHands.slots)) {
@@ -445,13 +486,23 @@ ctx.onmessage = (event: MessageEvent<Command>) => {
       crisis.reset(rngSeed, save.tick ?? 0);
       paddock = save.paddock ?? createPaddock();
       colony = restoreColonyFromSave(save);
+      if (Array.isArray(save.timedRequests)) {
+        timedRequests.restore(save.timedRequests);
+      }
+      if (save.experiments) {
+        experiments = save.experiments;
+      }
+      if (save.realm) {
+        realm = save.realm;
+      }
 
       syncWorldToShared(world, view);
       if (timer === null) timer = setInterval(tick, 1000 / WORKER_HZ);
-      ctx.postMessage({ type: 'READY' });
+      ctx.postMessage({ type: 'READY', rngSeed });
       postVessels();
       postPlayerAndInventory();
       postColonySync();
+      postCampaignSync();
       postCrisisSync();
       break;
     }
@@ -1022,6 +1073,24 @@ ctx.onmessage = (event: MessageEvent<Command>) => {
           events: [{ vesselId: -1, message: 'Cannot fulfill request — missing required items.' }],
         });
       }
+      break;
+    }
+    case 'DISTRIBUTE_STIMULANTS': {
+      const res = applyDistributeStimulants(realm, command.commodity, command.crates);
+      ctx.postMessage({ type: 'EVENTS', events: [{ vesselId: -1, message: res.message }] });
+      postCampaignSync();
+      break;
+    }
+    case 'DISTRIBUTE_CLOTHES': {
+      const res = applyDistributeClothes(realm, command.tunics);
+      ctx.postMessage({ type: 'EVENTS', events: [{ vesselId: -1, message: res.message }] });
+      postCampaignSync();
+      break;
+    }
+    case 'DISTRIBUTE_WEAPONS': {
+      const res = applyDistributeWeapons(realm, command.weaponsCount);
+      ctx.postMessage({ type: 'EVENTS', events: [{ vesselId: -1, message: res.message }] });
+      postCampaignSync();
       break;
     }
     default:

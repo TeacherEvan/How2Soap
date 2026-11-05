@@ -21,6 +21,9 @@ import {
   isoBadge,
   clock,
   pauseButton,
+  endTurnButton,
+  skipTurnsButton,
+  dawnReportButton,
   tabStrategy,
 } from './app/dom';
 import { renderLog, renderVessels, renderQuest, renderReactionsSummary } from './app/views';
@@ -213,25 +216,53 @@ function bindActions(): void {
   // Bench controls (quick-adds, heater/volts/condenser/lid) live in the Chemical
   // Workbench window — see src/app/actions.ts and src/ui/windows/ReactionsWindow.ts.
 
-  pauseButton.addEventListener('click', () => {
-    state.paused = !state.paused;
-    send({ type: 'SET_PAUSED', paused: state.paused });
-    pauseButton.textContent = state.paused ? 'Resume' : 'Pause';
+  if (pauseButton) {
+    pauseButton.addEventListener('click', () => {
+      state.paused = !state.paused;
+      send({ type: 'SET_PAUSED', paused: state.paused });
+      if (pauseButton) {
+        pauseButton.textContent = state.paused ? 'Resume' : 'Pause';
+      }
+    });
+  }
+
+  const triggerEndTurn = (hours = 24) => {
+    send({ type: 'ADVANCE', hours });
+  };
+
+  if (endTurnButton) {
+    endTurnButton.addEventListener('click', () => triggerEndTurn(24));
+  }
+  if (skipTurnsButton) {
+    skipTurnsButton.addEventListener('click', () => triggerEndTurn(24 * 8));
+  }
+  if (dawnReportButton) {
+    dawnReportButton.addEventListener('click', () => {
+      const f = simulateWatchForecast(null, state.colony, 24);
+      import('./ui/TurnRecapModal').then(({ openTurnRecapModal }) => {
+        openTurnRecapModal({
+          turn: state.player.day ?? 1,
+          events: [{ vesselId: -1, message: `Dawn Forecast: est -${f.estCaloricBurnKcal} kcal, -${f.estHydrationLossPct}% hydration.` }],
+          benchLedger: (state.experiments?.experiments ?? []).map((e) => ({ label: e.recipeName || e.recipeId, turnsLeft: e.turnsLeft, done: e.turnsLeft <= 0 })),
+        });
+      });
+    });
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if (e.target && (e.target as HTMLElement).closest('input, select, textarea, [contenteditable="true"]')) return;
+    if (e.code === 'Space' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      e.preventDefault();
+      triggerEndTurn(24);
+    }
   });
 
-  const updateWatchTooltips = () => {
-    const s1 = $('sleep1');
-    const s8 = $('sleep8');
-    if (!state.worker) return;
-    const f1 = simulateWatchForecast(null, state.colony, 1);
-    const f8 = simulateWatchForecast(null, state.colony, 8);
-    if (s1) s1.title = `Rest 1h: est -${f1.estCaloricBurnKcal} kcal, -${f1.estHydrationLossPct}% hydration`;
-    if (s8) s8.title = `Sleep 8h: est -${f8.estCaloricBurnKcal} kcal, -${f8.estHydrationLossPct}% hydration`;
-  };
-  $('sleep1')?.addEventListener('mouseenter', updateWatchTooltips);
-  $('sleep8')?.addEventListener('mouseenter', updateWatchTooltips);
-  $('sleep1').addEventListener('click', () => send({ type: 'ADVANCE', hours: 1 }));
-  $('sleep8').addEventListener('click', () => send({ type: 'ADVANCE', hours: 8 }));
+  const mandateChip = document.getElementById('hud-mandate');
+  if (mandateChip) {
+    mandateChip.addEventListener('click', () => {
+      void openWindowById('realm');
+    });
+  }
   $('reset').addEventListener('click', () => {
     state.deathModalShown = false;
     state.worker?.terminate();
@@ -265,7 +296,7 @@ function bootFlow(): void {
   });
   requestAnimationFrame(frame);
 
-  const existingSave = localStorage.getItem(AUTO_SAVE_KEY);
+  const existingSave = localStorage.getItem(AUTO_SAVE_KEY) || localStorage.getItem('how2soap.save.v2');
   if (existingSave) {
     try {
       const raw = JSON.parse(existingSave);
@@ -294,9 +325,16 @@ function bootFlow(): void {
           },
           onNewWorld: () => {
             localStorage.removeItem(AUTO_SAVE_KEY);
+            localStorage.removeItem('how2soap.save.v2');
             state.progression = initialProgression();
-            StoryMode.prologue(() => {
-              startWorld();
+            import('./ui/FirstCommissionOverlay').then(({ openCountrySelectOverlay, openMudPortOpener }) => {
+              openCountrySelectOverlay((country) => {
+                openMudPortOpener(country, () => {
+                  StoryMode.prologue(() => {
+                    startWorld();
+                  });
+                });
+              });
             });
           },
         },
@@ -307,8 +345,14 @@ function bootFlow(): void {
     }
   }
 
-  StoryMode.prologue(() => {
-    startWorld();
+  import('./ui/FirstCommissionOverlay').then(({ openCountrySelectOverlay, openMudPortOpener }) => {
+    openCountrySelectOverlay((country) => {
+      openMudPortOpener(country, () => {
+        StoryMode.prologue(() => {
+          startWorld();
+        });
+      });
+    });
   });
 }
 
