@@ -23,7 +23,10 @@ import {
   createInventoryState,
   unlockBackpack,
   addItemToContainer,
-  removeItemFromContainer,
+  addItemToAnyContainer,
+  removeItemFromAnyContainer,
+  canFitItemsInInventory,
+  cloneInventoryState,
   type InventoryState,
 } from './inventory';
 import {
@@ -484,11 +487,20 @@ function advance(hours: number): WorldEvent[] {
 function tick(): void {
   if (!world || !view || !player || paused) return;
   if (player.dead) return;
-  const events = stepSingleTick(SIM_STEP_SECONDS);
-  syncWorldToShared(world, view);
-  if (events.length > 0) ctx.postMessage({ type: 'EVENTS', events });
-  postPlayerAndInventory();
-  postColonySync();
+  try {
+    const events = stepSingleTick(SIM_STEP_SECONDS);
+    syncWorldToShared(world, view);
+    if (events.length > 0) ctx.postMessage({ type: 'EVENTS', events });
+    postPlayerAndInventory();
+    postColonySync();
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    ctx.postMessage({
+      type: 'SIM_ERROR',
+      command: 'tick',
+      message,
+    });
+  }
 }
 
 ctx.onmessage = (event: MessageEvent<Command>) => {
@@ -531,8 +543,18 @@ function handleCommand(command: Command): void {
     }
     case 'LOAD_WORLD': {
       const save = command.save;
-      view = new SharedWorldView(command.sab);
-      world = restoreWorldFromSave(save, labels);
+      if (!command.sab || command.sab.byteLength !== SAB_BYTE_LENGTH) {
+        throw new Error(`Bad SAB size ${(command as any).sab?.byteLength}`);
+      }
+      const restoredLabels = new Map<number, string>();
+      const restoredWorld = restoreWorldFromSave(save, restoredLabels);
+      const newView = new SharedWorldView(command.sab);
+
+      // Mutate state only after successful restore & validation
+      labels.clear();
+      for (const [k, v] of restoredLabels) labels.set(k, v);
+      world = restoredWorld;
+      view = newView;
       player = createPlayerMetabolism(save.player?.clothingIclo ?? 0.05);
       Object.assign(player, save.player);
       if (save.inventory && (save.inventory as any).bareHands && Array.isArray((save.inventory as any).bareHands.slots)) {
@@ -643,7 +665,7 @@ function handleCommand(command: Command): void {
       break;
     }
     case 'SET_CONDENSER': {
-      const vessel = world && findVessel(world, command.targetId >= 0 ? command.vesselId : command.vesselId);
+      const vessel = world && findVessel(world, command.vesselId);
       if (vessel) {
         vessel.condenserTargetVesselId = command.targetId;
         postVessels();
@@ -678,9 +700,7 @@ function handleCommand(command: Command): void {
         ctx.postMessage({ type: 'EVENTS', events: [{ vesselId: command.vesselId, message: `${command.itemId} cannot be charged as a chemical reagent.` }] });
         break;
       }
-      const removed =
-        removeItemFromContainer(inventory.backpack, command.itemId, count) ||
-        removeItemFromContainer(inventory.bareHands, command.itemId, count);
+      const removed = removeItemFromAnyContainer(inventory, command.itemId, count);
       if (!removed) {
         ctx.postMessage({ type: 'EVENTS', events: [{ vesselId: command.vesselId, message: `No ${command.itemId} in inventory to charge!` }] });
         break;
@@ -701,18 +721,25 @@ function handleCommand(command: Command): void {
         if (skimmedMoles > 0 && command.speciesIdx === SPECIES.NA_STEARATE && inventory) {
           // 1 bar of soap is roughly 0.3 moles Na-stearate (~92g)
           const barsToAdd = Math.max(1, Math.floor(skimmedMoles / 0.3));
-          addItemToContainer(inventory.backpack, {
+          const soapSlot = {
             itemId: 'BAR_SOAP',
             label: 'Bar Soap',
             count: barsToAdd,
             massKg: barsToAdd * 0.1,
-          });
-          ctx.postMessage({
-            type: 'EVENTS',
-            events: [{ vesselId: command.fromId, message: `Skimmed and formed ${barsToAdd} Bar Soap!` }],
-          });
-          ctx.postMessage({ type: 'OBJECTIVE', kind: 'item_acquired', target: 'BAR_SOAP' });
-          postPlayerAndInventory();
+          };
+          if (!addItemToAnyContainer(inventory, soapSlot)) {
+            ctx.postMessage({
+              type: 'EVENTS',
+              events: [{ vesselId: command.fromId, message: `Skimmed soap, but containers full! Output lost.` }],
+            });
+          } else {
+            ctx.postMessage({
+              type: 'EVENTS',
+              events: [{ vesselId: command.fromId, message: `Skimmed and formed ${barsToAdd} Bar Soap!` }],
+            });
+            ctx.postMessage({ type: 'OBJECTIVE', kind: 'item_acquired', target: 'BAR_SOAP' });
+            postPlayerAndInventory();
+          }
         }
       }
       break;
@@ -800,6 +827,22 @@ function handleCommand(command: Command): void {
         ctx.postMessage({ type: 'EVENTS', events: [{ vesselId: -1, message: `Missing: ${missing.join(', ')}` }] });
         return;
       }
+
+      // Check output capacity plan before deducting items
+      const outputSlots = recipe.outputs.map(out => ({
+        itemId: out.itemId,
+        count: out.count,
+        massKg: 0.1,
+        label: out.label,
+      }));
+      if (!canFitItemsInInventory(inventory, outputSlots)) {
+        ctx.postMessage({
+          type: 'EVENTS',
+          events: [{ vesselId: -1, message: `Cannot fabricate ${recipe.name}: inventory and camp storage full!` }],
+        });
+        return;
+      }
+
       for (const [itemId, need] of needMap) {
         let remaining = need;
         for (let i = 0; i < inventory.bareHands.slots.length && remaining > 0; i++) {
@@ -851,31 +894,57 @@ function handleCommand(command: Command): void {
         ctx.postMessage({ type: 'EVENTS', events: [{ vesselId: -1, message: `Unknown tool: ${toolId}` }] });
         return;
       }
-      let found = false;
+
+      // Check if tool is present in containers
+      let foundContainer: typeof inventory.bareHands | null = null;
+      let foundIndex = -1;
       for (const container of [inventory.bareHands, inventory.backpack, inventory.campCache]) {
         for (let i = 0; i < container.slots.length; i++) {
           const s = container.slots[i];
           if (s && s.itemId === toolId) {
-            s.count--;
-            if (s.count <= 0) container.slots[i] = null;
-            found = true;
+            foundContainer = container;
+            foundIndex = i;
             break;
           }
         }
-        if (found) break;
+        if (foundContainer) break;
       }
-      if (!found) {
+      if (!foundContainer || foundIndex < 0) {
         ctx.postMessage({ type: 'EVENTS', events: [{ vesselId: -1, message: `Tool not in inventory: ${toolId}` }] });
         return;
       }
+
+      // If replacing an existing equipped tool, ensure there is room to unequip it
       const prev = inventory.tools[slot];
       if (prev) {
-        const prevSlot = { itemId: prev.id, count: 1, massKg: 0.5, label: prev.name };
-        if (!addItemToContainer(inventory.bareHands, prevSlot)) {
-          if (!addItemToContainer(inventory.backpack, prevSlot)) {
-            addItemToContainer(inventory.campCache, prevSlot);
-          }
+        // Test transaction on simulated copy
+        const sim = cloneInventoryState(inventory);
+        const simContainer =
+          foundContainer.id === sim.bareHands.id ? sim.bareHands :
+          foundContainer.id === sim.backpack.id ? sim.backpack : sim.campCache;
+        const s = simContainer.slots[foundIndex];
+        if (s) {
+          s.count--;
+          if (s.count <= 0) simContainer.slots[foundIndex] = null;
         }
+        const prevSlot = { itemId: prev.id, count: 1, massKg: 0.5, label: prev.name };
+        if (!addItemToAnyContainer(sim, prevSlot)) {
+          ctx.postMessage({
+            type: 'EVENTS',
+            events: [{ vesselId: -1, message: `Cannot swap tool: no storage room for ${prev.name}!` }],
+          });
+          return;
+        }
+      }
+
+      // Execute equip transaction
+      const targetSlot = foundContainer.slots[foundIndex]!;
+      targetSlot.count--;
+      if (targetSlot.count <= 0) foundContainer.slots[foundIndex] = null;
+
+      if (prev) {
+        const prevSlot = { itemId: prev.id, count: 1, massKg: 0.5, label: prev.name };
+        addItemToAnyContainer(inventory, prevSlot);
       }
       inventory.tools[slot] = tool;
       postPlayerAndInventory();

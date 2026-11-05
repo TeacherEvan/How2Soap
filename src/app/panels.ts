@@ -216,11 +216,14 @@ export function updatePlayerUI(): void {
     if (hudMandate) hudMandate.setAttribute('aria-valuenow', String(minEstate));
   }
 
-  // Update banners
+  // Update banners with change detection
   const banners = bannerModel(state.player, state.crisis);
-  bannersRow.innerHTML = banners
+  const bannersHtml = banners
     .map(b => `<div class="banner banner-${b.severity}">${b.text}</div>`)
     .join('');
+  if (bannersRow.innerHTML !== bannersHtml) {
+    bannersRow.innerHTML = bannersHtml;
+  }
 
   // Active treatments
   const treatments = treatmentModel(state.items, state.player);

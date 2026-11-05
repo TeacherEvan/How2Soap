@@ -11,7 +11,7 @@
 import type { WorldState } from './world';
 import type { PlayerMetabolismState } from './metabolism';
 import {
-  addItemToContainer,
+  addItemToAnyContainer,
   type InventoryState,
 } from './inventory';
 import type { ColonyState } from './colony';
@@ -440,11 +440,9 @@ export function applyCrisisEffects(
       }
       case 'itemGain': {
         const slot = { itemId: effect.itemId, count: effect.count, massKg: 0.1 * effect.count, label: effect.itemId };
-        if (
-          !addItemToContainer(ctx.inventory.bareHands, slot) &&
-          !addItemToContainer(ctx.inventory.backpack, slot)
-        ) {
-          addItemToContainer(ctx.inventory.campCache, slot);
+        const added = addItemToAnyContainer(ctx.inventory, slot);
+        if (!added) {
+          messages.push(`Storage full! Lost gain of ${effect.count}x ${effect.itemId}.`);
         }
         break;
       }

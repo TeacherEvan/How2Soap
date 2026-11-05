@@ -139,3 +139,68 @@ export function removeItemFromContainer(
 export function unlockBackpack(inventory: InventoryState): void {
   inventory.backpack.unlocked = true;
 }
+
+export function cloneInventoryContainer(container: InventoryContainer): InventoryContainer {
+  return {
+    ...container,
+    slots: container.slots.map(s => (s ? { ...s } : null)),
+  };
+}
+
+export function cloneInventoryState(inventory: InventoryState): InventoryState {
+  return {
+    tools: { ...inventory.tools },
+    bareHands: cloneInventoryContainer(inventory.bareHands),
+    campCache: cloneInventoryContainer(inventory.campCache),
+    backpack: cloneInventoryContainer(inventory.backpack),
+  };
+}
+
+export function removeItemFromAnyContainer(
+  inventory: InventoryState,
+  itemId: string,
+  count: number,
+): boolean {
+  // Count available across all containers first
+  let available = 0;
+  for (const container of [inventory.bareHands, inventory.backpack, inventory.campCache]) {
+    for (const s of container.slots) {
+      if (s && s.itemId === itemId) available += s.count;
+    }
+  }
+  if (available < count) return false;
+
+  // Deduct atomically
+  let needed = count;
+  for (const container of [inventory.backpack, inventory.bareHands, inventory.campCache]) {
+    for (let i = 0; i < container.slots.length && needed > 0; i++) {
+      const s = container.slots[i];
+      if (s && s.itemId === itemId) {
+        const take = Math.min(s.count, needed);
+        s.count -= take;
+        needed -= take;
+        if (s.count <= 0) container.slots[i] = null;
+      }
+    }
+  }
+  return true;
+}
+
+export function addItemToAnyContainer(inventory: InventoryState, item: InventorySlot): boolean {
+  return (
+    addItemToContainer(inventory.bareHands, item) ||
+    addItemToContainer(inventory.backpack, item) ||
+    addItemToContainer(inventory.campCache, item)
+  );
+}
+
+export function canFitItemsInInventory(inventory: InventoryState, items: InventorySlot[]): boolean {
+  const sim = cloneInventoryState(inventory);
+  for (const item of items) {
+    if (!addItemToAnyContainer(sim, item)) {
+      return false;
+    }
+  }
+  return true;
+}
+

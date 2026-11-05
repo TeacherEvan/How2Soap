@@ -35,7 +35,7 @@ describe('Worker Resilience & Error Boundary (MVTH-4 / P1-4)', () => {
   it('catches exceptions during command execution and posts SIM_ERROR while keeping the worker alive', async () => {
     const { posted, send } = await bootWorker();
 
-    // Send malformed INIT or LOAD_WORLD payload that causes an exception
+    // Send malformed INIT payload that causes an exception
     send({
       type: 'INIT',
       sab: new SharedArrayBuffer(16), // Invalid size, throws 'Bad SAB size'
@@ -50,5 +50,33 @@ describe('Worker Resilience & Error Boundary (MVTH-4 / P1-4)', () => {
     posted.length = 0;
     send({ type: 'INIT', sab: new SharedArrayBuffer(SAB_BYTE_LENGTH) });
     expect(posted.some((m) => m.type === 'READY')).toBe(true);
+  });
+
+  it('handles malformed LOAD_WORLD without corrupting state or crashing worker', async () => {
+    const { posted, send } = await bootWorker();
+
+    // Initialize with a healthy world
+    send({ type: 'INIT', sab: new SharedArrayBuffer(SAB_BYTE_LENGTH) });
+    expect(posted.some((m) => m.type === 'READY')).toBe(true);
+
+    posted.length = 0;
+    // Send a malformed save with unknown vessel material and invalid id that throws during restoreWorldFromSave
+    send({
+      type: 'LOAD_WORLD',
+      sab: new SharedArrayBuffer(SAB_BYTE_LENGTH),
+      save: {
+        version: 3,
+        vessels: [{ id: 'not-a-number' as any, material: 'UNOBTANIUM' as any, capacityL: 5 }],
+      },
+    });
+
+    const simErrors = posted.filter((m) => m.type === 'SIM_ERROR');
+    expect(simErrors.length).toBeGreaterThanOrEqual(1);
+    expect(simErrors[0].command).toBe('LOAD_WORLD');
+
+    // Verify worker tick and commands still work without throwing
+    posted.length = 0;
+    send({ type: 'CREATE_VESSEL', id: 5, material: 'WOOD', capacityL: 5 });
+    expect(posted.some((m) => m.type === 'VESSELS')).toBe(true);
   });
 });

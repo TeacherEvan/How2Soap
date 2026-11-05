@@ -575,9 +575,21 @@ export class StrategyMapCanvas {
     });
   }
 
+  private lastColonistsDigest = '';
+
   private renderDock(): void {
     if (!this.colonyState) return;
     if (!this.dockContainer || typeof this.dockContainer.querySelector !== 'function') return;
+
+    // Skip DOM updates if the container is hidden/detached
+    if (this.dockContainer.offsetParent === null) return;
+
+    // Quick digest of colonist status, jobs, wages, morale to prevent full rebuilds when unchanged
+    const digest = this.colonyState.colonists
+      .map(c => `${c.id}:${c.status}:${c.assignedJob?.speciesId}:${c.morale}:${c.satiety}`)
+      .join('|');
+    if (digest === this.lastColonistsDigest) return;
+    this.lastColonistsDigest = digest;
 
     const rosterCount = this.dockContainer.querySelector('.roster-count');
     if (rosterCount) rosterCount.textContent = String(this.colonyState.colonists.length);

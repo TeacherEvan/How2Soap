@@ -1,15 +1,25 @@
 import { createWorld, type WorldState } from './world';
 import type { SerializedWorldSave } from './persistence';
-import type { VesselMaterialKey } from './chemistry';
+import { MATERIALS, type VesselMaterialKey } from './chemistry';
 import { createInitialColonyState, type ColonyState, GRID_SIZE } from './colony';
 
 /** Rebuild WorldState from a save's vessels array. Fail-loud on bad payloads. */
 export function restoreWorldFromSave(save: SerializedWorldSave, labels?: Map<number, string>): WorldState {
+  if (!save || typeof save !== 'object') {
+    throw new Error('Malformed save: root object expected');
+  }
   const world = createWorld(save.ambientTempK ?? 288.15);
   world.tick = save.tick ?? 0;
   world.simSeconds = (save.tick ?? 0) * 360; // consistent with SIM_STEP_SECONDS
   for (const raw of (save.vessels as any[]) ?? []) {
     if (!raw) continue;
+    if (typeof raw.id !== 'number' || !Number.isFinite(raw.id)) {
+      throw new Error(`Malformed save: invalid vessel id ${raw.id}`);
+    }
+    const materialKey = raw.material as VesselMaterialKey;
+    if (!MATERIALS[materialKey]) {
+      throw new Error(`Malformed save: unknown vessel material ${raw.material}`);
+    }
     const isClosed = raw.headspaceClosed !== undefined ? !!raw.headspaceClosed : !!raw.closed;
     const tempK = typeof raw.temperatureK === 'number' && Number.isFinite(raw.temperatureK) && raw.temperatureK > 0
       ? raw.temperatureK
@@ -29,8 +39,8 @@ export function restoreWorldFromSave(save: SerializedWorldSave, labels?: Map<num
 
     world.vessels.push({
       id: raw.id,
-      material: raw.material as VesselMaterialKey,
-      capacityL: raw.capacityL,
+      material: materialKey,
+      capacityL: typeof raw.capacityL === 'number' && Number.isFinite(raw.capacityL) ? raw.capacityL : 5,
       headspaceClosed: isClosed,
       temperatureK: tempK,
       moles: new Float64Array(raw.moles ?? []),

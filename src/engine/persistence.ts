@@ -205,6 +205,8 @@ export async function decompressBase64ToSave(base64: string): Promise<Serialized
   const binary = atob(payload);
 
   let jsonText: string;
+  const MAX_DECOMPRESSED_BYTES = 5 * 1024 * 1024; // 5 MB safety limit
+
   if (typeof DecompressionStream !== 'undefined') {
     const bytes = new Uint8Array(binary.length);
     for (let i = 0; i < binary.length; i++) {
@@ -215,7 +217,6 @@ export async function decompressBase64ToSave(base64: string): Promise<Serialized
     writer.write(bytes);
     writer.close();
 
-    const MAX_DECOMPRESSED_BYTES = 5 * 1024 * 1024; // 5 MB safety limit
     const reader = ds.readable.getReader();
     const chunks: Uint8Array[] = [];
     let totalBytes = 0;
@@ -244,6 +245,9 @@ export async function decompressBase64ToSave(base64: string): Promise<Serialized
     }
     jsonText = new TextDecoder().decode(merged);
   } else {
+    if (binary.length > MAX_DECOMPRESSED_BYTES) {
+      throw new Error(`Decompressed save exceeds 5MB limit (${binary.length} bytes)`);
+    }
     jsonText = decodeURIComponent(escape(binary));
   }
 
