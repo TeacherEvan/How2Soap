@@ -19,6 +19,7 @@ const WINDOWS: Launchable[] = [
   { id: 'biome', icon: '🧭', label: 'Biome', key: '4', load: () => import('../ui/windows/BiomeWindow') },
   { id: 'settlement', icon: '🏘️', label: 'Settlement', key: '5', load: () => import('../ui/windows/SettlementWindow') },
   { id: 'realm', icon: '🏛️', label: 'The Realm', key: '6', load: () => import('../ui/windows/RealmWindow') },
+  { id: 'influence', icon: '🌐', label: 'Influence', key: '9', load: () => import('../ui/windows/InfluenceWindow') },
 ];
 
 export async function openWindowById(id: string): Promise<boolean> {
