@@ -249,14 +249,16 @@ export function handleWorkerMessage(data: WorkerMessage, options?: { load?: unkn
 
   if (data.type === 'REQUEST_SYNC') {
     const prevSlots = (state as any).timedRequests ?? [];
-    (state as any).timedRequests = data.slots;
     if (data.slots && prevSlots.length > 0) {
       for (const slot of data.slots) {
-        if (!slot.active && prevSlots.some((p: any) => p.slot === slot.slot && p.active)) {
+        if (!slot) continue;
+        const isActive = slot.active ?? (slot.status === 'active');
+        if (!isActive && prevSlots.some((p: any) => p && p.slot === slot.slot && (p.active ?? (p.status === 'active')))) {
           state.completedRequestsCount = (state.completedRequestsCount || 0) + 1;
         }
       }
     }
+    (state as any).timedRequests = data.slots;
     updatePlayerUI();
     return;
   }
