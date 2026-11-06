@@ -1,0 +1,100 @@
+{
+  "description": "Address remaining open findings from surgical audits (2026-11-06 and post-remediation)",
+  "changes": [
+    {
+      "filePath": "src/engine/worldRestore.ts",
+      "description": "Add sanitizePlayerSave, sanitizeExperiments, sanitizeRealm, sanitizeSettlements, sanitizeBlacksmith, sanitizePaddock functions for complete save boundary validation (P1-1, P1-2 from post-remediation audit)",
+      "type": "modify"
+    },
+    {
+      "filePath": "src/engine/sim.worker.ts",
+      "description": "Replace Object.assign(player, save.player) with sanitizePlayerSave; use restoreSlice for all campaign slices; add dirty-guard to postRequestSync",
+      "type": "modify"
+    },
+    {
+      "filePath": "src/app/workerMessages.ts",
+      "description": "Route REQUEST_SYNC handler through queueFrameRender instead of direct updatePlayerUI call",
+      "type": "modify"
+    },
+    {
+      "filePath": "src/ui/windows/RealmWindow.ts",
+      "description": "Extract paintRealmBody, register/unregister campaignListeners in mount/unmount for live updates",
+      "type": "modify"
+    },
+    {
+      "filePath": "src/ui/StrategyMapCanvas.ts",
+      "description": "Add DPR scaling (devicePixelRatio) and Pointer Events (pointerdown/move/up) for touch support; escape HTML at sink for colonist names",
+      "type": "modify"
+    },
+    {
+      "filePath": "src/app/autosave.ts",
+      "description": "Add inventoryDigest and colonyDigest to autosave signature to capture paused mutations",
+      "type": "modify"
+    },
+    {
+      "filePath": "src/engine/saveSignature.ts",
+      "description": "Extend signature to include inventoryDigest and colonyDigest fields",
+      "type": "modify"
+    },
+    {
+      "filePath": "src/ui/audio.ts",
+      "description": "Fix ensure() to return AudioContext | null; gate ambient timer on document.visibilityState and master gain",
+      "type": "modify"
+    },
+    {
+      "filePath": "src/app/syncScheduler.ts",
+      "description": "Verify coalescing logic for PLAYER_SYNC, COLONY_SYNC, REQUEST_SYNC; ensure single rAF flush",
+      "type": "modify"
+    },
+    {
+      "filePath": "tests/saveBoundaryPlayer.test.ts",
+      "description": "Add table-driven tests for malformed player fields (string, NaN, -1, Infinity, null)",
+      "type": "add"
+    },
+    {
+      "filePath": "tests/saveBoundarySlices.test.ts",
+      "description": "Add table-driven tests for malformed experiments/realm/settlements/blacksmith/paddock slices",
+      "type": "add"
+    },
+    {
+      "filePath": "tests/requestSyncBudget.test.ts",
+      "description": "Test REQUEST_SYNC dirty-guard: quiet when unchanged, posts once on change",
+      "type": "add"
+    },
+    {
+      "filePath": "tests/realmWindowLive.test.ts",
+      "description": "Test Realm window live refresh on REALM_SYNC and listener cleanup on unmount",
+      "type": "add"
+    },
+    {
+      "filePath": "tests/autosavePaused.test.ts",
+      "description": "Test autosave captures inventory/colony changes while paused",
+      "type": "add"
+    },
+    {
+      "filePath": "tests/strategyMapDPR.test.ts",
+      "description": "Test canvas backing store uses devicePixelRatio and pointer events work",
+      "type": "add"
+    },
+    {
+      "filePath": "src/app/views.ts",
+      "description": "Escape log entries at sink to prevent HTML injection from save-derived strings",
+      "type": "modify"
+    },
+    {
+      "filePath": "src/engine/colony.ts",
+      "description": "Remove dead satiety field or wire it to food consumption; remove dead epilogueSeen from autosave",
+      "type": "modify"
+    },
+    {
+      "filePath": "src/app/splash.ts",
+      "description": "Change video preload from 'auto' to 'metadata'; load video after idle callback",
+      "type": "modify"
+    },
+    {
+      "filePath": "webpack.config.js",
+      "description": "Optimize media output: drop MP4 where WebM sufficient, generate 720p variants",
+      "type": "modify"
+    }
+  ]
+}

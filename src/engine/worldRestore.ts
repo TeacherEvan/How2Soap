@@ -117,7 +117,6 @@ function sanitizeColonist(raw: unknown): Colonist | null {
     velocity: { vx: 0, vy: 0 },
     baseSpeed: finiteOr(r.baseSpeed, 80) > 0 ? finiteOr(r.baseSpeed, 80) : 80,
     morale: Math.max(0, Math.min(100, finiteOr(r.morale, 50))),
-    satiety: Math.max(0, Math.min(100, finiteOr(r.satiety, 100))),
     wageContract: { commodity, dailyAmount: Math.max(0, finiteOr(wage.dailyAmount, 1)) },
     activeStimulant,
     assignedJob,

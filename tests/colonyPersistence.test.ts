@@ -55,7 +55,6 @@ describe('Task 3: Colony Persistence, Worker Commands & World Restore', () => {
         fabricatedRecipes: ['MOLD_BAR_SOAP'],
         objectivesDone: [],
         lettersDone: [],
-        epilogueSeen: false,
         colony: {
           colonists: colony.colonists,
           ledger: colony.ledger,
@@ -110,7 +109,6 @@ describe('Task 3: Colony Persistence, Worker Commands & World Restore', () => {
         fabricatedRecipes: [],
         objectivesDone: [],
         lettersDone: [],
-        epilogueSeen: false,
         colony: {
           colonists: colony.colonists,
           ledger: colony.ledger,
@@ -177,7 +175,6 @@ describe('Task 3: Colony Persistence, Worker Commands & World Restore', () => {
         fabricatedRecipes: [],
         objectivesDone: [],
         lettersDone: [],
-        epilogueSeen: false,
         colony: {
           colonists: colony.colonists,
           ledger: colony.ledger,

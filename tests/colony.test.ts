@@ -63,7 +63,7 @@ describe('Colony Engine (Task 2)', () => {
   });
 
   describe('Colonist recruitment', () => {
-    it('recruits colonist generating unique id, hearth position (0,0), morale=80, satiety=100', () => {
+    it('recruits colonist generating unique id, hearth position (0,0), morale=80', () => {
       const state = createInitialColonyState();
       const contract: WageContract = { commodity: 'BAR_SOAP', dailyAmount: 1 };
       const c1 = recruitColonist(state, 'Caleb the Seeker', 'FORAGER', contract, 100);
@@ -73,7 +73,6 @@ describe('Colony Engine (Task 2)', () => {
       expect(c1.archetype).toBe('FORAGER');
       expect(c1.wageContract).toEqual(contract);
       expect(c1.morale).toBe(80);
-      expect(c1.satiety).toBe(100);
       expect(c1.position).toEqual({ x: 0, y: 0 });
       expect(c1.status).toBe('IDLE');
       expect(state.colonists.length).toBe(1);

@@ -13,6 +13,30 @@ let autoSaveTimer: number | null = null;
 let lastSaveWriteMs = 0;
 const MIN_AUTOSAVE_INTERVAL_MS = 2000;
 
+function computeInventoryDigest(inventory: SerializedWorldSave['inventory']): string {
+  if (!inventory) return '';
+  const slots = [
+    ...(inventory.bareHands?.slots ?? []),
+    ...(inventory.backpack?.slots ?? []),
+    ...(inventory.campCache?.slots ?? []),
+  ];
+  const digest = slots
+    .filter((s): s is NonNullable<typeof s> => !!s)
+    .map((s) => `${s.itemId}:${s.count}`)
+    .sort()
+    .join('|');
+  return digest;
+}
+
+function computeColonyDigest(colony: SerializedWorldSave['colony']): string {
+  if (!colony) return '';
+  const digest = (colony.colonists ?? [])
+    .map((c) => `${c.id}:${c.status}:${c.assignedJob?.speciesId ?? ''}:${c.morale}`)
+    .sort()
+    .join('|');
+  return digest;
+}
+
 export function buildSaveSnapshot(): SerializedWorldSave {
   const rngSeed = state.rngSeed || ((Math.random() * 0xffffffff) >>> 0);
   return {
@@ -90,7 +114,6 @@ export function buildSaveSnapshot(): SerializedWorldSave {
     fabricatedRecipes: state.progression.fabricatedRecipes ?? [],
     objectivesDone: state.progression.objectivesDone ?? [],
     lettersDone: state.progression.lettersDone ?? [],
-    epilogueSeen: false,
     colony: state.colony ? {
       colonists: state.colony.colonists ?? [],
       ledger: state.colony.ledger ?? [],
@@ -121,11 +144,17 @@ export function buildSaveSnapshot(): SerializedWorldSave {
 }
 
 export function requestAutoSave(): void {
+  const snap = buildSaveSnapshot();
+  const inventoryDigest = computeInventoryDigest(snap.inventory);
+  const colonyDigest = computeColonyDigest(snap.colony);
+  
   const currentSig = snapshotSignature({
     tick: state.snapshot?.tick ?? 0,
     glucose: state.player?.glucoseKcal ?? 0,
     seed: state.rngSeed ?? 0,
     day: state.player?.day ?? 1,
+    inventoryDigest,
+    colonyDigest,
   });
 
   if (currentSig === lastSaveSignature) return;

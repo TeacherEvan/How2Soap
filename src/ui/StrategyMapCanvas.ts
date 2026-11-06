@@ -613,7 +613,7 @@ export class StrategyMapCanvas {
 
     // Quick digest of colonist status, jobs, wages, morale to prevent full rebuilds when unchanged
     const digest = this.colonyState.colonists
-      .map(c => `${c.id}:${c.status}:${c.assignedJob?.speciesId}:${c.morale}:${c.satiety}`)
+      .map(c => `${c.id}:${c.status}:${c.assignedJob?.speciesId}:${c.morale}`)
       .join('|');
     if (digest === this.lastColonistsDigest) return;
     this.lastColonistsDigest = digest;

@@ -36,7 +36,6 @@ describe('Save Serialization & Compression (OBJ-007 / AC-009)', () => {
     fabricatedRecipes: [],
     objectivesDone: [],
     lettersDone: [],
-    epilogueSeen: false,
   };
 
   it('serializes and deserializes world state cleanly', () => {

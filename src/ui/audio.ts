@@ -47,7 +47,7 @@ const getNoiseBuffer = (context: AudioContext): AudioBuffer => {
   return buffer;
 };
 
-const ensure = (): AudioContext => {
+const ensure = (): AudioContext | null => {
   if (!ctx && typeof window !== 'undefined') {
     const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
     if (AudioCtx) {
@@ -70,7 +70,7 @@ const ensure = (): AudioContext => {
   if (ctx && ctx.state === 'suspended') {
     ctx.resume().catch(() => {});
   }
-  return ctx!;
+  return ctx;
 };
 
 const createPanner = (context: AudioContext, pan?: number): StereoPannerNode | null => {
@@ -162,10 +162,18 @@ const noise = (
 
 function startAmbientCrackle(): void {
   if (ambientRunning || !ctx || !gains.ambient) return;
+  // Gate on document visibility and master gain
+  if (document.visibilityState !== 'visible' || gains.master?.gain.value === 0) {
+    return;
+  }
   ambientRunning = true;
 
   const schedulePop = () => {
     if (!ctx || !ambientRunning || !gains.ambient) return;
+    // Respect visibility and mute
+    if (document.visibilityState !== 'visible' || gains.master?.gain.value === 0) {
+      return;
+    }
     const dur = 0.02 + Math.random() * 0.04;
     const freq = 400 + Math.random() * 800;
     const peak = 0.05 + Math.random() * 0.12;
@@ -176,6 +184,15 @@ function startAmbientCrackle(): void {
   };
 
   schedulePop();
+}
+
+// Resume ambient on visibility change (browser only)
+if (typeof window !== 'undefined' && typeof document !== 'undefined' && typeof document.addEventListener === 'function') {
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && gains.master && gains.master.gain.value > 0) {
+      startAmbientCrackle();
+    }
+  });
 }
 
 export const audio = {

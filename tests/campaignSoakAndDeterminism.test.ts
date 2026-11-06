@@ -51,7 +51,6 @@ describe('60-Turn Headless Save Soak & Replay Determinism (M1 / §4.1 & §9)', (
       fabricatedRecipes: [],
       objectivesDone: [],
       lettersDone: [],
-      epilogueSeen: false,
       experiments: queue,
       realm,
     };
@@ -142,7 +141,6 @@ describe('60-Turn Headless Save Soak & Replay Determinism (M1 / §4.1 & §9)', (
         fabricatedRecipes: [],
         objectivesDone: [],
         lettersDone: [],
-        epilogueSeen: false,
         experiments: queue,
         realm,
       };

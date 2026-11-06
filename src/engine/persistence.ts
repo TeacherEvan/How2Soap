@@ -42,7 +42,6 @@ export interface SerializedWorldSave {
   fabricatedRecipes: string[];
   objectivesDone: string[];
   lettersDone: string[];
-  epilogueSeen: boolean;
   colony?: SerializedColonyState;
   paddock?: any;
   timedRequests?: any[];
@@ -114,7 +113,6 @@ export function deserializeSave(json: string): SerializedWorldSave {
     fabricatedRecipes: parsed.fabricatedRecipes ?? [],
     objectivesDone: parsed.objectivesDone ?? [],
     lettersDone: parsed.lettersDone ?? [],
-    epilogueSeen: parsed.epilogueSeen ?? false,
     timedRequests: Array.isArray(parsed.timedRequests) ? parsed.timedRequests : undefined,
     experiments: parsed.experiments ?? undefined,
     realm: parsed.realm ?? undefined,
@@ -179,7 +177,6 @@ export function migrateSave(raw: unknown): SerializedWorldSave {
     fabricatedRecipes: Array.isArray(r.fabricatedRecipes) ? r.fabricatedRecipes : [],
     objectivesDone: Array.isArray(r.objectivesDone) ? r.objectivesDone : [],
     lettersDone: Array.isArray(r.lettersDone) ? r.lettersDone : [],
-    epilogueSeen: (typeof r.epilogueSeen === 'boolean' ? r.epilogueSeen : false),
     tutorial: undefined,
     featureFlags: { colonyChemistryLink: true },
   };

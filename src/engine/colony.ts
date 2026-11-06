@@ -76,7 +76,6 @@ export interface Colonist {
   velocity: { vx: number; vy: number };
   baseSpeed: number; // meters per minute (e.g. 80 m/min ~ 1.33 m/s normal walking speed)
   morale: number; // 0 to 100
-  satiety: number; // 0 to 100
   wageContract: WageContract;
   activeStimulant: ActiveStimulantState | null;
   assignedJob: ColonistJob | null;
@@ -162,7 +161,6 @@ export function recruitColonist(
     velocity: { vx: 0, vy: 0 },
     baseSpeed: DEFAULT_BASE_SPEED,
     morale: 80,
-    satiety: 100,
     wageContract: { ...wageContract },
     activeStimulant: null,
     assignedJob: null,

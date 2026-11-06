@@ -35,7 +35,6 @@ describe('Save v3 Integrity & Colony/Paddock/TimedRequests Persistence (M0)', ()
       fabricatedRecipes: ['BAR_SOAP'],
       objectivesDone: ['first_soap'],
       lettersDone: [],
-      epilogueSeen: false,
       colony: {
         colonists: [{
           id: 'c_1',
@@ -46,7 +45,6 @@ describe('Save v3 Integrity & Colony/Paddock/TimedRequests Persistence (M0)', ()
           velocity: { vx: 0, vy: 0 },
           baseSpeed: 80,
           morale: 85,
-          satiety: 100,
           wageContract: { commodity: 'FOOD', dailyAmount: 1 },
           activeStimulant: null,
           assignedJob: null,

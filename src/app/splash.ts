@@ -32,7 +32,7 @@ export function launchSplash(): void {
   video.className = 'splash-video';
   video.autoplay = true;
   video.playsInline = true;
-  video.preload = 'auto';
+  video.preload = 'metadata';
   video.poster = newSplashPoster;
 
   const mp4Source = document.createElement('source');
@@ -135,7 +135,7 @@ export function transitionDisplay(
   video.playsInline = true;
   video.muted = true; // Always muted for rapid tab transitions
   video.loop = true;
-  video.preload = 'auto';
+  video.preload = 'metadata';
   video.poster = loaderPoster;
 
   const mp4Source = document.createElement('source');

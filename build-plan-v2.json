@@ -1,0 +1,70 @@
+{
+  "description": "Address remaining open findings from surgical audits (2026-11-06 and post-remediation)",
+  "changes": [
+    {
+      "filePath": "src/engine/saveSignature.ts",
+      "description": "Extend SnapshotSignatureInput to include inventoryDigest and colonyDigest for capturing paused mutations",
+      "type": "modify"
+    },
+    {
+      "filePath": "src/app/autosave.ts",
+      "description": "Update autosave to use inventoryDigest and colonyDigest in signature; compute digests from state",
+      "type": "modify"
+    },
+    {
+      "filePath": "src/app/splash.ts",
+      "description": "Change video preload from 'auto' to 'metadata' for both splash and loader videos; load video after idle callback",
+      "type": "modify"
+    },
+    {
+      "filePath": "webpack.config.js",
+      "description": "Optimize media output: investigate if MP4 variants can be dropped where WebM is sufficient, add 720p variant generation",
+      "type": "modify"
+    },
+    {
+      "filePath": "src/ui/audio.ts",
+      "description": "Fix ensure() to return AudioContext | null instead of ctx!; gate ambient timer on document.visibilityState and master gain > 0",
+      "type": "modify"
+    },
+    {
+      "filePath": "src/engine/colony.ts",
+      "description": "Remove dead satiety field from Colonist interface and all usages, or wire it to food consumption",
+      "type": "modify"
+    },
+    {
+      "filePath": "src/app/autosave.ts",
+      "description": "Remove dead epilogueSeen field from autosave snapshot",
+      "type": "modify"
+    },
+    {
+      "filePath": "src/ui/TutorialProgressiveReveal.ts",
+      "description": "Replace silent catches with debug logging or toast notifications",
+      "type": "modify"
+    },
+    {
+      "filePath": "src/app/views.ts",
+      "description": "Verify log cap at ~200 entries in pushLog helper",
+      "type": "modify"
+    },
+    {
+      "filePath": "src/app/state.ts",
+      "description": "Add pushLog helper with cap at ~200 entries",
+      "type": "modify"
+    },
+    {
+      "filePath": "README.md",
+      "description": "Update stale badges: Vitest test count (400 not 194), Entrypoint size (171 KiB not 182 KB)",
+      "type": "modify"
+    },
+    {
+      "filePath": "tests/autosavePaused.test.ts",
+      "description": "Add test for autosave capturing inventory/colony changes while paused",
+      "type": "add"
+    },
+    {
+      "filePath": "tests/strategyMapDPR.test.ts",
+      "description": "Add test for canvas backing store using devicePixelRatio and pointer events",
+      "type": "add"
+    }
+  ]
+}

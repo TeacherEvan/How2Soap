@@ -8,6 +8,8 @@ export interface SnapshotSignatureInput {
   seed: number;
   molesDigest?: number;
   day?: number;
+  inventoryDigest?: string;
+  colonyDigest?: string;
 }
 
 export function snapshotSignature(input: SnapshotSignatureInput): string {
@@ -16,5 +18,7 @@ export function snapshotSignature(input: SnapshotSignatureInput): string {
   const s = input.seed ?? 0;
   const m = input.molesDigest ? Math.round(input.molesDigest * 1000) / 1000 : 0;
   const d = input.day ?? 0;
-  return `${t}:${g}:${s}:${m}:${d}`;
+  const inv = input.inventoryDigest ?? '';
+  const col = input.colonyDigest ?? '';
+  return `${t}:${g}:${s}:${m}:${d}:${inv}:${col}`;
 }
