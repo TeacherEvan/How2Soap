@@ -17,7 +17,6 @@ describe('Colony ↔ Chemistry Couplings (ES-3)', () => {
             { archetype: 'APPRENTICE_CHEMIST', assignedVessel: 0 },
             { archetype: 'FORAGER', status: 'CRASH', assignedVessel: 1 },
           ],
-          hasStrike: true,
         }
       );
 
@@ -110,12 +109,14 @@ describe('Colony ↔ Chemistry Couplings (ES-3)', () => {
       expect(effects.unrestSpoilage?.ruptureSeverityIncrease).toBe(1);
     });
 
-    it('activates when colony hasStrike is true', () => {
+    it('activates when a colonist is on STRIKE', () => {
       const effects = computeCouplingEffects(
         { enabled: true, rngSeed: 42 },
         {
-          colonists: [{ archetype: 'MINER', morale: 80 }],
-          hasStrike: true,
+          colonists: [
+            { archetype: 'MINER', morale: 80, status: 'STRIKE' },
+            { archetype: 'FORAGER', morale: 80, status: 'IDLE' },
+          ],
         }
       );
 
@@ -136,13 +137,33 @@ describe('Colony ↔ Chemistry Couplings (ES-3)', () => {
   });
 
   describe('crash → clumsiness effect', () => {
-    it('activates when colonist in CRASH phase is assigned to a vessel', () => {
+    it('activates when colonist in CRASH phase is assigned to a vessel or in colony', () => {
       const effects = computeCouplingEffects(
         { enabled: true, rngSeed: 42 },
         {
           colonists: [
             { archetype: 'FORAGER', status: 'CRASH', assignedVessel: 2, morale: 50 },
             { archetype: 'MINER', status: 'IDLE', morale: 50 },
+          ],
+        }
+      );
+
+      expect(effects.crashClumsiness).not.toBeNull();
+      expect(effects.crashClumsiness?.phase1ToleranceReduction).toBe(4);
+      expect(effects.crashClumsiness?.phase2BandReduction).toBe(4);
+    });
+
+    it('activates when colonist has activeStimulant.phase === CRASH', () => {
+      const effects = computeCouplingEffects(
+        { enabled: true, rngSeed: 42 },
+        {
+          colonists: [
+            {
+              archetype: 'MINER',
+              status: 'TRAVELING',
+              morale: 50,
+              activeStimulant: { phase: 'CRASH' },
+            },
           ],
         }
       );

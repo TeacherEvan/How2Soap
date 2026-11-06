@@ -3,12 +3,7 @@
  */
 import { renderBiomeTreePanel } from '../ui/BiomeTreePanel';
 import { renderToolAndInventoryPanel } from '../ui/ToolAndInventoryPanel';
-import {
-  renderWorkbenchTabs,
-  renderFabricationTab,
-  renderPaddockTab,
-  type WorkbenchTab,
-} from '../ui/WorkbenchCanvas';
+import type { WorkbenchTab } from '../ui/WorkbenchCanvas';
 // JournalPanel is dynamically imported for code-splitting
 import { bannerModel, treatmentModel } from '../ui/panelModels';
 import { levelFromRenown } from '../engine/progression';
@@ -39,20 +34,34 @@ import {
 } from './dom';
 import { renderLog } from './views';
 
+let lastPaddockDigest = '';
+let lastInventoryDigest = '';
+let timedRequestsWidgetPromise: Promise<typeof import('../ui/TimedRequestsWidget')> | null = null;
+// WorkbenchCanvas pulls the full fabrication recipe table; it is only needed
+// when a tab is opened, so keep it out of the boot entrypoint.
+let workbenchModulePromise: Promise<typeof import('../ui/WorkbenchCanvas')> | null = null;
+const loadWorkbench = (): Promise<typeof import('../ui/WorkbenchCanvas')> =>
+  (workbenchModulePromise ??= import('../ui/WorkbenchCanvas'));
+
 export function updatePaddockUI(): void {
-  renderPaddockTab(
-    tabPaddocks,
-    state.paddock,
-    () => {
-      send({ type: 'FEED_PADDOCK', massKg: 5 });
-    },
-    () => {
-      send({ type: 'WATER_PADDOCK', liters: 10 });
-    },
-    (species) => {
-      send({ type: 'CAPTURE_ANIMAL', species });
-    },
-  );
+  const digest = JSON.stringify(state.paddock ?? null);
+  if (digest === lastPaddockDigest) return;
+  lastPaddockDigest = digest;
+  void loadWorkbench().then(({ renderPaddockTab }) => {
+    renderPaddockTab(
+      tabPaddocks,
+      state.paddock,
+      () => {
+        send({ type: 'FEED_PADDOCK', massKg: 5 });
+      },
+      () => {
+        send({ type: 'WATER_PADDOCK', liters: 10 });
+      },
+      (species) => {
+        send({ type: 'CAPTURE_ANIMAL', species });
+      },
+    );
+  });
 }
 
 export function switchTab(tab: WorkbenchTab): void {
@@ -69,16 +78,26 @@ export function switchTab(tab: WorkbenchTab): void {
 
   const applyTabSwitch = (): void => {
     state.activeTab = tab;
-    renderWorkbenchTabs(tabsNavContainer, {
-      currentTab: tab,
-      onSelectTab: switchTab,
-      onExecuteRecipe: (recipeId) => send({ type: 'FABRICATE', recipeId }),
-      onFeedPaddock: () => {
-        send({ type: 'FEED_PADDOCK', massKg: 5 });
-      },
-      onWaterPaddock: () => {
-        send({ type: 'WATER_PADDOCK', liters: 10 });
-      },
+    void loadWorkbench().then(({ renderWorkbenchTabs, renderFabricationTab }) => {
+      renderWorkbenchTabs(tabsNavContainer, {
+        currentTab: tab,
+        onSelectTab: switchTab,
+        onExecuteRecipe: (recipeId) => send({ type: 'FABRICATE', recipeId }),
+        onFeedPaddock: () => {
+          send({ type: 'FEED_PADDOCK', massKg: 5 });
+        },
+        onWaterPaddock: () => {
+          send({ type: 'WATER_PADDOCK', liters: 10 });
+        },
+      });
+
+      if (tab === 'FABRICATION') {
+        renderFabricationTab(tabFabrication, (recipeId) => {
+          send({ type: 'FABRICATE', recipeId });
+          state.log.push(`Fabricated recipe ${recipeId}`);
+          renderLog();
+        });
+      }
     });
 
     tabReactions.classList.toggle('hidden', tab !== 'REACTIONS');
@@ -87,13 +106,7 @@ export function switchTab(tab: WorkbenchTab): void {
     tabStrategy.classList.toggle('hidden', tab !== 'STRATEGY');
     tabJournal.classList.toggle('hidden', tab !== 'JOURNAL');
 
-    if (tab === 'FABRICATION') {
-      renderFabricationTab(tabFabrication, (recipeId) => {
-        send({ type: 'FABRICATE', recipeId });
-        state.log.push(`Fabricated recipe ${recipeId}`);
-        renderLog();
-      });
-    } else if (tab === 'PADDOCKS') {
+    if (tab === 'PADDOCKS') {
       updatePaddockUI();
     } else if (tab === 'STRATEGY') {
       if (state.strategyMap) {
@@ -231,33 +244,40 @@ export function updatePlayerUI(): void {
   // Active treatments
   const treatments = treatmentModel(state.items, state.player);
 
-  renderToolAndInventoryPanel(toolInvPanel, state.inventory, {
-    onCraftBackpack: () => {
-      audio.clink();
-      send({ type: 'FABRICATE', recipeId: 'RECIPE_STITCH_BACKPACK' });
-    },
-    onEatFood: (itemId) => {
-      audio.munch();
-      send({ type: 'EAT_FOOD', itemId });
-    },
-    onEquipTool: (itemId, slot) => {
-      audio.clink();
-      send({ type: 'EQUIP_TOOL', itemId, slot });
-      renderBiomeExplorerTree();
-    },
-    onAdministerTreatment: (itemId) => {
-      audio.sealDone();
-      send({ type: 'APPLY_TREATMENT', itemId });
-    },
-    onChargeToVessel: (itemId) => {
-      audio.clink();
-      const v = state.vessels[selectedIndex()];
-      // Worker command is CHARGE_ITEM (vesselId + itemId + count) — see sim.worker.ts.
-      if (v) send({ type: 'CHARGE_ITEM', vesselId: v.id, itemId, count: 1 });
-    },
-    treatments,
-    isDead: state.player.conditions?.dead,
-  });
+  // The worker posts PLAYER_SYNC at 10 Hz. Rebuilding the inventory subtree on
+  // every sync destroys focus/pointer targets and burns a layout per 100 ms.
+  // Render only when something the panel displays actually changed.
+  const inventoryDigest = `${JSON.stringify(state.inventory)}|${treatments.map((t) => t.id).join(',')}|${state.player.conditions?.dead ? 1 : 0}`;
+  if (inventoryDigest !== lastInventoryDigest) {
+    lastInventoryDigest = inventoryDigest;
+    renderToolAndInventoryPanel(toolInvPanel, state.inventory, {
+      onCraftBackpack: () => {
+        audio.clink();
+        send({ type: 'FABRICATE', recipeId: 'RECIPE_STITCH_BACKPACK' });
+      },
+      onEatFood: (itemId) => {
+        audio.munch();
+        send({ type: 'EAT_FOOD', itemId });
+      },
+      onEquipTool: (itemId, slot) => {
+        audio.clink();
+        send({ type: 'EQUIP_TOOL', itemId, slot });
+        renderBiomeExplorerTree();
+      },
+      onAdministerTreatment: (itemId) => {
+        audio.sealDone();
+        send({ type: 'APPLY_TREATMENT', itemId });
+      },
+      onChargeToVessel: (itemId) => {
+        audio.clink();
+        const v = state.vessels[selectedIndex()];
+        // Worker command is CHARGE_ITEM (vesselId + itemId + count) — see sim.worker.ts.
+        if (v) send({ type: 'CHARGE_ITEM', vesselId: v.id, itemId, count: 1 });
+      },
+      treatments,
+      isDead: state.player.conditions?.dead,
+    });
+  }
 
   // Render Timed Requests into Right Panel or dedicated container
   let reqContainer = document.getElementById('timed-requests-container');
@@ -266,11 +286,12 @@ export function updatePlayerUI(): void {
     reqContainer.id = 'timed-requests-container';
     toolInvPanel.prepend(reqContainer);
   }
-  import('../ui/TimedRequestsWidget').then(({ renderTimedRequestsWidget }) => {
+  timedRequestsWidgetPromise ??= import('../ui/TimedRequestsWidget');
+  void timedRequestsWidgetPromise.then(({ renderTimedRequestsWidget }) => {
     if (reqContainer) {
       renderTimedRequestsWidget(
         reqContainer,
-        (state as any).timedRequests,
+        state.timedRequests,
         state.snapshot?.tick ?? 0,
         (slot) => {
           audio.clink();

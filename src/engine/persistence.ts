@@ -52,6 +52,13 @@ export interface SerializedWorldSave {
   ageProgress?: import('./campaign/ageProgress').AgeProgressState;
   settlements?: import('./campaign/settlements').SettlementsState;
   blacksmith?: import('./campaign/blacksmith').BlacksmithState;
+  campaign?: {
+    influence?: import('./campaign/influence').InfluenceState;
+    correspondence?: import('./campaign/correspondence').CorrespondenceState;
+    builtWorks?: import('./campaign/builtWorks').BuiltWorksState;
+    missions?: import('./campaign/missions').MissionsState;
+    victories?: import('./campaign/victories').CampaignVictoryState;
+  };
   tutorial?: {
     activeTier: 'BEGINNER' | 'INTERMEDIATE' | 'PHD';
     activeLessonId: string | null;
@@ -115,6 +122,7 @@ export function deserializeSave(json: string): SerializedWorldSave {
     ageProgress: parsed.ageProgress ?? undefined,
     settlements: parsed.settlements ?? undefined,
     blacksmith: parsed.blacksmith ?? undefined,
+    campaign: parsed.campaign ?? undefined,
     colony: parsed.colony ? {
       colonists: parsed.colony.colonists ?? [],
       ledger: parsed.colony.ledger ?? [],
@@ -134,7 +142,7 @@ export function deserializeSave(json: string): SerializedWorldSave {
         dismissed: parsed.tutorial.progressiveReveal.dismissed ?? false,
       } : undefined,
     } : undefined,
-    featureFlags: parsed.featureFlags ?? { colonyChemistryLink: false },
+    featureFlags: parsed.featureFlags ?? { colonyChemistryLink: true },
   };
 }
 
@@ -173,7 +181,7 @@ export function migrateSave(raw: unknown): SerializedWorldSave {
     lettersDone: Array.isArray(r.lettersDone) ? r.lettersDone : [],
     epilogueSeen: (typeof r.epilogueSeen === 'boolean' ? r.epilogueSeen : false),
     tutorial: undefined,
-    featureFlags: { colonyChemistryLink: false },
+    featureFlags: { colonyChemistryLink: true },
   };
 }
 

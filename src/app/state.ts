@@ -62,7 +62,7 @@ export const state = {
   selected: 0,
   activeTab: 'REACTIONS' as WorkbenchTab,
   unlockedUiFlags: UI_FLAG_MAP | UI_FLAG_WORKSHOP | UI_FLAG_SOAP_LAB | UI_FLAG_REQUESTS | UI_FLAG_PADDOCKS,
-  timedRequests: [] as any[],
+  timedRequests: [] as (import('../engine/timedRequests').TimedRequest | null)[],
   completedRequestsCount: 0,
   ever: {
     ash: false,
@@ -115,7 +115,7 @@ export const state = {
   },
   items: [] as Array<{ id: string; count: number; massKg: number }>,
   progression: initialProgression(),
-  colony: null as any,
+  colony: null as import('../engine/colony').ColonyState | null,
   experiments: null as import('../engine/campaign/experiments').ExperimentQueueState | null,
   realm: null as import('../engine/campaign/realm').RealmState | null,
   patron: null as import('../engine/campaign/patron').PatronState | null,
@@ -123,6 +123,11 @@ export const state = {
   settlements: null as import('../engine/campaign/settlements').SettlementsState | null,
   blacksmith: null as import('../engine/campaign/blacksmith').BlacksmithState | null,
   ledger: null as import('../engine/campaign/ledger').LedgerState | null,
+  influence: null as import('../engine/campaign/influence').InfluenceState | null,
+  correspondence: null as import('../engine/campaign/correspondence').CorrespondenceState | null,
+  builtWorks: null as import('../engine/campaign/builtWorks').BuiltWorksState | null,
+  missions: null as import('../engine/campaign/missions').MissionsState | null,
+  victories: null as import('../engine/campaign/victories').CampaignVictoryState | null,
   couplingEffects: null as {
     laborQuality?: { traceTargetReduction: number; phase2BandWiden: number };
     crashClumsiness?: { phase1ToleranceReduction: number; phase2BandReduction: number };
@@ -132,12 +137,21 @@ export const state = {
   strategyMap: null as StrategyMapCanvas | null,
   tutorial: null as TutorialController | null,
   bench3d: null as LabBench3DCanvas | null,
+  featureFlags: {
+    colonyChemistryLink: true,
+  },
 };
+
+/**
+ * Windows that render worker-owned campaign state register here on mount and
+ * remove themselves on unmount. The worker sync handler calls them directly,
+ * so no campaign chunk is loaded until a campaign window is actually opened.
+ */
+export const campaignListeners = new Set<() => void>();
 
 export function selectedIndex(): number {
   return Math.min(state.selected, Math.max(0, state.vessels.length - 1));
 }
-
 export function speciesMoles(snapshot: Snapshot, vesselIndex: number, speciesIdx: number): number {
   return snapshot.moles[vesselIndex * MAX_SPECIES + speciesIdx];
 }

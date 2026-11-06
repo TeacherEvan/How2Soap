@@ -9,13 +9,13 @@ import { StoryMode } from '../ui/StoryMode';
 import { showToast } from '../ui/Toast';
 // JournalPanel is dynamically imported for code-splitting
 import { audio } from '../ui/audio';
-import { state, speciesMoles, send } from './state';
+import { state, speciesMoles, send, campaignListeners } from './state';
 import { tabJournal } from './dom';
-import { openCrisisModal, closeCrisisModal } from '../ui/CrisisModal';
 import type { CrisisSeverity, CrisisId } from '../engine/crisis';
 import { renderVessels, updateTargets, renderLog } from './views';
 import { updatePlayerUI, updatePaddockUI } from './panels';
 import { requestAutoSave, AUTO_SAVE_KEY } from './autosave';
+import { queueFrameRender } from './syncScheduler';
 
 export type WorkerMessage =
   | { type: 'READY'; rngSeed?: number }
@@ -50,6 +50,8 @@ export type WorkerMessage =
       command?: string;
       message: string;
     }
+  | { type: 'LOAD_ERROR'; message: string }
+  | { type: 'SIM_FATAL'; message: string }
   | {
       type: 'LEDGER_SYNC';
       ledger: any;
@@ -58,6 +60,14 @@ export type WorkerMessage =
         crashClumsiness?: { phase1ToleranceReduction: number; phase2BandReduction: number };
       };
       couplingSpoilageSeed?: number;
+    }
+  | {
+      type: 'CAMPAIGN_SYNC';
+      influence: any;
+      correspondence: any;
+      builtWorks: any;
+      missions: any;
+      victories: any;
     };
 
 function createSeedVessels(): void {
@@ -91,6 +101,18 @@ export function handleWorkerMessage(data: WorkerMessage, options?: { load?: unkn
     showToast(`Simulation Error: ${data.message}`, 'failure');
     state.log.push(`SIM_ERROR: ${data.message}`);
     renderLog();
+    return;
+  }
+
+  if (data.type === 'SIM_FATAL') {
+    showToast('Simulation paused after repeated errors. Reload or start a new world.', 'failure');
+    state.log.push(`SIM_FATAL: ${data.message}`);
+    renderLog();
+    return;
+  }
+
+  if (data.type === 'LOAD_ERROR') {
+    // Recovered by the worker boundary in main.ts before dispatch reaches here.
     return;
   }
 
@@ -138,33 +160,52 @@ export function handleWorkerMessage(data: WorkerMessage, options?: { load?: unkn
     state.player = data.player;
     state.inventory = data.inventory;
     state.items = data.inventory.items ?? [];
-    if (data.paddock) {
-      state.paddock = data.paddock;
-      updatePaddockUI();
-    }
-    updatePlayerUI();
+    if (data.paddock) state.paddock = data.paddock;
     requestAutoSave();
-    if (state.tutorial) {
-      state.tutorial.checkProgress({ state, snapshot: state.snapshot });
-    }
-    if ((state.player.conditions?.dead || (state.player as any).dead) && !state.deathModalShown) {
-      state.deathModalShown = true;
-      StoryMode.death('sepsis', { days: state.player.day ?? 1, renown: state.progression.renown }, () => {
-        localStorage.removeItem(AUTO_SAVE_KEY);
-        localStorage.removeItem('how2soap.save.v2');
-        location.reload();
-      });
-    }
+    // Coalesce the 10 Hz sync into one render per painted frame.
+    queueFrameRender('player', () => {
+      if (state.paddock) updatePaddockUI();
+      updatePlayerUI();
+      if (state.tutorial) {
+        state.tutorial.checkProgress({ state, snapshot: state.snapshot });
+      }
+      if ((state.player.conditions?.dead || (state.player as any).dead) && !state.deathModalShown) {
+        state.deathModalShown = true;
+        StoryMode.death('sepsis', { days: state.player.day ?? 1, renown: state.progression.renown }, () => {
+          localStorage.removeItem(AUTO_SAVE_KEY);
+          localStorage.removeItem('how2soap.save.v2');
+          location.reload();
+        });
+      }
+    });
     return;
   }
 
   if (data.type === 'COLONY_SYNC') {
-    state.colony = data.colony;
-    const seconds = (state.snapshot?.tick ?? 0) * 360;
-    const minuteOfDay = Math.floor((seconds % 86400) / 60);
-    if (state.strategyMap) {
-      state.strategyMap.update(data.colony, minuteOfDay);
-    }
+    const incoming = data.colony ?? {};
+    const previousGrid = state.colony?.desirePathGrid;
+    const incomingGrid = incoming.desirePathGrid;
+    // The worker omits an unchanged 1,024-cell desire grid; keep the last copy
+    // so the save path and any future overlay still see a complete grid.
+    const desirePathGrid: Uint8Array = incomingGrid instanceof Uint8Array
+      ? incomingGrid
+      : Array.isArray(incomingGrid)
+        ? Uint8Array.from(incomingGrid)
+        : previousGrid ?? new Uint8Array(1024);
+
+    state.colony = {
+      ...incoming,
+      colonists: incoming.colonists ?? [],
+      ledger: incoming.ledger ?? [],
+      desirePathGrid,
+    };
+
+    queueFrameRender('colony', () => {
+      if (!state.colony || !state.strategyMap) return;
+      const seconds = (state.snapshot?.tick ?? 0) * 360;
+      const minuteOfDay = Math.floor((seconds % 86400) / 60);
+      state.strategyMap.update(state.colony, minuteOfDay);
+    });
     return;
   }
 
@@ -176,6 +217,7 @@ export function handleWorkerMessage(data: WorkerMessage, options?: { load?: unkn
   if (data.type === 'REALM_SYNC') {
     state.realm = data.realm;
     updatePlayerUI();
+    for (const listener of campaignListeners) listener();
 
     if (data.realm.deposal && !state.deposalModalShown) {
       state.deposalModalShown = true;
@@ -183,14 +225,14 @@ export function handleWorkerMessage(data: WorkerMessage, options?: { load?: unkn
       import('../ui/VictoryDeposalOverlay').then(({ openVictoryDeposalModal }) => {
         import('../engine/campaign/victories').then(({ createInitialVictoryState }) => {
           import('../engine/campaign/builtWorks').then(({ createInitialBuiltWorks }) => {
-            const vicState = createInitialVictoryState();
+            const vicState = state.victories ?? createInitialVictoryState();
             vicState.deposalOccurred = deposalType;
             openVictoryDeposalModal({
               endingType: deposalType,
               victoryState: vicState,
               realm: data.realm,
               settlements: state.settlements ?? { settlements: [], settlementLimit: 3, globalYields: { food: 0, production: 0, trade: 0, discovery: 0, renown: 0, morale: 50, influence: 0 } },
-              builtWorks: createInitialBuiltWorks(),
+              builtWorks: state.builtWorks ?? createInitialBuiltWorks(),
               patronId: state.patron?.patronId ?? null,
               turn: state.player?.day ?? 1,
               onMuseumMode: () => {
@@ -239,6 +281,16 @@ export function handleWorkerMessage(data: WorkerMessage, options?: { load?: unkn
     return;
   }
 
+  if (data.type === 'CAMPAIGN_SYNC') {
+    state.influence = data.influence;
+    state.correspondence = data.correspondence;
+    state.builtWorks = data.builtWorks;
+    state.missions = data.missions;
+    state.victories = data.victories;
+    for (const listener of campaignListeners) listener();
+    return;
+  }
+
   if (data.type === 'TURN_RECAP') {
     import('../ui/TurnRecapModal').then(({ openTurnRecapModal }) => {
       openTurnRecapModal({
@@ -262,32 +314,35 @@ export function handleWorkerMessage(data: WorkerMessage, options?: { load?: unkn
         : null,
     };
     updatePlayerUI();
+    for (const listener of campaignListeners) listener();
     const active = state.crisis.active;
     if (active) {
       audio.strikeBell();
       import('../ui/score').then(({ score }) => score.setTheme('crisis'));
-      openCrisisModal(active, state.vessels.length, (choiceId: string) => {
-        send({ type: 'CRISIS_CHOICE', crisisId: active.crisisId, choiceId });
+      void import('../ui/CrisisModal').then(({ openCrisisModal }) => {
+        openCrisisModal(active, state.vessels.length, (choiceId: string) => {
+          send({ type: 'CRISIS_CHOICE', crisisId: active.crisisId, choiceId });
+        });
       });
     } else {
       import('../ui/score').then(({ score }) => score.setTheme('hearth'));
-      closeCrisisModal();
+      void import('../ui/CrisisModal').then(({ closeCrisisModal }) => closeCrisisModal());
     }
     return;
   }
 
   if (data.type === 'REQUEST_SYNC') {
-    const prevSlots = (state as any).timedRequests ?? [];
+    const prevSlots = state.timedRequests ?? [];
     if (data.slots && prevSlots.length > 0) {
       for (const slot of data.slots) {
         if (!slot) continue;
-        const isActive = slot.active ?? (slot.status === 'active');
+        const isActive = (slot as any).active ?? (slot.status === 'active');
         if (!isActive && prevSlots.some((p: any) => p && p.slot === slot.slot && (p.active ?? (p.status === 'active')))) {
           state.completedRequestsCount = (state.completedRequestsCount || 0) + 1;
         }
       }
     }
-    (state as any).timedRequests = data.slots;
+    state.timedRequests = data.slots;
     updatePlayerUI();
     return;
   }

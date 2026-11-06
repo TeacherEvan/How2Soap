@@ -84,7 +84,35 @@ import {
 import {
   placeDistrict,
 } from './campaign/districts';
-import { restoreColonyFromSave, restoreWorldFromSave } from './worldRestore';
+import {
+  createInitialInfluenceState,
+  executePowerAction,
+  type InfluenceState,
+  type PowerAction,
+} from './campaign/influence';
+import {
+  createInitialCorrespondence,
+  markLetterRead,
+  type CorrespondenceState,
+} from './campaign/correspondence';
+import {
+  createInitialBuiltWorks,
+  constructBuiltWork,
+  type BuiltWorksState,
+} from './campaign/builtWorks';
+import {
+  createInitialMissions,
+  executeMission,
+  type MissionsState,
+  type MissionVerb,
+} from './campaign/missions';
+import {
+  createInitialVictoryState,
+  updateVictoryScores,
+  type CampaignVictoryState,
+  type UndertowStance,
+} from './campaign/victories';
+import { restoreCampaignFromSave, restoreColonyFromSave, restoreWorldFromSave } from './worldRestore';
 import {
   createCrisisDirector,
   type CrisisContext,
@@ -114,7 +142,11 @@ export interface FullSimState {
 }
 
 type Command =
-  | { type: 'INIT'; sab: SharedArrayBuffer }
+  | {
+      type: 'INIT';
+      sab: SharedArrayBuffer;
+      featureFlags?: { colonyChemistryLink?: boolean };
+    }
   | { type: 'LOAD_WORLD'; sab: SharedArrayBuffer; save: any }
   | {
       type: 'CREATE_VESSEL';
@@ -158,6 +190,11 @@ type Command =
   | { type: 'SET_TOWN_FOCUS'; settlementId: string; focus: import('./campaign/settlements').TownFocus }
   | { type: 'START_BLACKSMITH_BATCH'; recipeId: string; name: string; batchCount: number; turns: number; outputs: Array<{ itemId: string; count: number }> }
   | { type: 'PLACE_DISTRICT'; settlementId: string; kind: import('./campaign/districts').DistrictKind; q: number; r: number }
+  | { type: 'POWER_ACTION'; powerId: string; action: PowerAction }
+  | { type: 'CONSTRUCT_BUILT_WORK'; workId: string }
+  | { type: 'EXECUTE_MISSION'; operativeId: string; verb: MissionVerb }
+  | { type: 'MARK_LETTER_READ'; letterId: string }
+  | { type: 'SET_UNDERTOW_STANCE'; stance: UndertowStance }
   | { type: 'ACCEPT_LEDGER_SLOT'; slotId: string }
   | { type: 'FULFILL_LEDGER_SLOT'; slotId: string }
   | { type: 'REQUEST_LEDGER_SYNC' };
@@ -195,6 +232,7 @@ let blacksmith: BlacksmithState = createBlacksmithState();
 let view: SharedWorldView | null = null;
 let paused = false;
 let timer: ReturnType<typeof setInterval> | null = null;
+let consecutiveTickErrors = 0;
 const labels = new Map<number, string>();
 
 let rngSeed = 0;
@@ -203,6 +241,11 @@ const crisis = createCrisisDirector();
 let lastCrisisSync = '';
 const timedRequests: TimedRequestManager = createTimedRequestManager();
 let ledger: LedgerState = createInitialLedger(rngSeed);
+let influence: InfluenceState = createInitialInfluenceState(1);
+let correspondence: CorrespondenceState = createInitialCorrespondence();
+let builtWorks: BuiltWorksState = createInitialBuiltWorks();
+let missions: MissionsState = createInitialMissions();
+let victories: CampaignVictoryState = createInitialVictoryState();
 
 // ES-3 Colony ↔ Chemistry Couplings
 let couplingConfig: CouplingConfig = { enabled: false, rngSeed: 0 };
@@ -283,14 +326,36 @@ function postPlayerAndInventory(): void {
   });
 }
 
+let lastDesireGridChecksum = -1;
+
+/** FNV-1a over the 1,024-cell wear grid; ~1k integer ops is far cheaper than
+ *  boxing the grid into a JS array and structured-cloning it every 100 ms. */
+function desireGridChecksum(grid: Uint8Array): number {
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < grid.length; i += 1) {
+    hash ^= grid[i];
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return hash | 0;
+}
+
 function postColonySync(): void {
   if (!colony) return;
+  const checksum = desireGridChecksum(colony.desirePathGrid);
+  // First sync is always full; after that, keyframe every 100 ticks (10 s) in
+  // case a checksum ever collides.
+  const firstSync = lastDesireGridChecksum === -1;
+  const keyframe = !!world && world.tick > 0 && world.tick % 100 === 0;
+  const includeGrid = firstSync || keyframe || checksum !== lastDesireGridChecksum;
+  lastDesireGridChecksum = checksum;
   ctx.postMessage({
     type: 'COLONY_SYNC',
     colony: {
       colonists: colony.colonists,
       ledger: colony.ledger,
-      desirePathGrid: Array.from(colony.desirePathGrid),
+      // Transfer the typed array directly (structured clone supports it), and
+      // only when the wear pattern actually changed.
+      desirePathGrid: includeGrid ? colony.desirePathGrid : undefined,
       nextColonistId: colony.nextColonistId,
       lastDecayTick: colony.lastDecayTick,
     },
@@ -319,6 +384,14 @@ function postCampaignSync(): void {
     ledger,
     couplingEffects,
     couplingSpoilageSeed: couplingConfig.enabled ? couplingConfig.rngSeed + 0x1234567 : 0,
+  });
+  ctx.postMessage({
+    type: 'CAMPAIGN_SYNC',
+    influence,
+    correspondence,
+    builtWorks,
+    missions,
+    victories,
   });
 }
 
@@ -381,7 +454,7 @@ function stepSingleTick(activitySeconds: number = SIM_STEP_SECONDS): WorldEvent[
   }
   if (world.tick > 0 && world.tick % 240 === 0 && paddock && paddock.animals.length > 0) {
     const yields = stepPaddockDay(paddock);
-    if (yields.butterfatGrams > 0) {
+    if (yields.butterfatGrams > 0 && inventory) {
       const butterfatSlot = {
         itemId: 'RAW_ADIPOSE_FAT',
         count: 1,
@@ -389,19 +462,11 @@ function stepSingleTick(activitySeconds: number = SIM_STEP_SECONDS): WorldEvent[
         quality: 1.0,
         label: 'Rendered Butterfat',
       };
-      if (!addItemToContainer(inventory?.bareHands ?? null as any, butterfatSlot)) {
-        if (!addItemToContainer(inventory?.backpack ?? null as any, butterfatSlot)) {
-          if (inventory?.campCache) addItemToContainer(inventory.campCache, butterfatSlot);
-        }
-      }
+      addItemToAnyContainer(inventory, butterfatSlot);
     }
-    if (yields.eggs > 0) {
+    if (yields.eggs > 0 && inventory) {
       const eggSlot = { itemId: 'FIELD_MUSHROOM', count: yields.eggs, massKg: yields.eggs * 0.05, label: 'Fresh Egg' };
-      if (!addItemToContainer(inventory?.bareHands ?? null as any, eggSlot)) {
-        if (!addItemToContainer(inventory?.backpack ?? null as any, eggSlot)) {
-          if (inventory?.campCache) addItemToContainer(inventory.campCache, eggSlot);
-        }
-      }
+      addItemToAnyContainer(inventory, eggSlot);
     }
     events.push({ vesselId: -1, message: `Paddock yields: ${yields.milkL.toFixed(1)} L milk, ${yields.butterfatGrams.toFixed(0)} g butterfat, ${yields.eggs} eggs, ${yields.manureKg.toFixed(2)} kg manure.` });
   }
@@ -519,6 +584,17 @@ function advance(hours: number): WorldEvent[] {
 
       // Recompute settlement yields
       recomputeSettlementYields(settlements);
+
+      // Cross-age victory scores and built-work health infrastructure.
+      updateVictoryScores(victories, {
+        settlements,
+        realm,
+        builtWorks,
+        currentAge: 1,
+      });
+      if (builtWorks.activeHealthBonusPerTurn > 0) {
+        realm.health = Math.min(100, realm.health + builtWorks.activeHealthBonusPerTurn);
+      }
     }
 
     ctx.postMessage({
@@ -545,8 +621,15 @@ function tick(): void {
     if (events.length > 0) ctx.postMessage({ type: 'EVENTS', events });
     postPlayerAndInventory();
     postColonySync();
+    consecutiveTickErrors = 0;
   } catch (err) {
+    consecutiveTickErrors += 1;
     const message = err instanceof Error ? err.message : String(err);
+    if (consecutiveTickErrors >= 3) {
+      paused = true;
+      ctx.postMessage({ type: 'SIM_FATAL', message });
+      return;
+    }
     ctx.postMessage({
       type: 'SIM_ERROR',
       command: 'tick',
@@ -561,6 +644,12 @@ ctx.onmessage = (event: MessageEvent<Command>) => {
     handleCommand(command);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
+    // A failed load on a fresh worker has no fallback state: surface it as a
+    // typed error so the UI can restart instead of waiting for a READY that
+    // will never arrive.
+    if (command?.type === 'LOAD_WORLD') {
+      ctx.postMessage({ type: 'LOAD_ERROR', message });
+    }
     ctx.postMessage({
       type: 'SIM_ERROR',
       command: command?.type,
@@ -584,9 +673,19 @@ function handleCommand(command: Command): void {
       rng = createSeededRng(rngSeed);
       crisis.reset(rngSeed, 0);
       colony = createInitialColonyState();
+      lastDesireGridChecksum = -1;
+      influence = createInitialInfluenceState(1);
+      correspondence = createInitialCorrespondence();
+      builtWorks = createInitialBuiltWorks();
+      missions = createInitialMissions();
+      victories = createInitialVictoryState();
 
-      // Initialize ES-3 Colony ↔ Chemistry Couplings (default disabled)
-      couplingConfig = { enabled: false, rngSeed: rngSeed + 0x9e3779b9 };
+      // Initialize ES-3 Colony ↔ Chemistry Couplings from the single UI-owned
+      // feature flag (defaults on for callers that omit it, e.g. tests).
+      couplingConfig = {
+        enabled: command.featureFlags?.colonyChemistryLink ?? true,
+        rngSeed: rngSeed + 0x9e3779b9,
+      };
       couplingRng = createCouplingRng(couplingConfig.rngSeed);
       couplingEffects = computeCouplingEffects(couplingConfig, colony);
 
@@ -595,6 +694,7 @@ function handleCommand(command: Command): void {
       ctx.postMessage({ type: 'READY', rngSeed });
       postPlayerAndInventory();
       postColonySync();
+      postCampaignSync();
       postCrisisSync();
       break;
     }
@@ -654,10 +754,18 @@ function handleCommand(command: Command): void {
       crisis.reset(rngSeed, save.tick ?? 0);
       paddock = save.paddock ?? createPaddock();
       colony = restoreColonyFromSave(save);
+      lastDesireGridChecksum = -1;
+
+      const campaignSlice = restoreCampaignFromSave(save);
+      influence = campaignSlice.influence;
+      correspondence = campaignSlice.correspondence;
+      builtWorks = campaignSlice.builtWorks;
+      missions = campaignSlice.missions;
+      victories = campaignSlice.victories;
 
       // Initialize ES-3 Colony ↔ Chemistry Couplings
       couplingConfig = {
-        enabled: save.featureFlags?.colonyChemistryLink ?? false,
+        enabled: save.featureFlags?.colonyChemistryLink ?? true,
         rngSeed: rngSeed + 0x9e3779b9, // Different seed for coupling RNG
       };
       couplingRng = createCouplingRng(couplingConfig.rngSeed);
@@ -1367,8 +1475,43 @@ function handleCommand(command: Command): void {
       }
       break;
     }
-    case 'ACCEPT_LEDGER_SLOT': {
-      const ok = acceptSlot(ledger, command.slotId);
+    case 'POWER_ACTION': {
+      const res = executePowerAction(influence, command.powerId, command.action);
+      ctx.postMessage({ type: 'EVENTS', events: [{ vesselId: -1, message: res.message }] });
+      postCampaignSync();
+      break;
+    }
+    case 'CONSTRUCT_BUILT_WORK': {
+      const res = constructBuiltWork(builtWorks, command.workId);
+      builtWorks = res.state;
+      ctx.postMessage({ type: 'EVENTS', events: [{ vesselId: -1, message: res.message }] });
+      postCampaignSync();
+      break;
+    }
+    case 'EXECUTE_MISSION': {
+      const res = executeMission(missions, command.operativeId, command.verb, rng.next());
+      realm.estates.crown = Math.max(0, Math.min(100, realm.estates.crown + res.estateDeltas.crown));
+      realm.estates.army = Math.max(0, Math.min(100, realm.estates.army + res.estateDeltas.army));
+      realm.estates.public = Math.max(0, Math.min(100, realm.estates.public + res.estateDeltas.public));
+      ctx.postMessage({ type: 'EVENTS', events: [{ vesselId: -1, message: res.message }] });
+      postCampaignSync();
+      break;
+    }
+    case 'MARK_LETTER_READ': {
+      markLetterRead(correspondence, command.letterId);
+      postCampaignSync();
+      break;
+    }
+    case 'SET_UNDERTOW_STANCE': {
+      victories.undertowStance = command.stance;
+      ctx.postMessage({
+        type: 'EVENTS',
+        events: [{ vesselId: -1, message: `The Undertow stance is now ${command.stance}.` }],
+      });
+      postCampaignSync();
+      break;
+    }
+    case 'ACCEPT_LEDGER_SLOT': {      const ok = acceptSlot(ledger, command.slotId);
       if (ok) {
         ctx.postMessage({ type: 'EVENTS', events: [{ vesselId: -1, message: 'Dispatch accepted. Complete it before day\'s end.' }] });
       } else {

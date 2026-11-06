@@ -14,23 +14,10 @@ import { COUNTRIES } from '../../engine/campaign/realm';
 import {
   evaluateVictoryEligibilities,
   calculateTestOfTimeScore,
-  type CampaignVictoryState,
+  createInitialVictoryState,
   type VictoryType,
 } from '../../engine/campaign/victories';
 import { createInitialBuiltWorks } from '../../engine/campaign/builtWorks';
-
-let localVictoryState: CampaignVictoryState = {
-  scores: { dominion: 35, tourism: 28, gdp: 42, innovation: 50 },
-  undertowStance: 'IGNORE',
-  penicillinConsignmentsDelivered: 2,
-  frontierThreatsPacified: 2,
-  tradeConvoysCompleted: 3,
-  dispatchesMastered: 4,
-  claimedVictory: null,
-  deposalOccurred: null,
-  turnCompleted: null,
-  isMuseumMode: false,
-};
 
 export const spec: WindowSpec = {
   id: 'realm',
@@ -49,11 +36,12 @@ export const spec: WindowSpec = {
     const pub = realm ? realm.estates.public : 60;
 
     const settlementsState = state.settlements ?? { settlements: [], settlementLimit: 3, globalYields: { food: 0, production: 0, trade: 0, discovery: 0, renown: 0, morale: 50, influence: 0 } };
-    const builtWorksState = createInitialBuiltWorks();
+    const builtWorksState = state.builtWorks ?? createInitialBuiltWorks();
+    const victoryState = state.victories ?? createInitialVictoryState();
     const currentAge = state.ageProgress?.currentAge ?? 1;
 
     const eligibilities = evaluateVictoryEligibilities(
-      localVictoryState,
+      victoryState,
       realm ?? { countryId: country.id, turn: 1, health, safety, vigor, doseExposure: 0, doseImmunityTurns: 0, tunicsDeliveredTotal: 0, guardsAssignedTotal: 0, estates: { crown, army, public: pub, crownWarned25: false, crownWarned10: false, armyWarned25: false, armyWarned10: false, publicWarned25: false, publicWarned10: false }, deposal: null },
       settlementsState,
       currentAge,
@@ -61,7 +49,7 @@ export const spec: WindowSpec = {
     );
 
     const scoreCalc = calculateTestOfTimeScore(
-      localVictoryState,
+      victoryState,
       realm ?? { countryId: country.id, turn: 1, health, safety, vigor, doseExposure: 0, doseImmunityTurns: 0, tunicsDeliveredTotal: 0, guardsAssignedTotal: 0, estates: { crown, army, public: pub, crownWarned25: false, crownWarned10: false, armyWarned25: false, armyWarned10: false, publicWarned25: false, publicWarned10: false }, deposal: null },
       settlementsState,
       state.player?.day ?? 1,
@@ -150,19 +138,19 @@ export const spec: WindowSpec = {
           <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5rem; margin-bottom: 0.8rem; font-size: 0.8rem; text-align: center;">
             <div style="background: rgba(255,255,255,0.02); padding: 0.4rem; border-radius: 4px;">
               <div style="color: var(--muted);">Dominion</div>
-              <strong style="color: #e06c75;">${localVictoryState.scores.dominion}</strong>
+              <strong style="color: #e06c75;">${victoryState.scores.dominion}</strong>
             </div>
             <div style="background: rgba(255,255,255,0.02); padding: 0.4rem; border-radius: 4px;">
               <div style="color: var(--muted);">Tourism</div>
-              <strong style="color: #98c379;">${localVictoryState.scores.tourism}</strong>
+              <strong style="color: #98c379;">${victoryState.scores.tourism}</strong>
             </div>
             <div style="background: rgba(255,255,255,0.02); padding: 0.4rem; border-radius: 4px;">
               <div style="color: var(--muted);">GDP</div>
-              <strong style="color: #e5b567;">${localVictoryState.scores.gdp}</strong>
+              <strong style="color: #e5b567;">${victoryState.scores.gdp}</strong>
             </div>
             <div style="background: rgba(255,255,255,0.02); padding: 0.4rem; border-radius: 4px;">
               <div style="color: var(--muted);">Innovation</div>
-              <strong style="color: #61afef;">${localVictoryState.scores.innovation}</strong>
+              <strong style="color: #61afef;">${victoryState.scores.innovation}</strong>
             </div>
           </div>
 
@@ -210,15 +198,15 @@ export const spec: WindowSpec = {
         import('../VictoryDeposalOverlay').then(({ openVictoryDeposalModal }) => {
           openVictoryDeposalModal({
             endingType: vicType,
-            victoryState: localVictoryState,
+            victoryState: victoryState,
             realm: realm ?? { countryId: country.id, turn: 1, health, safety, vigor, doseExposure: 0, doseImmunityTurns: 0, tunicsDeliveredTotal: 0, guardsAssignedTotal: 0, estates: { crown, army, public: pub, crownWarned25: false, crownWarned10: false, armyWarned25: false, armyWarned10: false, publicWarned25: false, publicWarned10: false }, deposal: null },
             settlements: settlementsState,
             builtWorks: builtWorksState,
             patronId: state.patron?.patronId ?? null,
             turn: state.player?.day ?? 1,
             onMuseumMode: () => {
-              localVictoryState.isMuseumMode = true;
-              localVictoryState.claimedVictory = vicType;
+              victoryState.isMuseumMode = true;
+              victoryState.claimedVictory = vicType;
             },
             onNewWorld: () => {
               localStorage.removeItem('how2soap.save.v3');

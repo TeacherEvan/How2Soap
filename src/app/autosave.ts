@@ -106,7 +106,17 @@ export function buildSaveSnapshot(): SerializedWorldSave {
     ageProgress: state.ageProgress ?? undefined,
     settlements: state.settlements ?? undefined,
     blacksmith: state.blacksmith ?? undefined,
+    campaign: state.influence
+      ? {
+          influence: state.influence,
+          correspondence: state.correspondence ?? undefined,
+          builtWorks: state.builtWorks ?? undefined,
+          missions: state.missions ?? undefined,
+          victories: state.victories ?? undefined,
+        }
+      : undefined,
     tutorial: state.tutorial ? state.tutorial.snapshot() : undefined,
+    featureFlags: state.featureFlags ?? { colonyChemistryLink: true },
   };
 }
 

@@ -48,6 +48,9 @@ interface ColonistState {
   assignedVessel?: number;
   status?: string;
   morale?: number;
+  activeStimulant?: {
+    phase: 'BOOST' | 'CRASH';
+  } | null;
 }
 
 /**
@@ -58,7 +61,6 @@ export function computeCouplingEffects(
   config: CouplingConfig,
   colony: {
     colonists: ColonistState[];
-    hasStrike?: boolean;
   }
 ): CouplingEffects {
   if (!config.enabled) {
@@ -69,9 +71,9 @@ export function computeCouplingEffects(
     };
   }
 
-  // 1. Labor → quality: Check for APPRENTICE_CHEMIST assigned to vessel
+  // 1. Labor → quality: Check for APPRENTICE_CHEMIST assigned to vessel (or general camp labor if no specific vessel assignment)
   const hasApprenticeChemist = colony.colonists.some(
-    c => c.archetype === 'APPRENTICE_CHEMIST' && c.assignedVessel !== undefined
+    c => c.archetype === 'APPRENTICE_CHEMIST' && (c.assignedVessel !== undefined || c.status !== 'STRIKE')
   );
 
   const laborQuality = hasApprenticeChemist
@@ -85,7 +87,8 @@ export function computeCouplingEffects(
   const meanMorale = colony.colonists.length > 0
     ? colony.colonists.reduce((sum, c) => sum + (c.morale ?? 50), 0) / colony.colonists.length
     : 50;
-  const unrestTriggered = meanMorale < 40 || colony.hasStrike;
+  const hasStrike = colony.colonists.some((c) => c.status === 'STRIKE');
+  const unrestTriggered = meanMorale < 40 || hasStrike;
 
   const unrestSpoilage = unrestTriggered
     ? {
@@ -94,9 +97,9 @@ export function computeCouplingEffects(
       }
     : null;
 
-  // 3. Crash → clumsiness: any colonist in CRASH phase assigned to vessel
+  // 3. Crash → clumsiness: any colonist in CRASH phase
   const hasCrashColonist = colony.colonists.some(
-    c => c.status === 'CRASH' && c.assignedVessel !== undefined
+    c => (c.status === 'CRASH' || c.activeStimulant?.phase === 'CRASH') && (c.assignedVessel !== undefined || c.status !== 'STRIKE')
   );
 
   const crashClumsiness = hasCrashColonist

@@ -13,7 +13,6 @@ import { CHAPTERS } from './data/story';
 import { globalOverlayStack } from './ui/overlayStack';
 import { audio } from './ui/audio';
 import { migrateSave } from './engine/persistence';
-import { simulateWatchForecast } from './engine/telegraph';
 import { levelFromRenown, initialProgression } from './engine/progression';
 import { state, send, formatClock } from './app/state';
 import {
@@ -115,13 +114,25 @@ function startWorld(options?: { load?: SerializedWorldSave }): void {
   state.worker.onmessageerror = () => {
     showToast('Worker serialization error encountered.', 'failure');
   };
-  state.worker.onmessage = (event: MessageEvent<WorkerMessage>) =>
+  state.worker.onmessage = (event: MessageEvent<WorkerMessage>) => {
+    if (event.data?.type === 'LOAD_ERROR') {
+      showToast(
+        `Save could not be loaded: ${event.data.message}. Starting a new world.`,
+        'failure',
+      );
+      // The unloadable payload would otherwise be retried on every reload.
+      localStorage.removeItem(AUTO_SAVE_KEY);
+      localStorage.removeItem('how2soap.save.v2');
+      startWorld();
+      return;
+    }
     handleWorkerMessage(event.data, options);
+  };
 
   if (options?.load) {
     state.worker.postMessage({ type: 'LOAD_WORLD', sab, save: options.load });
   } else {
-    state.worker.postMessage({ type: 'INIT', sab });
+    state.worker.postMessage({ type: 'INIT', sab, featureFlags: state.featureFlags });
   }
 
   // Initial Biome DAG rendering
@@ -261,12 +272,14 @@ function bindActions(): void {
   }
   if (dawnReportButton) {
     dawnReportButton.addEventListener('click', () => {
-      const f = simulateWatchForecast(null, state.colony, 24);
-      import('./ui/TurnRecapModal').then(({ openTurnRecapModal }) => {
-        openTurnRecapModal({
-          turn: state.player.day ?? 1,
-          events: [{ vesselId: -1, message: `Dawn Forecast: est -${f.estCaloricBurnKcal} kcal, -${f.estHydrationLossPct}% hydration.` }],
-          benchLedger: (state.experiments?.experiments ?? []).map((e) => ({ label: e.recipeName || e.recipeId, turnsLeft: e.turnsLeft, done: e.turnsLeft <= 0 })),
+      void import('./engine/telegraph').then(({ simulateWatchForecast }) => {
+        const f = simulateWatchForecast(null, state.colony, 24);
+        import('./ui/TurnRecapModal').then(({ openTurnRecapModal }) => {
+          openTurnRecapModal({
+            turn: state.player.day ?? 1,
+            events: [{ vesselId: -1, message: `Dawn Forecast: est -${f.estCaloricBurnKcal} kcal, -${f.estHydrationLossPct}% hydration.` }],
+            benchLedger: (state.experiments?.experiments ?? []).map((e) => ({ label: e.recipeName || e.recipeId, turnsLeft: e.turnsLeft, done: e.turnsLeft <= 0 })),
+          });
         });
       });
     });

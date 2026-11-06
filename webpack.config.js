@@ -95,6 +95,14 @@ module.exports = (env, argv) => {
             name: 'chem-registry',
             priority: 20,
           },
+          // Shared by the lazy Workbench and Fabrication windows; without this
+          // group webpack emits two 28 KB copies of the recipe table.
+          fabrication: {
+            test: /[\\/]src[\\/]engine[\\/]fabrication\.ts/,
+            name: 'fabrication',
+            chunks: 'all',
+            priority: 15,
+          },
           vendors: {
             test: /[\\/]node_modules[\\/]/,
             name: 'vendors',
