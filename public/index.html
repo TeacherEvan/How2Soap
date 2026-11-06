@@ -25,106 +25,54 @@
     <title>How2Soap</title>
   </head>
   <body>
-    <div id="app" class="game">
-      <header class="topbar">
-        <div class="brand">
-          <span class="flame">△</span>
-          <div>
-            <h1>How2Soap</h1>
-            <p>Emergent thermodynamics &amp; survival engine</p>
-          </div>
-        </div>
-        <div class="telemetry tabular-nums" style="font-variant-numeric: tabular-nums;">
-          <div class="stat"><span class="stat-label">Isolation</span><strong id="isolation">checking…</strong></div>
-          <div class="stat"><span class="stat-label">Day / Hour</span><strong id="clock">—</strong></div>
-          <div class="stat"><span class="stat-label">Glucose</span><strong id="p-glucose">1200 kcal</strong></div>
-          <div class="stat"><span class="stat-label">Body Temp</span><strong id="p-temp">37.0 °C</strong></div>
-          <div class="stat"><span class="stat-label">Insulation</span><strong id="p-iclo">0.05 clo</strong></div>
-          <div class="hud-chip" id="hud-adipose" title="Adipose reserves — your famine buffer">Adipose <b id="val-adipose">15,000 kcal</b></div>
-          <div class="hud-chip" id="hud-hydration" title="Hydration">Hydration <b id="val-hydration">100%</b></div>
-          <div class="hud-chip" id="hud-ambient" title="Ambient temperature">Amb <b id="val-ambient">288 K</b></div>
-          <div class="hud-chip" id="hud-renown" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" title="Renown progress">
-            <span id="val-renown-title">L1 · Scrub Apprentice</span>
-            <svg class="renown-ring" viewBox="0 0 36 36"><circle class="ring-bg" cx="18" cy="18" r="15.5"/><circle class="ring-fg" id="ring-renown-fg" cx="18" cy="18" r="15.5"/></svg>
-          </div>
-          <div class="hud-chip" id="hud-health" role="progressbar" aria-valuenow="60" aria-valuemin="0" aria-valuemax="100" title="Public Health (The Wasting)">Health <b id="val-health">60%</b></div>
-          <div class="hud-chip" id="hud-safety" role="progressbar" aria-valuenow="60" aria-valuemin="0" aria-valuemax="100" title="Public Safety">Safety <b id="val-safety">60%</b></div>
-          <div class="hud-chip" id="hud-vigor" role="progressbar" aria-valuenow="50" aria-valuemin="0" aria-valuemax="100" title="Hearth Vigor (Stimulants)">Vigor <b id="val-vigor">50%</b></div>
-          <div class="hud-chip" id="hud-mandate" role="button" tabindex="0" title="The Three Estates Mandate (Key 6)">Mandate <b id="val-mandate">60%</b></div>
-        </div>
-        <div class="controls">
-          <button id="end-turn" class="primary" title="End Turn (Space / Enter)">End Turn ▸</button>
-          <button id="skip-turns" class="ghost" title="March 8 Turns">March ×8</button>
-          <button id="dawn-report" class="ghost" title="Inspect Dawn Forecast">Dawn Report</button>
-          <button id="reset" class="ghost danger">New world</button>
-        </div>
-      </header>
+    <!-- Full-viewport World Base Layer -->
+    <div id="world" class="world-viewport" aria-hidden="false"></div>
 
+    <div id="app" class="game-shell">
+      <!-- Persistent Chrome: 3 elements only (Spec 1 §4.1) -->
+      <!-- 1. Top-Left: New World Button -->
+      <button id="reset" class="fab-new-world" type="button" aria-label="Start a new world (↺)" title="Start a new world">
+        ↺
+      </button>
+
+      <!-- 2. Top-Right: Council Menu FAB -->
+      <button id="btn-council-menu" class="fab-menu" type="button" aria-label="Open Council Chamber (Esc or M)" title="Council Chamber (M / Esc)">
+        <span class="fab-menu-icon" aria-hidden="true">☰</span>
+        <span class="fab-menu-label">Council</span>
+        <span class="fab-attention-badge" id="council-attention-badge" style="display: none;"></span>
+      </button>
+
+      <!-- 3. Bottom-Right: End Turn FAB -->
+      <button id="end-turn" class="fab-end-turn primary" type="button" aria-label="End Turn (Space or Enter)" title="End Turn (Space / Enter)">
+        <span class="fab-turn-label">End Turn ▸</span>
+        <span class="fab-turn-caption" id="turn-caption">Day 1 · 06:00</span>
+      </button>
+
+      <!-- Politeness announcement surface for toasts / alerts -->
       <div class="banners" id="banners" aria-live="polite"></div>
 
-      <main class="layout-4panel">
-        <!-- Panel 1: Left Biome Tree -->
-        <aside class="panel biome-panel" id="biome-panel-container"></aside>
-
-        <!-- Panel 2: Center Left Vessels List -->
-        <aside class="panel vessels-panel">
-          <h2>Vessels</h2>
-          <div id="vessel-list" class="vessel-list"></div>
-          <p class="hint">Wood chars at 523 K. Clay survives 1473 K. Copper conducts heat fast.</p>
-        </aside>
-
-        <!-- Panel 3: Center Tabbed Workbench -->
-        <section class="panel workbench">
-          <div class="window-launcher" id="window-launcher" role="toolbar" aria-label="Open feature windows"></div>
-          <div id="workbench-tabs-container"></div>
-
-          <!-- Tab 1: Chemical Reactions -->
-          <div id="tab-reactions-content" class="tab-pane active">
-            <div class="reactions-summary">
-              <div class="rs-head">
-                <div>
-                  <h2 id="vessel-title">No vessel</h2>
-                  <p id="vessel-sub" class="sub"></p>
-                </div>
-                <button id="btn-open-reactions" class="accent" type="button" title="Open the full Chemical Workbench (key 1)">⤢ Workbench</button>
-              </div>
-              <div class="rs-chips" aria-live="polite">
-                <div class="rs-chip"><span>Temperature</span><strong id="rs-temp">—</strong></div>
-                <div class="rs-chip"><span>pH</span><strong id="rs-ph">—</strong></div>
-                <div class="rs-chip"><span>Pressure</span><strong id="rs-pressure">—</strong></div>
-                <div class="rs-chip"><span>Liquid</span><strong id="rs-volume">—</strong></div>
-              </div>
-              <p class="hint">Full bench controls live in the Workbench window — vessels, furnace, voltaic pile, condenser routing, contents.</p>
-            </div>
-          </div>
-
-          <!-- Tab 2: Mechanical Fabrication -->
-          <div id="tab-fabrication-content" class="tab-pane hidden"></div>
-
-          <!-- Tab 3: Domesticated Paddocks -->
-          <div id="tab-paddocks-content" class="tab-pane hidden"></div>
-
-          <!-- Tab 4: Strategy & Labor Map -->
-          <div id="tab-strategy-content" class="tab-pane hidden"></div>
-
-          <!-- Tab 5: Journal & Missions -->
-          <div id="tab-journal-content" class="tab-pane hidden"></div>
-
-          <div class="workbench-foot">
-            <div class="quest-box">
-              <h3>Master Tech Progression</h3>
-              <ul class="quest" id="quest"></ul>
-            </div>
-            <div class="event-box">
-              <h3>Event Log</h3>
-              <ul class="log" id="log"><li class="empty">No events yet.</li></ul>
-            </div>
-          </div>
-        </section>
-
-        <!-- Panel 4: Right Dedicated Tools & Inventory -->
-        <aside class="panel tool-inv-panel" id="tool-inv-container"></aside>
-      </main>
+      <!-- Hidden telemetry and compatibility targets for background state broadcasts -->
+      <div style="display: none;" aria-hidden="true">
+        <span id="isolation"></span>
+        <span id="clock"></span>
+        <span id="p-glucose"></span>
+        <span id="p-temp"></span>
+        <span id="p-iclo"></span>
+        <span id="val-adipose"></span>
+        <span id="val-hydration"></span>
+        <span id="val-ambient"></span>
+        <span id="val-health"></span>
+        <span id="val-safety"></span>
+        <span id="val-vigor"></span>
+        <span id="val-mandate"></span>
+        <span id="val-renown-title"></span>
+        <button id="skip-turns"></button>
+        <button id="dawn-report"></button>
+        <div id="vessel-list"></div>
+        <div id="biome-panel-container"></div>
+        <ul id="log"></ul>
+        <ul id="quest"></ul>
+      </div>
     </div>
   </body>
 </html>

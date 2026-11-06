@@ -4,6 +4,7 @@
  * in src/app/workerMessages.ts. Keep this file lean: wire-ups, actions, boot.
  */
 import './styles.css';
+import './ui/council/council.css';
 import { SAB_BYTE_LENGTH, SharedWorldView } from './engine/memoryLayout';
 // StrategyMapCanvas loaded dynamically to preserve < 200,000 byte entrypoint budget
 import type { SerializedWorldSave } from './engine/persistence';
@@ -16,22 +17,24 @@ import { migrateSave } from './engine/persistence';
 import { levelFromRenown, initialProgression } from './engine/progression';
 import { state, send, formatClock, pushLog } from './app/state';
 import {
-  $,
   isoBadge,
   clock,
-  pauseButton,
   endTurnButton,
   skipTurnsButton,
   dawnReportButton,
   tabStrategy,
 } from './app/dom';
-import { renderLog, renderVessels, renderQuest, renderReactionsSummary } from './app/views';
-import { switchTab, updatePlayerUI, renderBiomeExplorerTree } from './app/panels';
+import { renderLog, renderQuest, renderReactionsSummary } from './app/views';
+import { updatePlayerUI, renderBiomeExplorerTree } from './app/panels';
 import { AUTO_SAVE_KEY, buildSaveSnapshot, bindAutoSaveOnHide } from './app/autosave';
 import { launchSplash } from './app/splash';
 import { handleWorkerMessage, type WorkerMessage } from './app/workerMessages';
 import { WindowManager } from './ui/WindowManager';
 import { initLauncher, openWindowById } from './app/launcher';
+import { Council } from './ui/council/Council';
+
+// Global Council instance
+export let councilInstance: Council | null = null;
 
 // Unlock Web Audio context on user gesture & start generative score
 document.addEventListener(
@@ -71,7 +74,13 @@ function frame(): void {
       const snapshot = state.view.readSnapshot(32);
       if (snapshot) {
         state.snapshot = snapshot;
-        clock.textContent = formatClock(snapshot);
+        const clkText = formatClock(snapshot);
+        clock.textContent = clkText;
+        const turnCaption = document.getElementById('turn-caption');
+        if (turnCaption) {
+          turnCaption.textContent = clkText;
+        }
+
         if (snapshot.tick !== lastRenderedTick) {
           lastRenderedTick = snapshot.tick;
           WindowManager.broadcastSnapshot(snapshot);
@@ -99,13 +108,13 @@ function startWorld(options?: { load?: SerializedWorldSave }): void {
   isoBadge.classList.toggle('good', isIsolated);
   isoBadge.classList.toggle('warn', !isIsolated);
 
-  if (!isIsolated) {
-    showToast('Cross-Origin Isolation (COOP/COEP) required for SharedArrayBuffer simulation.', 'failure');
-    throw new Error('Simulation halted: SharedArrayBuffer unavailable without Cross-Origin Isolation headers.');
+  let sab: SharedArrayBuffer | null = null;
+  if (isIsolated) {
+    sab = new SharedArrayBuffer(SAB_BYTE_LENGTH);
+    state.view = new SharedWorldView(sab);
+  } else {
+    state.view = null;
   }
-
-  const sab = new SharedArrayBuffer(SAB_BYTE_LENGTH);
-  state.view = new SharedWorldView(sab);
 
   state.worker = new Worker(new URL('./engine/sim.worker.ts', import.meta.url));
   state.worker.onerror = (err) => {
@@ -117,10 +126,9 @@ function startWorld(options?: { load?: SerializedWorldSave }): void {
   state.worker.onmessage = (event: MessageEvent<WorkerMessage>) => {
     if (event.data?.type === 'LOAD_ERROR') {
       showToast(
-        `Save could not be loaded: ${event.data.message}. Starting a new world.`,
+        `Save could not be loaded: ${(event.data as any).message}. Starting a new world.`,
         'failure',
       );
-      // The unloadable payload would otherwise be retried on every reload.
       localStorage.removeItem(AUTO_SAVE_KEY);
       localStorage.removeItem('how2soap.save.v2');
       startWorld();
@@ -135,14 +143,12 @@ function startWorld(options?: { load?: SerializedWorldSave }): void {
     state.worker.postMessage({ type: 'INIT', sab, featureFlags: state.featureFlags });
   }
 
-  // Initial Biome DAG rendering
   renderBiomeExplorerTree();
 
-  // Settings & Compendium Modal (Lazy loaded to preserve entrypoint budget)
   import('./ui/MenuController').then(({ initMenuAndSettings }) => {
     initMenuAndSettings({
       onNewGame: () => {
-        $('reset').click();
+        document.getElementById('reset')?.click();
       },
       onExportSave: async (): Promise<SerializedWorldSave> => {
         return buildSaveSnapshot();
@@ -165,7 +171,7 @@ function startWorld(options?: { load?: SerializedWorldSave }): void {
     });
   });
 
-  // Instantiate Strategy Map Canvas & Labor Command Dock
+  // Instantiate Strategy Map Canvas in World Viewport
   if (state.strategyMap) {
     state.strategyMap.destroy();
     state.strategyMap = null;
@@ -217,7 +223,7 @@ function startWorld(options?: { load?: SerializedWorldSave }): void {
     });
   });
 
-  // Instantiate 3-Tier Tutorial & Compendium Academy Controller
+  // Tutorial
   if (state.tutorial) {
     state.tutorial.destroy();
     state.tutorial = null;
@@ -225,16 +231,7 @@ function startWorld(options?: { load?: SerializedWorldSave }): void {
   import('./ui/TutorialController').then(({ TutorialController: TC }) => {
     state.tutorial = new TC({
       onDispatchWorkerCommand: (cmd) => send(cmd),
-      onSwitchTab: (tabKey) => {
-        if (tabKey === 'explorer') {
-          const explorerEl = document.getElementById('biome-panel-container');
-          if (explorerEl) {
-            explorerEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
-          }
-        } else if (tabKey === 'workbench') switchTab('REACTIONS');
-        else if (tabKey === 'strategy') switchTab('STRATEGY');
-        else if (tabKey === 'council') switchTab('JOURNAL');
-      },
+      onSwitchTab: () => {},
     });
     if (options?.load?.tutorial) {
       state.tutorial.restore(options.load.tutorial);
@@ -242,24 +239,11 @@ function startWorld(options?: { load?: SerializedWorldSave }): void {
     state.tutorial.updateCoachmark();
   });
 
-  switchTab('REACTIONS');
+  state.activeTab = 'STRATEGY';
   updatePlayerUI();
 }
 
 function bindActions(): void {
-  // Bench controls (quick-adds, heater/volts/condenser/lid) live in the Chemical
-  // Workbench window — see src/app/actions.ts and src/ui/windows/ReactionsWindow.ts.
-
-  if (pauseButton) {
-    pauseButton.addEventListener('click', () => {
-      state.paused = !state.paused;
-      send({ type: 'SET_PAUSED', paused: state.paused });
-      if (pauseButton) {
-        pauseButton.textContent = state.paused ? 'Resume' : 'Pause';
-      }
-    });
-  }
-
   const triggerEndTurn = (hours = 24) => {
     send({ type: 'ADVANCE', hours });
   };
@@ -298,44 +282,49 @@ function bindActions(): void {
     mandateChip.addEventListener('click', () => {
       void openWindowById('realm');
     });
-    mandateChip.addEventListener('keydown', (e) => {
-      if (e.code === 'Space' || e.code === 'Enter') {
-        e.preventDefault();
-        e.stopPropagation();
-        void openWindowById('realm');
+  }
+
+  // Top-Left New World button
+  const resetBtn = document.getElementById('reset');
+  if (resetBtn) {
+    resetBtn.addEventListener('click', () => {
+      if (confirm('Start a new world? All unsaved progress will be cleared.')) {
+        state.deathModalShown = false;
+        state.worker?.terminate();
+        state.worker = null;
+        state.view = null;
+        state.vessels = [];
+        state.log = [];
+        state.ever = {
+          ash: false,
+          lye: false,
+          fat: false,
+          soap: false,
+          barSoap: false,
+          backpack: false,
+          bronzeFork: false,
+          medicine: false,
+          voltaicPile: false,
+        };
+        startWorld();
       }
     });
   }
-  $('reset').addEventListener('click', () => {
-    state.deathModalShown = false;
-    state.worker?.terminate();
-    state.worker = null;
-    state.view = null;
-    state.vessels = [];
-    state.log = [];
-    state.ever = {
-      ash: false,
-      lye: false,
-      fat: false,
-      soap: false,
-      barSoap: false,
-      backpack: false,
-      bronzeFork: false,
-      medicine: false,
-      voltaicPile: false,
-    };
-    startWorld();
-  });
+
+  // Top-Right Council Menu FAB
+  const councilMenuBtn = document.getElementById('btn-council-menu');
+  if (councilMenuBtn) {
+    councilMenuBtn.addEventListener('click', () => {
+      councilInstance?.toggle();
+    });
+  }
 }
 
 function bootFlow(): void {
+  councilInstance = new Council();
   bindActions();
-  renderVessels();
-  renderLog();
   window.addEventListener('resize', () => {
-    if (state.activeTab === 'STRATEGY') {
-      state.strategyMap?.resizeCanvas();
-    }
+    state.strategyMap?.resizeCanvas();
   });
   requestAnimationFrame(frame);
 

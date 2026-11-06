@@ -1,8 +1,9 @@
 /**
  * Settlement Window (WindowManager, Key 5, Size 'wide')
  *
- * Implements §8.3 of Civ VII 4X Conversion Plan (v8):
+ * Implements §8.3 of Civ VII 4X Conversion Plan (v8) + Spec 1 Mandate & Estates Section:
  * - Overview: Settlement kind (Camp/Town/City), focus, population, food net, 7-yield breakdown.
+ * - Mandate & Estates: Absorbs Health, Safety, Vigor, and Three Estates Mandate meters.
  * - Buildings & Districts list with overbuild-50% badges.
  * - Focus selector (Farming, Mining, Trade, Fort, Urban, Growing).
  * - Distribute Tunics & Weapons quick actions.
@@ -50,6 +51,11 @@ export const spec: WindowSpec = {
       influence: 1,
     };
 
+    const health = (state as any).realm?.publicHealth ?? 60;
+    const safety = (state as any).realm?.publicSafety ?? 60;
+    const vigor = (state as any).realm?.vigor ?? 50;
+    const mandate = (state as any).realm?.mandate ?? 60;
+
     body.innerHTML = `
       <div class="settlement-window-container" style="display: flex; flex-direction: column; gap: 1rem; padding: 0.5rem;">
         <header style="display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.5rem;">
@@ -61,6 +67,52 @@ export const spec: WindowSpec = {
             Pop: ${capital.population} · Towns: ${settlementsState?.settlements?.length ?? 1} / ${settlementsState?.settlementLimit ?? 3}
           </div>
         </header>
+
+        <!-- Mandate & Estates Vitals Section (Fold-in from topbar) -->
+        <section class="settlement-mandate-estates" style="background: rgba(18, 21, 28, 0.7); border: 1px solid rgba(197, 160, 89, 0.3); border-radius: 6px; padding: 0.75rem;">
+          <h3 style="margin: 0 0 0.6rem; font-size: 0.95rem; color: #f1dbb1;">Mandate &amp; Estates Vitals</h3>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.8rem;">
+            <div class="vital-meter" role="progressbar" aria-valuenow="${health}" aria-valuemin="0" aria-valuemax="100">
+              <div style="display: flex; justify-content: space-between; font-size: 0.8rem; margin-bottom: 0.25rem;">
+                <span>Public Health</span>
+                <strong id="val-health">${health}%</strong>
+              </div>
+              <div style="height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; overflow: hidden;">
+                <div style="height: 100%; width: ${health}%; background: #48bb78;"></div>
+              </div>
+            </div>
+
+            <div class="vital-meter" role="progressbar" aria-valuenow="${safety}" aria-valuemin="0" aria-valuemax="100">
+              <div style="display: flex; justify-content: space-between; font-size: 0.8rem; margin-bottom: 0.25rem;">
+                <span>Public Safety</span>
+                <strong id="val-safety">${safety}%</strong>
+              </div>
+              <div style="height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; overflow: hidden;">
+                <div style="height: 100%; width: ${safety}%; background: #4299e1;"></div>
+              </div>
+            </div>
+
+            <div class="vital-meter" role="progressbar" aria-valuenow="${vigor}" aria-valuemin="0" aria-valuemax="100">
+              <div style="display: flex; justify-content: space-between; font-size: 0.8rem; margin-bottom: 0.25rem;">
+                <span>Hearth Vigor</span>
+                <strong id="val-vigor">${vigor}%</strong>
+              </div>
+              <div style="height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; overflow: hidden;">
+                <div style="height: 100%; width: ${vigor}%; background: #ed8936;"></div>
+              </div>
+            </div>
+
+            <div class="vital-meter" role="progressbar" aria-valuenow="${mandate}" aria-valuemin="0" aria-valuemax="100">
+              <div style="display: flex; justify-content: space-between; font-size: 0.8rem; margin-bottom: 0.25rem;">
+                <span>Estates Mandate</span>
+                <strong id="val-mandate">${mandate}%</strong>
+              </div>
+              <div style="height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; overflow: hidden;">
+                <div style="height: 100%; width: ${mandate}%; background: #9f7aea;"></div>
+              </div>
+            </div>
+          </div>
+        </section>
 
         <!-- 7-Yield Bar Overview -->
         <section class="settlement-yields-strip" style="display: flex; gap: 0.8rem; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 6px; padding: 0.6rem; overflow-x: auto;">

@@ -1,0 +1,233 @@
+/* The Council — Fullscreen Astrolabe Overlay Launcher */
+
+.council-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 160ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+.council-overlay.hidden {
+  display: none !important;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.council-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(11, 15, 18, 0.88);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.council-panel {
+  position: relative;
+  width: 92%;
+  max-width: 960px;
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  background: #12151c;
+  border: 1px solid rgba(197, 160, 89, 0.4);
+  border-radius: 12px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  color: #e5edf5;
+  overflow: hidden;
+  z-index: 1;
+}
+
+.council-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px;
+  border-bottom: 1px solid rgba(197, 160, 89, 0.2);
+  background: linear-gradient(180deg, rgba(30, 36, 48, 0.6) 0%, rgba(18, 21, 28, 0.9) 100%);
+}
+
+.council-title-wrap h2 {
+  margin: 0;
+  font-size: 1.4rem;
+  letter-spacing: 0.04em;
+  color: #f1dbb1;
+  font-family: inherit;
+}
+
+.council-sub {
+  margin: 4px 0 0 0;
+  font-size: 0.82rem;
+  color: #8c9ba5;
+}
+
+.council-close-btn {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #c5a059;
+  border-radius: 6px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: all 120ms ease;
+}
+
+.council-close-btn:hover {
+  background: rgba(197, 160, 89, 0.15);
+  border-color: #c5a059;
+}
+
+.council-pillars {
+  display: flex;
+  gap: 8px;
+  padding: 12px 24px;
+  background: #0d1017;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  overflow-x: auto;
+}
+
+.pillar-tab {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #a0aec0;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 120ms ease;
+}
+
+.pillar-tab:hover {
+  background: rgba(197, 160, 89, 0.1);
+  color: #f1dbb1;
+}
+
+.pillar-tab.active {
+  background: #c5a059;
+  border-color: #e5be70;
+  color: #12151c;
+  font-weight: 600;
+}
+
+.council-grid-container {
+  flex: 1;
+  padding: 24px;
+  overflow-y: auto;
+}
+
+.council-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+@media (min-width: 480px) {
+  .council-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (min-width: 900px) {
+  .council-grid {
+    grid-template-columns: repeat(5, 1fr);
+  }
+}
+
+.council-tile {
+  background: linear-gradient(135deg, #1b202c 0%, #151821 100%);
+  border: 1px solid rgba(197, 160, 89, 0.25);
+  border-radius: 10px;
+  padding: 16px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  cursor: pointer;
+  min-height: 88px;
+  position: relative;
+  color: #e5edf5;
+  transition: all 120ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+.council-tile:hover {
+  transform: translateY(-2px);
+  border-color: #c5a059;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6), 0 0 12px rgba(197, 160, 89, 0.2);
+}
+
+.council-tile:focus-visible {
+  outline: 2px solid #5aa5ff;
+  outline-offset: 2px;
+  border-color: #5aa5ff;
+}
+
+.tile-icon-badge-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  margin-bottom: 8px;
+}
+
+.tile-icon {
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.tile-label {
+  font-size: 0.92rem;
+  font-weight: 500;
+  color: #f1dbb1;
+  margin-top: 2px;
+}
+
+.tile-key {
+  position: absolute;
+  bottom: 6px;
+  right: 6px;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-size: 0.7rem;
+  color: #a0aec0;
+  font-family: inherit;
+}
+
+.council-footer {
+  padding: 12px 24px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  background: #0d1017;
+  text-align: center;
+}
+
+.council-hint {
+  font-size: 0.8rem;
+  color: #8c9ba5;
+}
+
+.council-hint kbd {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+  padding: 1px 4px;
+  font-size: 0.75rem;
+  color: #e5edf5;
+}
+
+/* Reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  .council-overlay,
+  .council-tile {
+    transition: none !important;
+    transform: none !important;
+  }
+}

@@ -61,7 +61,7 @@ export const TUTORIAL_LESSONS: TutorialLesson[] = [
     subtitle: 'Extract potassium carbonate (K2CO3) to produce an alkaline lye solution',
     plateKey: 'ELEMENTS',
     tabTarget: 'workbench',
-    spotlightSelector: '#tab-reactions-content, #btn-open-reactions',
+    spotlightSelector: '#btn-council-menu',
     summaryHtml: `Wood ashes contain soluble potassium carbonate (potash). Add water and ash to Vessel #0 on the Alchemy Workbench to leach an alkaline bath (<strong>pH &gt; 10.5</strong>).`,
     formulaHtml: `Ash dissolution: <code>K2CO3(s) &rarr; 2 K+(aq) + CO3^2-(aq)</code> · <code>pH &gt; 11.0</code>`,
     actionHint: 'Switch to Workbench, add Water and Ash to Vessel #0.',
