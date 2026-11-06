@@ -3,6 +3,7 @@
  */
 import { FEATURE_WINDOWS, openWindowById, type Pillar, type LaunchableWindow } from '../../app/launcher';
 import { getNextTileIndex, getColumnCountForWidth } from './tileNav';
+import type { Badge } from '../tileAttention';
 
 export class Council {
   private overlay: HTMLElement;
@@ -10,6 +11,7 @@ export class Council {
   private isOpen = false;
   private lastFocusedElement: HTMLElement | null = null;
   private activeTileIndex = 0;
+  private currentBadges: Map<string, Badge> = new Map();
 
   constructor() {
     this.overlay = document.createElement('div');
@@ -127,6 +129,35 @@ export class Council {
     return Array.from(this.overlay.querySelectorAll<HTMLButtonElement>('.council-tile'));
   }
 
+  public updateBadges(badges: Map<string, Badge>): void {
+    this.currentBadges = badges;
+    this.renderBadgeSlots();
+  }
+
+  private renderBadgeSlots(): void {
+    FEATURE_WINDOWS.forEach((w) => {
+      const slot = this.overlay.querySelector<HTMLElement>(`#badge-${w.id}`);
+      if (!slot) return;
+      const b = this.currentBadges.get(w.id);
+      if (!b) {
+        slot.innerHTML = '';
+        slot.className = 'tile-badge-slot';
+        return;
+      }
+
+      if (b.level === 'crisis') {
+        slot.className = 'tile-badge-slot badge-crisis';
+        slot.innerHTML = `<span class="badge-ring" title="${b.label}">!</span>`;
+      } else if (b.level === 'action') {
+        slot.className = 'tile-badge-slot badge-action';
+        slot.innerHTML = `<span class="badge-dot" title="${b.label}"></span>`;
+      } else if (b.level === 'info') {
+        slot.className = 'tile-badge-slot badge-info';
+        slot.innerHTML = `<span class="badge-pill" title="${b.label}">${b.count ?? ''}</span>`;
+      }
+    });
+  }
+
   private renderTiles(): void {
     const grid = this.overlay.querySelector<HTMLElement>('.council-grid');
     if (!grid) return;
@@ -153,6 +184,8 @@ export class Council {
       `
       )
       .join('');
+
+    this.renderBadgeSlots();
 
     grid.querySelectorAll<HTMLButtonElement>('.council-tile').forEach((btn) => {
       btn.addEventListener('click', () => {

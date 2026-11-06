@@ -32,6 +32,12 @@ import { handleWorkerMessage, type WorkerMessage } from './app/workerMessages';
 import { WindowManager } from './ui/WindowManager';
 import { initLauncher, openWindowById } from './app/launcher';
 import { Council } from './ui/council/Council';
+import { computeAllBadges, getAggregateBadge } from './ui/tileAttention';
+import {
+  evaluateCommissions,
+  generateDailyCommissions,
+  createInitialCommissionsState,
+} from './engine/commissions';
 
 // Global Council instance
 export let councilInstance: Council | null = null;
@@ -88,6 +94,31 @@ function frame(): void {
             renderReactionsSummary(snapshot);
           }
           renderQuest(snapshot);
+
+          // Spec 2: Evaluate daily commissions and update Council badges
+          if (state.commissions) {
+            const { hasNewCompletion } = evaluateCommissions(state.commissions, snapshot, state);
+            if (hasNewCompletion) {
+              audio.wageClink();
+              showToast('+1 Commission ready to claim — open The Council', 'info');
+            }
+          }
+
+          const badgeMap = computeAllBadges(snapshot, state);
+          councilInstance?.updateBadges(badgeMap);
+
+          // Update Menu FAB attention dot
+          const agg = getAggregateBadge(badgeMap);
+          const fabBadge = document.getElementById('council-attention-badge');
+          if (fabBadge) {
+            if (agg) {
+              fabBadge.style.display = 'block';
+              fabBadge.style.background = agg.level === 'crisis' ? '#d96c6c' : agg.level === 'action' ? '#e5b567' : '#ffffff';
+              fabBadge.setAttribute('title', agg.label);
+            } else {
+              fabBadge.style.display = 'none';
+            }
+          }
         }
       }
     } catch {
@@ -241,11 +272,24 @@ function startWorld(options?: { load?: SerializedWorldSave }): void {
 
   state.activeTab = 'STRATEGY';
   updatePlayerUI();
+
+  // Initialize or restore commissions state
+  const day = options?.load?.day ?? 1;
+  state.commissions = (options?.load as any)?.commissions ?? createInitialCommissionsState(day);
 }
 
 function bindActions(): void {
   const triggerEndTurn = (hours = 24) => {
     send({ type: 'ADVANCE', hours });
+
+    // Spec 2: Dawn agenda rollover
+    const nextDay = (state.player.day ?? 1) + Math.round(hours / 24);
+    if (state.commissions && state.commissions.day !== nextDay) {
+      state.commissions.day = nextDay;
+      state.commissions.active = generateDailyCommissions(nextDay, 1337, state.progression.chapter ?? 0);
+      audio.wageClink();
+      showToast(`Dawn — 3 commissions set · Day ${state.commissions.streak} streak`, 'info');
+    }
   };
 
   if (endTurnButton) {

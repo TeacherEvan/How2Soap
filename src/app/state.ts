@@ -138,6 +138,10 @@ export const state = {
   builtWorks: null as import('../engine/campaign/builtWorks').BuiltWorksState | null,
   missions: null as import('../engine/campaign/missions').MissionsState | null,
   victories: null as import('../engine/campaign/victories').CampaignVictoryState | null,
+  commissions: null as import('../engine/commissions').CommissionsState | null,
+  lastReadLogIndex: 0,
+  unreadDawnReport: false,
+  dawnReportInspected: false,
   couplingEffects: null as {
     laborQuality?: { traceTargetReduction: number; phase2BandWiden: number };
     crashClumsiness?: { phase1ToleranceReduction: number; phase2BandReduction: number };

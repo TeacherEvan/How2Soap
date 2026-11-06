@@ -32,7 +32,7 @@ export const FEATURE_WINDOWS: LaunchableWindow[] = [
 
   // 🕯 Hearth
   { id: 'chronicle', icon: '📜', label: 'Chronicle', key: '7', pillar: 'hearth', load: () => import('../ui/windows/ChronicleWindow') },
-  { id: 'commissions', icon: '🎯', label: 'Day Commissions', key: '8', pillar: 'hearth', enabled: false, load: () => import('../ui/windows/CommissionsWindow') },
+  { id: 'commissions', icon: '🎯', label: 'Day Commissions', key: '8', pillar: 'hearth', enabled: true, load: () => import('../ui/windows/CommissionsWindow') },
 ];
 
 export async function openWindowById(id: string): Promise<boolean> {

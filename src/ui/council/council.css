@@ -231,3 +231,62 @@
     transform: none !important;
   }
 }
+
+
+/* Spec 2: Tile Badges & Attention Rings */
+.tile-badge-slot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 6px;
+}
+
+.badge-crisis .badge-ring {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba(217, 108, 108, 0.25);
+  border: 1.5px solid #d96c6c;
+  color: #ff8585;
+  font-size: 0.72rem;
+  font-weight: 700;
+  animation: badge-pulse-crisis 1.4s infinite cubic-bezier(0.4, 0, 0.6, 1);
+}
+
+.badge-action .badge-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #e5b567;
+  box-shadow: 0 0 8px #e5b567;
+}
+
+.badge-info .badge-pill {
+  padding: 1px 6px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+@keyframes badge-pulse-crisis {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(217, 108, 108, 0.7);
+  }
+  50% {
+    transform: scale(1.15);
+    box-shadow: 0 0 0 6px rgba(217, 108, 108, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .badge-crisis .badge-ring {
+    animation: none !important;
+  }
+}
