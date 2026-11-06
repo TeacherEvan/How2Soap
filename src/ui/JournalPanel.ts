@@ -5,6 +5,7 @@
  * - Dispatcher's Desk: Crown's Ledger (ES-2)
  */
 
+import { escapeHtml } from './escapeHtml';
 import {
   CHAPTERS,
   LETTERS,
@@ -114,7 +115,36 @@ export function buildJournalModel(save: ProgressionState): JournalModel {
   };
 }
 
-let currentTab: 'chronicle' | 'council' | 'ledger' = 'chronicle';
+export interface LabTrialRecord {
+  readonly id: string;
+  readonly timestamp: string;
+  readonly vesselName: string;
+  readonly tempK: number;
+  readonly ph: number;
+  /** True when the vessel does not measure pH and the value is a textbook estimate. */
+  readonly phEstimated?: boolean;
+  readonly reagents: string;
+  readonly notes: string;
+}
+
+const labTrialHistory: LabTrialRecord[] = [];
+
+let labTrialCounter = 0;
+
+export function recordLabTrial(record: Omit<LabTrialRecord, 'id' | 'timestamp'>): void {
+  labTrialCounter += 1;
+  const finite = (v: number, fallback: number): number => (Number.isFinite(v) ? v : fallback);
+  labTrialHistory.unshift({
+    id: `trial_${Date.now()}_${labTrialCounter}`,
+    timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+    ...record,
+    tempK: finite(record.tempK, 293.15),
+    ph: finite(record.ph, 7),
+  });
+  if (labTrialHistory.length > 20) labTrialHistory.pop();
+}
+
+let currentTab: 'chronicle' | 'council' | 'ledger' | 'lablog' = 'chronicle';
 
 export function mountJournal(tabRoot: HTMLElement, save: ProgressionState): void {
   currentTab = 'chronicle';
@@ -228,12 +258,31 @@ function renderJournal(tabRoot: HTMLElement, save: ProgressionState): void {
 
   const timedRequestsHtml = state.timedRequests ? renderTimedRequestsHTML(state.timedRequests, state.snapshot?.tick ?? 0) : '';
 
+  const labLogHtml = labTrialHistory.length > 0
+    ? labTrialHistory.map(trial => `
+        <article class="lab-trial-entry" style="background:rgba(20,24,32,0.8); border:1px solid #30363d; border-radius:6px; padding:8px 12px; margin-bottom:8px;">
+          <header style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+            <span style="font-weight:600; color:#58a6ff;">${escapeHtml(trial.vesselName)}</span>
+            <span style="font-size:0.75rem; color:var(--muted);">${escapeHtml(trial.timestamp)}</span>
+          </header>
+          <div style="font-size:0.8rem; color:#c9d1d9; margin-bottom:4px;">
+            <strong>Telemetry:</strong> ${trial.tempK.toFixed(1)} K (${(trial.tempK - 273.15).toFixed(1)} °C) · pH ${trial.ph.toFixed(2)}${trial.phEstimated ? ' <span title="No pH probe in this vessel; textbook value shown">(est.)</span>' : ''}
+          </div>
+          <div style="font-size:0.8rem; color:#8b949e; margin-bottom:4px;">
+            <strong>Charge / Reagents:</strong> ${escapeHtml(trial.reagents)}
+          </div>
+          ${trial.notes ? `<p style="font-size:0.75rem; color:#ecdfc8; margin:0; font-style:italic;">“${escapeHtml(trial.notes)}”</p>` : ''}
+        </article>
+      `).join('')
+    : '<p class="ledger-empty">No experimental trials recorded yet. Synthesize or saponify compounds at the workbench to log runs.</p>';
+
   tabRoot.innerHTML = `
     <div class="journal">
       <nav class="journal-tabs" role="tablist" aria-label="Journal sections">
         <button class="journal-tab ${currentTab === 'chronicle' ? 'active' : ''}" role="tab" aria-selected="${currentTab === 'chronicle'}" data-tab="chronicle">📜 Chronicle</button>
         <button class="journal-tab ${currentTab === 'council' ? 'active' : ''}" role="tab" aria-selected="${currentTab === 'council'}" data-tab="council">🏛 Council</button>
         <button class="journal-tab ${currentTab === 'ledger' ? 'active' : ''}" role="tab" aria-selected="${currentTab === 'ledger'}" data-tab="ledger">📋 Dispatcher's Desk</button>
+        <button class="journal-tab ${currentTab === 'lablog' ? 'active' : ''}" role="tab" aria-selected="${currentTab === 'lablog'}" data-tab="lablog">⚗️ Lab Log</button>
       </nav>
 
       <div class="journal-tabpanel" role="tabpanel">
@@ -273,6 +322,15 @@ function renderJournal(tabRoot: HTMLElement, save: ProgressionState): void {
             <div class="ledger-slots">${ledgerSlotsHtml}</div>
           </div>
         </section>
+
+        <!-- Lab Log Tab -->
+        <section class="journal-panel ${currentTab === 'lablog' ? 'active' : ''}" data-panel="lablog" role="tabpanel">
+          <div class="lablog-panel">
+            <h3>Experimental Notebook & Trial Ledger</h3>
+            <p class="ledger-intro">Historical record of reaction vessel states, charge recipes, temperatures, and synthesis yields.</p>
+            <div class="lab-trials-list">${labLogHtml}</div>
+          </div>
+        </section>
       </div>
     </div>
   `;
@@ -280,7 +338,7 @@ function renderJournal(tabRoot: HTMLElement, save: ProgressionState): void {
   // Attach tab click handlers
   tabRoot.querySelectorAll('.journal-tab').forEach(btn => {
     btn.addEventListener('click', () => {
-      currentTab = (btn as HTMLElement).dataset.tab as 'chronicle' | 'council' | 'ledger';
+      currentTab = (btn as HTMLElement).dataset.tab as 'chronicle' | 'council' | 'ledger' | 'lablog';
       renderJournal(tabRoot, save);
     });
   });

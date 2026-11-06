@@ -15,6 +15,20 @@ import { createInitialCorrespondence, type CorrespondenceState } from './campaig
 import { createInitialBuiltWorks, type BuiltWorksState } from './campaign/builtWorks';
 import { createInitialMissions, type MissionsState } from './campaign/missions';
 import { createInitialVictoryState, type CampaignVictoryState } from './campaign/victories';
+import { createExperimentQueue, type ExperimentInstance, type ExperimentQueueState } from './campaign/experiments';
+import { createRealmState, type RealmState } from './campaign/realm';
+import {
+  createInitialSettlementsState,
+  type BuildingInstance,
+  type Settlement,
+  type SettlementsState,
+  type TownFocus,
+} from './campaign/settlements';
+import type { DistrictKind, UrbanDistrict } from './campaign/districts';
+import type { BlacksmithBatchJob } from './campaign/blacksmith';
+import { createBlacksmithState, type BlacksmithState } from './campaign/blacksmith';
+import { createPaddock, type DomesticAnimal, type Paddock } from './husbandry';
+import type { PlayerMetabolismState } from './metabolism';
 
 const VALID_ARCHETYPES: ReadonlySet<string> = new Set([
   'FORAGER',
@@ -239,4 +253,286 @@ export function restoreCampaignFromSave(save: SerializedWorldSave): CampaignSlic
       ? c.victories
       : createInitialVictoryState();
   return { influence, correspondence, builtWorks, missions, victories };
+}
+
+const clampNum = (value: unknown, lo: number, hi: number, fallback: number): number =>
+  typeof value === 'number' && Number.isFinite(value) ? Math.min(hi, Math.max(lo, value)) : fallback;
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  !!value && typeof value === 'object' && !Array.isArray(value);
+
+const sanitizeItemCounts = (raw: unknown): Array<{ itemId: string; count: number }> => {
+  if (!Array.isArray(raw)) return [];
+  const out: Array<{ itemId: string; count: number }> = [];
+  for (const entry of raw) {
+    if (!isRecord(entry) || typeof entry.itemId !== 'string' || entry.itemId.length === 0) continue;
+    out.push({ itemId: entry.itemId, count: Math.max(0, clampNum(entry.count, 0, 1e6, 0)) });
+  }
+  return out;
+};
+
+/**
+ * Repairs the persisted player record. `deserializeSave` applies `??` defaults,
+ * which do not reject a wrong type, so a string/NaN field used to reach
+ * `Object.assign(player, save.player)` and poison the whole metabolic model.
+ */
+export function sanitizePlayerSave(raw: unknown): Partial<PlayerMetabolismState> {
+  const p = isRecord(raw) ? raw : {};
+  const conditions = isRecord(p.conditions) ? p.conditions : {};
+  return {
+    glucoseKcal: clampNum(p.glucoseKcal, 0, 2000, 1200),
+    adiposeKcal: clampNum(p.adiposeKcal, 0, 60000, 15000),
+    hydrationPct: clampNum(p.hydrationPct, 0, 100, 100),
+    coreTempK: clampNum(p.coreTempK, 250, 320, 310.15),
+    clothingIclo: clampNum(p.clothingIclo, 0, 4, 0.05),
+    conditions: {
+      fever: !!conditions.fever,
+      systemicInfection: !!conditions.systemicInfection,
+      woundContamination: !!conditions.woundContamination,
+    },
+    dead: p.dead === true,
+    woundOnsetSeconds: clampNum(p.woundOnsetSeconds, 0, 1e9, 0),
+    sepsisOnsetSeconds: clampNum(p.sepsisOnsetSeconds, 0, 1e9, 0),
+  };
+}
+
+function sanitizeExperiment(raw: unknown): ExperimentInstance | null {
+  if (!isRecord(raw)) return null;
+  if (
+    typeof raw.id !== 'string' || raw.id.length === 0 ||
+    typeof raw.recipeId !== 'string' || raw.recipeId.length === 0 ||
+    typeof raw.recipeName !== 'string'
+  ) {
+    return null;
+  }
+  return {
+    id: raw.id,
+    recipeId: raw.recipeId,
+    recipeName: raw.recipeName,
+    turnsStarted: Math.max(0, Math.floor(clampNum(raw.turnsStarted, 0, 1e9, 0))),
+    totalTurns: Math.max(1, Math.floor(clampNum(raw.totalTurns, 1, 1e6, 1))),
+    turnsLeft: Math.max(0, Math.floor(clampNum(raw.turnsLeft, 0, 1e6, 1))),
+    sour: !!raw.sour,
+    sourChance: clampNum(raw.sourChance, 0, 1, 0),
+    inputsCommitted: sanitizeItemCounts(raw.inputsCommitted),
+    outputsExpected: sanitizeItemCounts(raw.outputsExpected),
+  };
+}
+
+/** Repairs or replaces the experiment queue (a non-array used to abort End Turn). */
+export function sanitizeExperiments(raw: unknown): ExperimentQueueState {
+  if (!isRecord(raw) || !Array.isArray(raw.experiments)) return createExperimentQueue();
+  return {
+    experiments: raw.experiments
+      .map(sanitizeExperiment)
+      .filter((e): e is ExperimentInstance => e !== null),
+    nextExperimentId: Math.max(1, Math.floor(clampNum(raw.nextExperimentId, 1, 1e9, 1))),
+    benchBuildingsCount: Math.max(0, Math.floor(clampNum(raw.benchBuildingsCount, 0, 100, 0))),
+  };
+}
+
+/** Repairs the realm slice; a missing `estates` used to throw in stepRealmTurn. */
+export function sanitizeRealm(raw: unknown): RealmState {
+  if (!isRecord(raw) || !isRecord(raw.estates)) return createRealmState();
+  const initial = createRealmState(typeof raw.countryId === 'string' ? raw.countryId : undefined);
+  const e = raw.estates;
+  return {
+    countryId: initial.countryId,
+    turn: Math.max(1, Math.floor(clampNum(raw.turn, 1, 1e9, 1))),
+    health: clampNum(raw.health, 0, 100, initial.health),
+    safety: clampNum(raw.safety, 0, 100, initial.safety),
+    vigor: clampNum(raw.vigor, 0, 100, initial.vigor),
+    doseExposure: clampNum(raw.doseExposure, 0, 100, 0),
+    doseImmunityTurns: Math.max(0, Math.floor(clampNum(raw.doseImmunityTurns, 0, 1e6, 0))),
+    tunicsDeliveredTotal: Math.max(0, Math.floor(clampNum(raw.tunicsDeliveredTotal, 0, 1e9, 0))),
+    guardsAssignedTotal: Math.max(0, Math.floor(clampNum(raw.guardsAssignedTotal, 0, 1e9, 0))),
+    estates: {
+      crown: clampNum(e.crown, 0, 100, 60),
+      army: clampNum(e.army, 0, 100, 60),
+      public: clampNum(e.public, 0, 100, 60),
+      crownWarned25: !!e.crownWarned25,
+      crownWarned10: !!e.crownWarned10,
+      armyWarned25: !!e.armyWarned25,
+      armyWarned10: !!e.armyWarned10,
+      publicWarned25: !!e.publicWarned25,
+      publicWarned10: !!e.publicWarned10,
+    },
+    deposal:
+      typeof raw.deposal === 'string' && DEPOSAL_TYPES.has(raw.deposal)
+        ? (raw.deposal as RealmState['deposal'])
+        : null,
+  };
+}
+
+const DEPOSAL_TYPES = new Set(['DISMISSAL', 'MUTINY', 'PYRE']);
+const SETTLEMENT_KINDS = new Set(['CAMP', 'TOWN', 'CITY']);
+const TOWN_FOCUSES = new Set(['FARMING', 'MINING', 'TRADE_OUTPOST', 'FORT', 'URBAN_CENTER', 'GROWING']);
+
+const sanitizeYields = (raw: unknown): BuildingInstance['yields'] => {
+  if (!isRecord(raw)) return {};
+  const out: Record<string, number> = {};
+  for (const [key, value] of Object.entries(raw)) {
+    if (typeof value === 'number' && Number.isFinite(value)) out[key] = value;
+  }
+  return out as BuildingInstance['yields'];
+};
+
+const DISTRICT_KINDS = new Set(['CAMP_CENTER', 'CITY_CENTER', 'ACADEMIC', 'METALLURGIC', 'APOTHECARY', 'COMMERCIAL']);
+
+function sanitizeDistrictBuilding(raw: unknown): UrbanDistrict['buildings'][number] | null {
+  if (!isRecord(raw)) return null;
+  if (typeof raw.id !== 'string' || raw.id.length === 0) return null;
+  if (typeof raw.name !== 'string') return null;
+  const kind = DISTRICT_KINDS.has(String(raw.districtKind)) ? (raw.districtKind as DistrictKind) : 'CAMP_CENTER';
+  return {
+    id: raw.id,
+    name: raw.name,
+    districtKind: kind,
+    age: Math.max(1, Math.floor(clampNum(raw.age, 1, 99, 1))),
+    yields: sanitizeYields(raw.yields),
+    civTag: typeof raw.civTag === 'string' ? raw.civTag : undefined,
+  };
+}
+
+function sanitizeDistrict(raw: unknown): UrbanDistrict | null {
+  if (!isRecord(raw) || typeof raw.id !== 'string' || raw.id.length === 0) return null;
+  const kind = DISTRICT_KINDS.has(String(raw.kind)) ? (raw.kind as DistrictKind) : 'CAMP_CENTER';
+  return {
+    id: raw.id,
+    kind,
+    q: clampNum(raw.q, -1e6, 1e6, 0),
+    r: clampNum(raw.r, -1e6, 1e6, 0),
+    buildings: Array.isArray(raw.buildings)
+      ? raw.buildings.map(sanitizeDistrictBuilding).filter((b): b is UrbanDistrict['buildings'][number] => b !== null)
+      : [],
+    isQuarter: !!raw.isQuarter,
+    isUniqueQuarter: !!raw.isUniqueQuarter,
+  };
+}
+
+function sanitizeBuilding(raw: Record<string, unknown>): BuildingInstance | null {
+  if (typeof raw.id !== 'string' || typeof raw.name !== 'string') return null;
+  return {
+    id: raw.id,
+    name: raw.name,
+    age: Math.max(1, Math.floor(clampNum(raw.age, 1, 99, 1))),
+    yields: sanitizeYields(raw.yields),
+    overbuilt: !!raw.overbuilt,
+  };
+}
+
+function sanitizeSettlement(raw: unknown): Settlement | null {
+  if (!isRecord(raw) || typeof raw.id !== 'string' || typeof raw.name !== 'string') return null;
+  const kind = SETTLEMENT_KINDS.has(String(raw.kind)) ? (raw.kind as Settlement['kind']) : 'CAMP';
+  const focus = TOWN_FOCUSES.has(String(raw.focus)) ? (raw.focus as TownFocus) : undefined;
+  return {
+    id: raw.id,
+    name: raw.name,
+    kind,
+    q: clampNum(raw.q, -1e6, 1e6, 0),
+    r: clampNum(raw.r, -1e6, 1e6, 0),
+    population: clampNum(raw.population, 0, 1e6, 0),
+    growthPool: clampNum(raw.growthPool, 0, 1e6, 0),
+    focus,
+    isCapital: !!raw.isCapital,
+    buildings: Array.isArray(raw.buildings)
+      ? raw.buildings.filter(isRecord).map(sanitizeBuilding).filter((b): b is BuildingInstance => b !== null)
+      : [],
+    districts: Array.isArray(raw.districts)
+      ? raw.districts.map(sanitizeDistrict).filter((d): d is UrbanDistrict => d !== null)
+      : [],
+    workedHexes: Array.isArray(raw.workedHexes) ? raw.workedHexes.filter((h) => typeof h === 'string') : [],
+    overbuilt: Array.isArray(raw.overbuilt) ? raw.overbuilt.filter((h) => typeof h === 'string') : [],
+    foundedCampaignDay: Math.max(0, Math.floor(clampNum(raw.foundedCampaignDay, 0, 1e9, 0))),
+    guardCount: Math.max(0, Math.floor(clampNum(raw.guardCount, 0, 5, 0))),
+    clothedPairs: Math.max(0, Math.floor(clampNum(raw.clothedPairs, 0, 1e6, 0))),
+    toolsCount: Math.max(0, Math.floor(clampNum(raw.toolsCount, 0, 1e6, 0))),
+    toolsWear: Math.max(0, clampNum(raw.toolsWear, 0, 1e9, 0)),
+  };
+}
+
+/** Repairs the settlements slice; a missing array used to abort day processing. */
+export function sanitizeSettlements(raw: unknown): SettlementsState {
+  const initial = createInitialSettlementsState();
+  if (!isRecord(raw) || !Array.isArray(raw.settlements)) return initial;
+  const yields = isRecord(raw.globalYields) ? raw.globalYields : {};
+  return {
+    settlements: raw.settlements
+      .map(sanitizeSettlement)
+      .filter((s): s is Settlement => s !== null),
+    settlementLimit: Math.max(1, Math.floor(clampNum(raw.settlementLimit, 1, 100, initial.settlementLimit))),
+    globalYields: {
+      food: clampNum(yields.food, 0, 1e6, 0),
+      production: clampNum(yields.production, 0, 1e6, 0),
+      trade: clampNum(yields.trade, 0, 1e6, 0),
+      discovery: clampNum(yields.discovery, 0, 1e6, 0),
+      renown: clampNum(yields.renown, 0, 1e6, 0),
+      morale: clampNum(yields.morale, 0, 100, initial.globalYields.morale),
+      influence: clampNum(yields.influence, 0, 1e6, 0),
+    },
+  };
+}
+
+function sanitizeBlacksmithJob(raw: unknown): BlacksmithBatchJob | null {
+  if (!isRecord(raw)) return null;
+  if (
+    typeof raw.id !== 'string' || raw.id.length === 0 ||
+    typeof raw.recipeId !== 'string' || raw.recipeId.length === 0 ||
+    typeof raw.name !== 'string'
+  ) {
+    return null;
+  }
+  return {
+    id: raw.id,
+    recipeId: raw.recipeId,
+    name: raw.name,
+    batchCount: Math.max(1, Math.floor(clampNum(raw.batchCount, 1, 1e6, 1))),
+    totalTurns: Math.max(1, Math.floor(clampNum(raw.totalTurns, 1, 1e6, 1))),
+    turnsLeft: Math.max(0, Math.floor(clampNum(raw.turnsLeft, 0, 1e6, 1))),
+    outputs: sanitizeItemCounts(raw.outputs),
+  };
+}
+
+/** Repairs the blacksmith slice. */
+export function sanitizeBlacksmith(raw: unknown): BlacksmithState {
+  if (!isRecord(raw) || !Array.isArray(raw.jobs)) return createBlacksmithState();
+  return {
+    jobs: raw.jobs
+      .map(sanitizeBlacksmithJob)
+      .filter((j): j is BlacksmithBatchJob => j !== null),
+    nextJobId: Math.max(1, Math.floor(clampNum(raw.nextJobId, 1, 1e9, 1))),
+    toolWearTicks: Math.max(0, Math.floor(clampNum(raw.toolWearTicks, 0, 1e9, 0))),
+    maintenanceAlert: !!raw.maintenanceAlert,
+  };
+}
+
+function sanitizeAnimal(raw: unknown): DomesticAnimal | null {
+  if (!isRecord(raw) || typeof raw.id !== 'string' || typeof raw.species !== 'string') return null;
+  return {
+    id: raw.id,
+    species: raw.species,
+    dailyFeedKg: clampNum(raw.dailyFeedKg, 0, 1000, 0),
+    dailyWaterL: clampNum(raw.dailyWaterL, 0, 1000, 0),
+    milkLPerDay: clampNum(raw.milkLPerDay, 0, 1000, 0),
+    butterfatGramsPerDay: clampNum(raw.butterfatGramsPerDay, 0, 10000, 0),
+    manureKgPerDay: clampNum(raw.manureKgPerDay, 0, 1000, 0),
+    eggsPerDay: clampNum(raw.eggsPerDay, 0, 1000, 0),
+    hungerPct: clampNum(raw.hungerPct, 0, 100, 0),
+    thirstPct: clampNum(raw.thirstPct, 0, 100, 0),
+  };
+}
+
+/** Repairs the paddock slice; a string `animals` used to throw at the next dawn. */
+export function sanitizePaddock(raw: unknown): Paddock {
+  const initial = createPaddock();
+  if (!isRecord(raw) || !Array.isArray(raw.animals)) return initial;
+  return {
+    id: typeof raw.id === 'string' ? raw.id : initial.id,
+    name: typeof raw.name === 'string' ? raw.name : initial.name,
+    maxAnimals: Math.max(1, Math.floor(clampNum(raw.maxAnimals, 1, 100, initial.maxAnimals))),
+    animals: raw.animals.map(sanitizeAnimal).filter((a): a is DomesticAnimal => a !== null),
+    storedFeedKg: clampNum(raw.storedFeedKg, 0, 1e6, initial.storedFeedKg),
+    storedWaterL: clampNum(raw.storedWaterL, 0, 1e7, initial.storedWaterL),
+    accumulatedManureKg: clampNum(raw.accumulatedManureKg, 0, 1e7, 0),
+  };
 }

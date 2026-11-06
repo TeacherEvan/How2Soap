@@ -14,7 +14,7 @@ import { globalOverlayStack } from './ui/overlayStack';
 import { audio } from './ui/audio';
 import { migrateSave } from './engine/persistence';
 import { levelFromRenown, initialProgression } from './engine/progression';
-import { state, send, formatClock } from './app/state';
+import { state, send, formatClock, pushLog } from './app/state';
 import {
   $,
   isoBadge,
@@ -159,7 +159,7 @@ function startWorld(options?: { load?: SerializedWorldSave }): void {
 
         startWorld({ load: migrated });
         showToast(`Save restored — Day ${migrated.day ?? 1}`, 'success');
-        state.log.push(`Imported game save from Day ${migrated.day}, Tick ${migrated.tick}`);
+        pushLog(`Imported game save from Day ${migrated.day}, Tick ${migrated.tick}`);
         renderLog();
       },
     });
@@ -180,7 +180,7 @@ function startWorld(options?: { load?: SerializedWorldSave }): void {
           archetype: recruit.archetype,
           wageContract: recruit.wageContract,
         });
-        state.log.push(`Recruited ${recruit.name} (${recruit.archetype})`);
+        pushLog(`Recruited ${recruit.name} (${recruit.archetype})`);
         renderLog();
       },
       onAssignJob: (colonistId, speciesId, partId) => {
@@ -191,7 +191,7 @@ function startWorld(options?: { load?: SerializedWorldSave }): void {
           speciesId,
           partId,
         });
-        state.log.push(`Assigned colonist ${colonistId} to ${speciesId}`);
+        pushLog(`Assigned colonist ${colonistId} to ${speciesId}`);
         renderLog();
       },
       onAdministerStimulant: (colonistId, stimulantId) => {
@@ -201,7 +201,7 @@ function startWorld(options?: { load?: SerializedWorldSave }): void {
           colonistId,
           stimulantId,
         });
-        state.log.push(`Administered ${stimulantId} to ${colonistId}`);
+        pushLog(`Administered ${stimulantId} to ${colonistId}`);
         renderLog();
       },
       onSetWageContract: (colonistId, wageContract) => {
@@ -211,7 +211,7 @@ function startWorld(options?: { load?: SerializedWorldSave }): void {
           colonistId,
           wageContract,
         });
-        state.log.push(`Updated wage contract for ${colonistId} to ${wageContract.commodity}`);
+        pushLog(`Updated wage contract for ${colonistId} to ${wageContract.commodity}`);
         renderLog();
       },
     });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildJournalModel } from '../src/ui/JournalPanel';
+import { buildJournalModel, recordLabTrial } from '../src/ui/JournalPanel';
 import { initialProgression } from '../src/engine/progression';
 
 describe('journal model', () => {
@@ -18,5 +18,17 @@ describe('journal model', () => {
     save.lettersDone = ['l_jabir'];
     const model = buildJournalModel(save);
     expect(model.letters.find(l => l.id === 'l_jabir')!.state).toBe('claimed');
+  });
+
+  it('records lab trials into trial history without throwing', () => {
+    expect(() => {
+      recordLabTrial({
+        vesselName: 'Test Crucible #1',
+        tempK: 368.15,
+        ph: 9.2,
+        reagents: 'NaOH (1.0 mol), Stearin (0.33 mol)',
+        notes: 'Saponification trace test batch',
+      });
+    }).not.toThrow();
   });
 });

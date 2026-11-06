@@ -1,6 +1,7 @@
 /**
  * Vessel list, workbench table, quest checklist and event log views.
  */
+import { escapeHtml } from '../ui/escapeHtml';
 import { SPECIES } from '../data/speciesRegistry';
 import { TELEMETRY } from '../engine/memoryLayout';
 import {
@@ -150,6 +151,6 @@ export function renderLog(): void {
   }
   logList.innerHTML = state.log
     .slice(-8)
-    .map((entry) => `<li>${entry}</li>`)
+    .map((entry) => `<li>${escapeHtml(entry)}</li>`)
     .join('');
 }

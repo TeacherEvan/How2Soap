@@ -263,7 +263,10 @@ export class TutorialProgressiveReveal {
           this.spotlightRingEl.style.animation = 'tutorial-brass-pulse 2s ease-in-out infinite';
         }
       }
-    } catch {}
+    } catch (err) {
+      // DOM detached mid-measure; skip this spotlight update rather than crash the frame.
+      console.debug('[tutorial] spotlight update skipped:', err);
+    }
   }
 
   private clearSpotlight(): void {
@@ -290,7 +293,10 @@ export class TutorialProgressiveReveal {
       this.spotlightRingEl.style.top = `${rect.top - 4}px`;
       this.spotlightRingEl.style.width = `${rect.width + 8}px`;
       this.spotlightRingEl.style.height = `${rect.height + 8}px`;
-    } catch {}
+    } catch (err) {
+      // DOM detached mid-measure; skip this spotlight update rather than crash the frame.
+      console.debug('[tutorial] spotlight update skipped:', err);
+    }
   }
 }
 

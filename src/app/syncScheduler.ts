@@ -6,7 +6,7 @@
  * second even though the browser paints at most once per frame. This module
  * keeps only the latest render per kind and flushes them on the next frame.
  */
-type RenderKind = 'player' | 'colony';
+type RenderKind = 'player' | 'colony' | 'requests';
 
 const pending = new Map<RenderKind, () => void>();
 let frameHandle: number | null = null;

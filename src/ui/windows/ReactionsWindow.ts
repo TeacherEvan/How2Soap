@@ -3,6 +3,8 @@
  * 3D diorama + telemetry + furnace/voltaic controls + contents table.
  */
 import { getSpecies, MAX_DEFINED_SPECIES } from '../../data/speciesRegistry';
+import { REACTIONS } from '../../data/reactionRules';
+import { escapeHtml } from '../escapeHtml';
 import { TELEMETRY } from '../../engine/memoryLayout';
 import {
   state,
@@ -110,6 +112,15 @@ const BENCH_HTML = `
           <span>Newton Cooling: <strong class="phd-cooling">—</strong></span>
         </div>
       </div>
+      <div class="active-reactions-card" style="background:rgba(20,24,32,0.85); border:1px solid #4a5568; border-radius:6px; padding:6px 10px; margin-bottom:0.5rem; font-size:0.75rem;">
+        <div style="font-weight:600; color:#e2e8f0; margin-bottom:4px; display:flex; justify-content:space-between;">
+          <span>⚗️ Stoichiometry & Active Reactions</span>
+          <span class="active-rxn-count" style="color:var(--muted); font-weight:normal;">0 active</span>
+        </div>
+        <div class="active-rxn-list" style="display:flex; flex-direction:column; gap:4px; max-height:100px; overflow-y:auto;">
+          <div style="color:var(--muted); font-style:italic;">No reactants present for known pathways.</div>
+        </div>
+      </div>
       <div class="bench-sparkline-box">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.25rem;">
           <span style="font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--muted)">Telemetry History (T / P / pH)</span>
@@ -140,7 +151,7 @@ function renderContentsTable(body: HTMLElement, snapshot: Snapshot, vesselIndex:
     const moles = speciesMoles(snapshot, vesselIndex, speciesIdx);
     if (moles <= 1e-6) continue;
     rows.push(
-      `<tr><td><span class="formula">${species.code}</span><span class="name">${species.name}</span></td>` +
+      `<tr><td><span class="formula">${escapeHtml(species.code)}</span><span class="name">${escapeHtml(species.name)}</span></td>` +
         `<td>${moles.toFixed(4)}</td><td>${(moles * species.molarMass).toFixed(2)}</td>` +
         `<td class="phase">${species.standardPhase.toLowerCase()}</td></tr>`,
     );
@@ -149,6 +160,65 @@ function renderContentsTable(body: HTMLElement, snapshot: Snapshot, vesselIndex:
   tbody.innerHTML = rows.length
     ? rows.join('')
     : '<tr><td colspan="4" class="empty">Empty vessel.</td></tr>';
+}
+
+function renderActiveReactions(body: HTMLElement, snapshot: Snapshot, vesselIndex: number): void {
+  const container = body.querySelector<HTMLElement>('.active-rxn-list');
+  const countEl = body.querySelector<HTMLElement>('.active-rxn-count');
+  if (!container || !countEl) return;
+
+  const activeRxns: Array<{ label: string; limitingCode: string; limitingMoles: number }> = [];
+
+  for (const rxn of REACTIONS) {
+    let allReactantsPresent = true;
+    let minEquivalent = Infinity;
+    let limitingCode = '';
+    let limitingMoles = 0;
+
+    for (const reactant of rxn.reactants) {
+      const moles = speciesMoles(snapshot, vesselIndex, reactant.speciesIdx);
+      if (moles <= 1e-6) {
+        allReactantsPresent = false;
+        break;
+      }
+      const equivalent = moles / reactant.stoich;
+      if (equivalent < minEquivalent) {
+        minEquivalent = equivalent;
+        try {
+          limitingCode = getSpecies(reactant.speciesIdx).code;
+        } catch {
+          limitingCode = `Species#${reactant.speciesIdx}`;
+        }
+        limitingMoles = moles;
+      }
+    }
+
+    if (allReactantsPresent && minEquivalent > 0 && minEquivalent !== Infinity) {
+      activeRxns.push({
+        label: rxn.label,
+        limitingCode,
+        limitingMoles,
+      });
+    }
+  }
+
+  countEl.textContent = `${activeRxns.length} active`;
+
+  if (activeRxns.length === 0) {
+    container.innerHTML = '<div style="color:var(--muted); font-style:italic;">No reactants present for known pathways.</div>';
+    return;
+  }
+
+  container.innerHTML = activeRxns
+    .map((rxn) => `
+      <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(0,0,0,0.25); padding:3px 6px; border-radius:4px;">
+        <span style="color:#f1fa8c; font-family:monospace; font-size:0.75rem;">${escapeHtml(rxn.label)}</span>
+        <span title="Limiting Reagent (${rxn.limitingMoles.toFixed(3)} mol)" style="background:#ef4444; color:#fff; font-size:0.65rem; padding:1px 5px; border-radius:3px; font-weight:600;">
+          Limiting: ${escapeHtml(rxn.limitingCode)}
+        </span>
+      </div>
+    `)
+    .join('');
 }
 
 function renderBench(body: HTMLElement, snapshot: Snapshot): void {
@@ -194,6 +264,7 @@ function renderBench(body: HTMLElement, snapshot: Snapshot): void {
   if (sparkCanvas) drawSparkline(sparkCanvas);
 
   renderContentsTable(body, snapshot, index);
+  renderActiveReactions(body, snapshot, index);
 
   if (benchCanvas) {
     const vesselStates = state.vessels.map((v, i) => {

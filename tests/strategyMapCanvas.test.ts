@@ -88,6 +88,7 @@ function createMockElement(tag: string): any {
           createRadialGradient: vi.fn(() => ({ addColorStop: vi.fn() })),
           scale: vi.fn(),
           resetTransform: vi.fn(),
+          setTransform: vi.fn(),
         };
       }
       return null;
@@ -372,6 +373,12 @@ describe('StrategyMapCanvas (Task 4)', () => {
         wageSelect.dispatchEvent({ type: 'change' });
         expect(onSetWageContract).toHaveBeenCalledWith(c1.id, { commodity: 'BAR_SOAP', dailyAmount: 1 });
       }
+
+      // Test HiDPI scaling & transform
+      (globalThis as any).window = { devicePixelRatio: 2 };
+      mapCanvas.resizeCanvas();
+      expect(canvas.width).toBe(1600); // 800 * 2
+      expect(canvas.height).toBe(1000); // 500 * 2
 
       mapCanvas.destroy();
     });

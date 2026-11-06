@@ -1,5 +1,6 @@
 import './soapKettle.css';
 import { SoapKettleMiniGame, type KettleBatchResult } from './SoapKettleMiniGame';
+import { recordLabTrial } from './JournalPanel';
 import { state } from '../app/state';
 
 export function mountSoapKettleModal(
@@ -48,12 +49,32 @@ export function mountSoapKettleModal(
 
   container.appendChild(modal);
 
+  let animId: number | null = null;
+
+  const cleanupAndClose = (callback?: () => void) => {
+    if (animId !== null) {
+      cancelAnimationFrame(animId);
+      animId = null;
+    }
+    callback?.();
+    modal.remove();
+  };
+
   const game = new SoapKettleMiniGame((result) => {
     statusBanner.textContent = result.message;
     statusBanner.className = `kettle-status-banner status-${result.quality.toLowerCase()}`;
+    recordLabTrial({
+      vesselName: 'Soap Kettle Batch',
+      tempK: game.temperatureC + 273.15,
+      // The kettle mini-game does not model batter pH; record the canonical
+      // soap batter value (~9.5, mildly alkaline) as a labelled estimate.
+      ph: 9.5,
+      phEstimated: true,
+      reagents: `Lye: ${Math.round(game.lyeVolume)}% · Fat: ${Math.round(game.fatVolume)}%`,
+      notes: `${result.quality} Quality (${result.soapYield} bars) - ${result.message}`,
+    });
     setTimeout(() => {
-      onComplete(result);
-      modal.remove();
+      cleanupAndClose(() => onComplete(result));
     }, 1800);
   });
   // Apply ES-3 coupling effects
@@ -75,16 +96,31 @@ export function mountSoapKettleModal(
   const stirPaddle = modal.querySelector('.stir-paddle') as HTMLElement;
 
   modal.querySelector('.btn-close-kettle')?.addEventListener('click', () => {
-    onClose();
-    modal.remove();
+    cleanupAndClose(onClose);
   });
 
   const btnPourLye = modal.querySelector('#btn-pour-lye') as HTMLButtonElement;
   const btnPourFat = modal.querySelector('#btn-pour-fat') as HTMLButtonElement;
-  btnPourLye?.addEventListener('mousedown', () => { game.isPouringLye = true; });
-  btnPourLye?.addEventListener('mouseup', () => { game.isPouringLye = false; });
-  btnPourFat?.addEventListener('mousedown', () => { game.isPouringFat = true; });
-  btnPourFat?.addEventListener('mouseup', () => { game.isPouringFat = false; });
+  // Pointer Events cover mouse, touch and pen. Hold-to-pour must stop on release,
+  // pointer cancel, or when the pointer leaves the button — otherwise the fill
+  // flag sticks and the vessel keeps charging.
+  const bindHoldButton = (btn: HTMLButtonElement | null, setFlag: (v: boolean) => void) => {
+    if (!btn) return;
+    btn.style.touchAction = 'none';
+    btn.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      setFlag(true);
+      try { btn.setPointerCapture(e.pointerId); } catch { /* capture unavailable */ }
+    });
+    const stop = () => setFlag(false);
+    btn.addEventListener('pointerup', stop);
+    btn.addEventListener('pointercancel', stop);
+    btn.addEventListener('lostpointercapture', stop);
+    btn.addEventListener('pointerleave', stop);
+    btn.addEventListener('contextmenu', (e) => e.preventDefault());
+  };
+  bindHoldButton(btnPourLye, (v) => { game.isPouringLye = v; });
+  bindHoldButton(btnPourFat, (v) => { game.isPouringFat = v; });
 
   modal.querySelector('#btn-pump-bellows')?.addEventListener('click', () => {
     game.pumpBellows();
@@ -100,15 +136,39 @@ export function mountSoapKettleModal(
     if (stirPaddle) stirPaddle.style.transform = `rotate(${angle}deg)`;
   });
 
+  let lastLyeRound = -1;
+  let lastFatRound = -1;
+  let lastThermoRound = -1;
+
   const loop = () => {
-    if (!modal.isConnected) return;
+    if (!modal.isConnected) {
+      if (animId !== null) {
+        cancelAnimationFrame(animId);
+        animId = null;
+      }
+      return;
+    }
     game.step();
 
-    // Update visuals
-    if (lyeFill) lyeFill.style.height = `${game.lyeVolume}%`;
-    if (fatFill) fatFill.style.height = `${game.fatVolume}%`;
+    // Update visuals with integer throttling
+    const curLyeRound = Math.round(game.lyeVolume);
+    if (lyeFill && curLyeRound !== lastLyeRound) {
+      lyeFill.style.height = `${curLyeRound}%`;
+      lastLyeRound = curLyeRound;
+    }
+
+    const curFatRound = Math.round(game.fatVolume);
+    if (fatFill && curFatRound !== lastFatRound) {
+      fatFill.style.height = `${curFatRound}%`;
+      lastFatRound = curFatRound;
+    }
+
     const thermoPct = Math.min(100, Math.max(0, (game.temperatureC / 130) * 100));
-    if (thermoFill) thermoFill.style.height = `${thermoPct}%`;
+    const curThermoRound = Math.round(thermoPct);
+    if (thermoFill && curThermoRound !== lastThermoRound) {
+      thermoFill.style.height = `${curThermoRound}%`;
+      lastThermoRound = curThermoRound;
+    }
     if (heatReadout) {
       heatReadout.textContent = `${Math.round(game.temperatureC)} °C ${game.isBoilingOver ? '⚠️ BOILOVER!' : ''}`;
       heatReadout.style.color = game.isBoilingOver ? '#ff5252' : game.temperatureC >= 80 && game.temperatureC <= 98 ? '#4caf50' : '#ffd166';
@@ -123,7 +183,7 @@ export function mountSoapKettleModal(
       statusBanner.textContent = 'Mix heated! Click Stir Paddle to bring soap to trace!';
     }
 
-    requestAnimationFrame(loop);
+    animId = requestAnimationFrame(loop);
   };
-  requestAnimationFrame(loop);
+  animId = requestAnimationFrame(loop);
 }

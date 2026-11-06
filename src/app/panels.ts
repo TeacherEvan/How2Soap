@@ -10,7 +10,7 @@ import { levelFromRenown } from '../engine/progression';
 import { calculateHarvestTotalCostKcal, type HarvestablePart, type BiomeSpeciesNode } from '../data/biomeNodes';
 import { audio } from '../ui/audio';
 import { transitionDisplay } from './splash';
-import { state, selectedIndex, send } from './state';
+import { state, selectedIndex, send, pushLog } from './state';
 import { openWindowById } from './launcher';
 import {
   pGlucose,
@@ -94,7 +94,7 @@ export function switchTab(tab: WorkbenchTab): void {
       if (tab === 'FABRICATION') {
         renderFabricationTab(tabFabrication, (recipeId) => {
           send({ type: 'FABRICATE', recipeId });
-          state.log.push(`Fabricated recipe ${recipeId}`);
+          pushLog(`Fabricated recipe ${recipeId}`);
           renderLog();
         });
       }
@@ -122,7 +122,7 @@ export function switchTab(tab: WorkbenchTab): void {
           });
           if (bonus) {
             audio.clink();
-            state.log.push(`★ Bonus harvest! Clean strike boost!`);
+            pushLog(`★ Bonus harvest! Clean strike boost!`);
           }
           renderLog();
         };
@@ -157,7 +157,7 @@ export function renderBiomeExplorerTree(): void {
         toolSlot: part.requiredToolSlot ?? 'PERCUSSION_MINING',
         distanceMeters: species.baseDistanceMeters,
       });
-      state.log.push(`Harvested ${part.name} (${part.description})`);
+      pushLog(`Harvested ${part.name} (${part.description})`);
       renderLog();
     },
     (part, distance) => {

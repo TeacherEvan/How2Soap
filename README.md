@@ -3,8 +3,8 @@
 [![CI](https://github.com/TeacherEvan/How2Soap/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/TeacherEvan/How2Soap)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![TypeScript: 5.4+](https://img.shields.io/badge/TypeScript-5.4+-blue.svg)](https://www.typescriptlang.org/)
-[![Vitest: 100% Pass](https://img.shields.io/badge/Vitest-194%2F194%20Passed-brightgreen.svg)](https://vitest.dev/)
-[![Bundle: 182 KB entry](https://img.shields.io/badge/Entrypoint-182%20KB%20%2F%20200%20KB-success.svg)](https://webpack.js.org/)
+[![Vitest: 100% Pass](https://img.shields.io/badge/Vitest-400%2F400%20Passed-brightgreen.svg)](https://vitest.dev/)
+[![Bundle: 171 KB entry](https://img.shields.io/badge/Entrypoint-171%20KB%20%2F%20200%20KB-success.svg)](https://webpack.js.org/)
 [![PWA: Offline-ready](https://img.shields.io/badge/PWA-Installable%20%2B%20Offline-blue.svg)](manifest.webmanifest)
 
 An emergent thermodynamics, physical chemistry, and primitive survival simulation engine built with zero external runtime dependencies. Features zero-copy Web Worker multithreading using atomic `SeqLock` shared memory, Arrhenius kinetics, calorimetry, latent heat phase transitions, electroneutrality pH calculations, Faraday electrolysis, and a full 5-tier technological progression from primitive fire to molten salt electrolysis. Installable as a PWA — fully playable offline.
@@ -26,7 +26,7 @@ An emergent thermodynamics, physical chemistry, and primitive survival simulatio
 3. **Dynamic Electroneutrality pH Solver**:
    - Calculates strong ion difference $[\text{SID}] = \sum z_i [\text{Base}_i^+] - \sum z_j [\text{Acid}_j^-]$.
    - Solves $[\text{H}^+]$ against water auto-ionization $K_w = 1.0 \times 10^{-14}$ at $298.15\text{ K}$:
-     $$[\text{H}^+] = \frac{[\text{SID}] + \sqrt{[\text{SID}]^2 + 4 K_w}}{2}, \quad \text{pH} = -\log_{10}\left([\text{H}^+]\right)$$
+     $$[\text{H}^+] = \frac{-[\text{SID}] + \sqrt{[\text{SID}]^2 + 4 K_w}}{2}, \quad \text{pH} = -\log_{10}\left([\text{H}^+]\right)$$
 
 4. **Faraday Electrolysis Solver**:
    - Models aqueous brine splitting and high-temperature molten salt decomposition ($\text{KOH}$ and $\text{NaOH}$).
@@ -118,7 +118,7 @@ How2Soap/
 │   │   └── audio.ts                # Synthesized Web Audio SFX & ambient soundscape
 │   ├── main.ts             # Entry & wiring only (~360 LOC), COOP/COEP isolation detection
 │   └── styles.css          # Responsive dark-theme 4-panel viewport styling
-├── tests/                  # 40 Vitest test suites (194 tests passing 100%)
+├── tests/                  # 85 Vitest test suites (400 tests passing 100%)
 ├── vercel.json             # Vercel deployment COOP/COEP isolation headers
 └── webpack.config.js       # Webpack 5 production build with strict chunk budgets
 ```
@@ -142,7 +142,7 @@ Dev server will start at `http://localhost:8080/` with Cross-Origin Isolation he
 
 ### Testing & Verification
 ```bash
-# Run Vitest test suite (194 tests across 40 suites)
+# Run Vitest test suite (400 tests across 85 suites)
 npm test
 
 # Run TypeScript strict typecheck

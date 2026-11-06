@@ -35,6 +35,16 @@ export type WageCommodity =
   | 'FIELD_MUSHROOM'
   | string;
 
+export const WAGE_COMMODITIES: ReadonlyArray<WageCommodity> = [
+  'BAR_SOAP',
+  'MEAT_RAW',
+  'FIELD_MUSHROOM',
+  'COPPER_INGOT',
+  'WILLOW_TEA',
+  'MINT_TONIC',
+  'NITROUS_TONIC',
+];
+
 export interface WageContract {
   commodity: WageCommodity;
   dailyAmount: number;

@@ -9,7 +9,7 @@ import { StoryMode } from '../ui/StoryMode';
 import { showToast } from '../ui/Toast';
 // JournalPanel is dynamically imported for code-splitting
 import { audio } from '../ui/audio';
-import { state, speciesMoles, send, campaignListeners } from './state';
+import { state, speciesMoles, send, campaignListeners, pushLog } from './state';
 import { tabJournal } from './dom';
 import type { CrisisSeverity, CrisisId } from '../engine/crisis';
 import { renderVessels, updateTargets, renderLog } from './views';
@@ -99,14 +99,14 @@ function createSeedVessels(): void {
 export function handleWorkerMessage(data: WorkerMessage, options?: { load?: unknown }): void {
   if (data.type === 'SIM_ERROR') {
     showToast(`Simulation Error: ${data.message}`, 'failure');
-    state.log.push(`SIM_ERROR: ${data.message}`);
+    pushLog(`SIM_ERROR: ${data.message}`);
     renderLog();
     return;
   }
 
   if (data.type === 'SIM_FATAL') {
     showToast('Simulation paused after repeated errors. Reload or start a new world.', 'failure');
-    state.log.push(`SIM_FATAL: ${data.message}`);
+    pushLog(`SIM_FATAL: ${data.message}`);
     renderLog();
     return;
   }
@@ -136,7 +136,7 @@ export function handleWorkerMessage(data: WorkerMessage, options?: { load?: unkn
 
   if (data.type === 'EVENTS') {
     for (const ev of data.events) {
-      state.log.push(ev.message);
+      pushLog(ev.message);
       if (ev.message.includes('strike') || ev.message.includes('Strike') || ev.message.includes('unpaid')) {
         audio.strikeBell();
       } else if (ev.message.includes('payroll') || ev.message.includes('paid') || ev.message.includes('Wage')) {
@@ -343,7 +343,9 @@ export function handleWorkerMessage(data: WorkerMessage, options?: { load?: unkn
       }
     }
     state.timedRequests = data.slots;
-    updatePlayerUI();
+    // Same one-render-per-frame contract as PLAYER_SYNC, under its own kind
+    // so it never overwrites the richer PLAYER_SYNC callback in the same frame.
+    queueFrameRender('requests', () => updatePlayerUI());
     return;
   }
 

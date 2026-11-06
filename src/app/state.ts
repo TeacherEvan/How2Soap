@@ -54,6 +54,16 @@ export const UI_FLAG_SOAP_LAB = 1 << 2;
 export const UI_FLAG_REQUESTS = 1 << 3;
 export const UI_FLAG_PADDOCKS = 1 << 4;
 
+const MAX_LOG_ENTRIES = 200;
+
+/** Append to the on-screen event log, capping it so long sessions cannot grow it unboundedly. */
+export function pushLog(entry: string): void {
+  state.log.push(entry);
+  if (state.log.length > MAX_LOG_ENTRIES) {
+    state.log.splice(0, state.log.length - MAX_LOG_ENTRIES);
+  }
+}
+
 export const state = {
   worker: null as Worker | null,
   view: null as SharedWorldView | null,

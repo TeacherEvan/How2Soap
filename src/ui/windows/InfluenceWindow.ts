@@ -337,11 +337,6 @@ function renderActiveTab(): void {
   attachActions(mountedBody);
 }
 
-/** Called by the worker CAMPAIGN_SYNC handler while this window is open. */
-export function refreshInfluenceWindow(): void {
-  renderActiveTab();
-}
-
 const onCampaignSync = (): void => renderActiveTab();
 
 function attachActions(body: HTMLElement): void {

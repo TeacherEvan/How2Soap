@@ -16,6 +16,7 @@ import {
   type ColonyState,
   type WageContract,
   type WageCommodity,
+  WAGE_COMMODITIES,
 } from '../engine/colony';
 import {
   BIOME_DAG,
@@ -46,6 +47,8 @@ export {
 export type { ViewportState, DiurnalLighting };
 
 import terrainMapImg from '../assets/tutorial/blender_terrain_map.png';
+
+import { escapeHtml } from './escapeHtml';
 
 export interface StrategyMapCanvasOptions {
   onRecruit?: (candidate: { name: string; archetype: ColonistArchetype; wageContract: WageContract }) => void;
@@ -158,8 +161,12 @@ export class StrategyMapCanvas {
     if (!this.canvas) return;
     const rect = this.canvas.getBoundingClientRect();
     if (rect.width > 0 && rect.height > 0) {
-      this.canvas.width = rect.width;
-      this.canvas.height = rect.height;
+      const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
+      this.canvas.width = Math.round(rect.width * dpr);
+      this.canvas.height = Math.round(rect.height * dpr);
+      this.canvas.style.width = `${rect.width}px`;
+      this.canvas.style.height = `${rect.height}px`;
+      this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       this.viewport.width = rect.width;
       this.viewport.height = rect.height;
     }
@@ -182,23 +189,43 @@ export class StrategyMapCanvas {
     const { canvas } = this;
     const signal = this.abortController?.signal;
 
-    canvas.addEventListener('mousedown', (e) => {
+    canvas.addEventListener('pointerdown', (e: PointerEvent) => {
       this.isDragging = true;
       this.dragStartX = e.clientX;
       this.dragStartY = e.clientY;
       this.panStartX = this.viewport.panX;
       this.panStartY = this.viewport.panY;
+      try {
+        canvas.setPointerCapture(e.pointerId);
+      } catch {
+        // Fallback in environments without pointer capture
+      }
     }, { signal });
 
-    window.addEventListener('mousemove', (e) => {
+    canvas.addEventListener('pointermove', (e: PointerEvent) => {
       if (!this.isDragging) return;
       this.viewport.panX = this.panStartX + (e.clientX - this.dragStartX);
       this.viewport.panY = this.panStartY + (e.clientY - this.dragStartY);
     }, { signal });
 
-    window.addEventListener('mouseup', () => {
-      this.isDragging = false;
-    }, { signal });
+    const endDrag = (e: PointerEvent) => {
+      if (this.isDragging) {
+        this.isDragging = false;
+        try {
+          if (canvas.hasPointerCapture(e.pointerId)) {
+            canvas.releasePointerCapture(e.pointerId);
+          }
+        } catch {
+          // Fallback in environments without pointer capture
+        }
+      }
+    };
+
+    canvas.addEventListener('pointerup', endDrag as EventListener, { signal });
+    canvas.addEventListener('pointercancel', endDrag as EventListener, { signal });
+    // Fallback for environments without pointer capture: release anywhere ends the drag.
+    canvas.addEventListener('lostpointercapture', endDrag as EventListener, { signal });
+    window.addEventListener('pointerup', endDrag as EventListener, { signal });
 
     canvas.addEventListener('wheel', (e) => {
       e.preventDefault();
@@ -232,7 +259,7 @@ export class StrategyMapCanvas {
           this.viewport.panY = 0;
         }
         if (action === 'toggle-relief') this.showReliefUnderlay = !this.showReliefUnderlay;
-      });
+      }, { signal });
     });
   }
 
@@ -614,15 +641,7 @@ export class StrategyMapCanvas {
       }
     }
 
-    const wageCommodities = [
-      'BAR_SOAP',
-      'MEAT_RAW',
-      'FIELD_MUSHROOM',
-      'COPPER_INGOT',
-      'WILLOW_TEA',
-      'MINT_TONIC',
-      'NITROUS_TONIC',
-    ];
+    const wageCommodities = WAGE_COMMODITIES;
 
     if (
       typeof document !== 'undefined' &&
@@ -638,13 +657,16 @@ export class StrategyMapCanvas {
         const isStrike = c.status === 'STRIKE';
         const color = getArchetypeColor(c.archetype);
 
+        const safeName = escapeHtml(c.name);
+        const safeArchetype = escapeHtml(c.archetype);
+
         return `
-        <div class="colonist-card ${isStrike ? 'card-strike' : ''}" data-colonist-id="${c.id}">
+        <div class="colonist-card ${isStrike ? 'card-strike' : ''}" data-colonist-id="${escapeHtml(c.id)}">
           <div class="colonist-head">
             <span class="archetype-badge" style="background: ${color}"></span>
-            <strong class="colonist-name">${c.name}</strong>
-            <span class="colonist-archetype">${c.archetype}</span>
-            <span class="status-pill status-${c.status.toLowerCase()}">${isStrike ? '✊ STRIKE' : c.status}</span>
+            <strong class="colonist-name">${safeName}</strong>
+            <span class="colonist-archetype">${safeArchetype}</span>
+            <span class="status-pill status-${c.status.toLowerCase()}">${isStrike ? '✊ STRIKE' : escapeHtml(c.status)}</span>
           </div>
 
           <div class="morale-bar-track" title="Morale: ${c.morale}%">
@@ -654,7 +676,7 @@ export class StrategyMapCanvas {
           <div class="colonist-controls">
             <div class="control-row">
               <label>Job:</label>
-              <select data-job-colonist="${c.id}" class="select-job" aria-label="Assign Job">
+              <select data-job-colonist="${escapeHtml(c.id)}" class="select-job" aria-label="Assign Job">
                 <option value="">-- Idle at Camp --</option>
                 ${jobOptions
                   .map(
@@ -670,7 +692,7 @@ export class StrategyMapCanvas {
 
             <div class="control-row">
               <label>Wage:</label>
-              <select data-wage-colonist="${c.id}" class="select-wage" aria-label="Wage Commodity">
+              <select data-wage-colonist="${escapeHtml(c.id)}" class="select-wage" aria-label="Wage Commodity">
                 ${wageCommodities
                   .map(
                     (comm) => `
@@ -685,9 +707,9 @@ export class StrategyMapCanvas {
 
             <div class="stimulant-bar">
               <span class="stim-label">Dose:</span>
-              <button class="btn btn-micro" data-action="stimulant" data-colonist-id="${c.id}" data-stimulant="WILLOW_TEA" title="Willow Tea (+25% speed)">Tea</button>
-              <button class="btn btn-micro" data-action="stimulant" data-colonist-id="${c.id}" data-stimulant="MINT_TONIC" title="Mint Tonic (+40% speed)">Mint</button>
-              <button class="btn btn-micro" data-action="stimulant" data-colonist-id="${c.id}" data-stimulant="NITROUS_TONIC" title="Nitrous Tonic (+60% speed)">Ether</button>
+              <button class="btn btn-micro" data-action="stimulant" data-colonist-id="${escapeHtml(c.id)}" data-stimulant="WILLOW_TEA" title="Willow Tea (+25% speed)">Tea</button>
+              <button class="btn btn-micro" data-action="stimulant" data-colonist-id="${escapeHtml(c.id)}" data-stimulant="MINT_TONIC" title="Mint Tonic (+40% speed)">Mint</button>
+              <button class="btn btn-micro" data-action="stimulant" data-colonist-id="${escapeHtml(c.id)}" data-stimulant="NITROUS_TONIC" title="Nitrous Tonic (+60% speed)">Ether</button>
             </div>
           </div>
         </div>

@@ -7,6 +7,7 @@
  */
 
 import { globalOverlayStack } from './overlayStack';
+import { escapeHtml } from './escapeHtml';
 
 export interface TurnRecapData {
   turn: number;
@@ -32,7 +33,7 @@ export function openTurnRecapModal(data: TurnRecapData, onDismiss?: () => void):
 
   const renderEventList = (items: Array<{ message: string }>, emptyText: string) => {
     if (items.length === 0) return `<p style="font-size: 0.85rem; color: var(--muted); font-style: italic;">${emptyText}</p>`;
-    return `<ul style="margin: 0; padding-left: 1.2rem; font-size: 0.85rem;">${items.map((i) => `<li>${i.message}</li>`).join('')}</ul>`;
+    return `<ul style="margin: 0; padding-left: 1.2rem; font-size: 0.85rem;">${items.map((i) => `<li>${escapeHtml(i.message)}</li>`).join('')}</ul>`;
   };
 
   overlay.innerHTML = `
@@ -50,7 +51,7 @@ export function openTurnRecapModal(data: TurnRecapData, onDismiss?: () => void):
             data.benchLedger.length === 0
               ? '<p style="font-size: 0.85rem; color: var(--muted); font-style: italic;">No active experiments in flight.</p>'
               : `<ul style="margin: 0; padding-left: 1.2rem; font-size: 0.85rem;">${data.benchLedger
-                  .map((b) => `<li>${b.done ? '✓ <strong>' + b.label + '</strong> (Finished)' : '⏳ ' + b.label + ' (' + b.turnsLeft + ' turns left)'}</li>`)
+                  .map((b) => `<li>${b.done ? '✓ <strong>' + escapeHtml(b.label) + '</strong> (Finished)' : '⏳ ' + escapeHtml(b.label) + ' (' + b.turnsLeft + ' turns left)'}</li>`)
                   .join('')}</ul>`
           }
         </div>

@@ -112,7 +112,17 @@ import {
   type CampaignVictoryState,
   type UndertowStance,
 } from './campaign/victories';
-import { restoreCampaignFromSave, restoreColonyFromSave, restoreWorldFromSave } from './worldRestore';
+import {
+  restoreCampaignFromSave,
+  restoreColonyFromSave,
+  restoreWorldFromSave,
+  sanitizeBlacksmith,
+  sanitizeExperiments,
+  sanitizePaddock,
+  sanitizePlayerSave,
+  sanitizeRealm,
+  sanitizeSettlements,
+} from './worldRestore';
 import {
   createCrisisDirector,
   type CrisisContext,
@@ -404,7 +414,12 @@ function postCrisisSync(): void {
   ctx.postMessage({ type: 'CRISIS_SYNC', telegraph: snap.telegraph, active: snap.active });
 }
 
+let lastRequestSync = '';
+
 function postRequestSync(): void {
+  const payload = JSON.stringify(timedRequests.slots);
+  if (payload === lastRequestSync) return;
+  lastRequestSync = payload;
   ctx.postMessage({
     type: 'REQUEST_SYNC',
     slots: timedRequests.slots,
@@ -674,6 +689,7 @@ function handleCommand(command: Command): void {
       crisis.reset(rngSeed, 0);
       colony = createInitialColonyState();
       lastDesireGridChecksum = -1;
+      lastRequestSync = '';
       influence = createInitialInfluenceState(1);
       correspondence = createInitialCorrespondence();
       builtWorks = createInitialBuiltWorks();
@@ -712,8 +728,8 @@ function handleCommand(command: Command): void {
       for (const [k, v] of restoredLabels) labels.set(k, v);
       world = restoredWorld;
       view = newView;
-      player = createPlayerMetabolism(save.player?.clothingIclo ?? 0.05);
-      Object.assign(player, save.player);
+      player = createPlayerMetabolism();
+      Object.assign(player, sanitizePlayerSave(save.player));
       if (save.inventory && (save.inventory as any).bareHands && Array.isArray((save.inventory as any).bareHands.slots)) {
         inventory = save.inventory;
       } else if (save.inventory) {
@@ -752,9 +768,10 @@ function handleCommand(command: Command): void {
       rngSeed = save.rngSeed ?? ((Math.random() * 0xffffffff) >>> 0);
       rng = createSeededRng(rngSeed);
       crisis.reset(rngSeed, save.tick ?? 0);
-      paddock = save.paddock ?? createPaddock();
+      paddock = sanitizePaddock(save.paddock);
       colony = restoreColonyFromSave(save);
       lastDesireGridChecksum = -1;
+      lastRequestSync = '';
 
       const campaignSlice = restoreCampaignFromSave(save);
       influence = campaignSlice.influence;
@@ -775,18 +792,10 @@ function handleCommand(command: Command): void {
       if (Array.isArray(save.timedRequests)) {
         timedRequests.restore(save.timedRequests);
       }
-      if (save.experiments) {
-        experiments = save.experiments;
-      }
-      if (save.realm) {
-        realm = save.realm;
-      }
-      if (save.settlements) {
-        settlements = save.settlements;
-      }
-      if (save.blacksmith) {
-        blacksmith = save.blacksmith;
-      }
+      experiments = sanitizeExperiments(save.experiments);
+      realm = sanitizeRealm(save.realm);
+      settlements = sanitizeSettlements(save.settlements);
+      blacksmith = sanitizeBlacksmith(save.blacksmith);
 
       syncWorldToShared(world, view);
       if (timer === null) timer = setInterval(tick, 1000 / WORKER_HZ);

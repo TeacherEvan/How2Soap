@@ -9,7 +9,7 @@
  */
 
 import type { WindowSpec } from '../WindowManager';
-import { state, send } from '../../app/state';
+import { state, send, campaignListeners } from '../../app/state';
 import { COUNTRIES } from '../../engine/campaign/realm';
 import {
   evaluateVictoryEligibilities,
@@ -19,12 +19,7 @@ import {
 } from '../../engine/campaign/victories';
 import { createInitialBuiltWorks } from '../../engine/campaign/builtWorks';
 
-export const spec: WindowSpec = {
-  id: 'realm',
-  title: 'The Realm of Science',
-  icon: '🏛️',
-  size: 'wide',
-  mount(body: HTMLElement) {
+export function paintRealmWindow(body: HTMLElement): void {
     const realm = state.realm;
     const country = COUNTRIES.find((c) => c.id === realm?.countryId) ?? COUNTRIES[0];
 
@@ -217,5 +212,28 @@ export const spec: WindowSpec = {
         });
       });
     });
+}
+
+let mountedBody: HTMLElement | null = null;
+
+function onCampaignSync(): void {
+  if (mountedBody?.isConnected) paintRealmWindow(mountedBody);
+}
+
+export const spec: WindowSpec = {
+  id: 'realm',
+  title: 'The Realm of Science',
+  icon: '🏛️',
+  size: 'wide',
+  mount(body: HTMLElement): void {
+    mountedBody = body;
+    paintRealmWindow(body);
+    // Re-mounting must not duplicate the listener.
+    campaignListeners.delete(onCampaignSync);
+    campaignListeners.add(onCampaignSync);
+  },
+  unmount(): void {
+    campaignListeners.delete(onCampaignSync);
+    mountedBody = null;
   },
 };

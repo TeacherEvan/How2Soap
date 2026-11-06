@@ -25,7 +25,11 @@ describe('REQUEST_SYNC null slot safety (P1-10)', () => {
     vi.stubGlobal('window', { addEventListener: vi.fn(), removeEventListener: vi.fn() });
   });
 
-  afterEach(() => {
+  afterEach(async () => {
+    // REQUEST_SYNC renders on the next frame; flush it while the DOM stub is
+    // still installed, then tear the stub down.
+    const { flushFrameRenderForTests } = await import('../src/app/syncScheduler');
+    flushFrameRenderForTests();
     vi.unstubAllGlobals();
     vi.resetModules();
   });
