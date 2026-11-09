@@ -269,13 +269,20 @@ function renderBench(body: HTMLElement, snapshot: Snapshot): void {
   if (benchCanvas) {
     const vesselStates = state.vessels.map((v, i) => {
       const b = i * 8;
+      // Real species moles from the snapshot (M1 Task 9: LabBench liquid-fill
+      // morph scales with these). Precipitated solids stay in the vessel and
+      // are not modelled by the snapshot, so they read as zero.
+      const moles = new Float64Array(MAX_DEFINED_SPECIES);
+      for (let speciesIdx = 0; speciesIdx < MAX_DEFINED_SPECIES; speciesIdx += 1) {
+        moles[speciesIdx] = speciesMoles(snapshot, i, speciesIdx);
+      }
       return {
         id: v.id,
         material: v.material as any,
         capacityL: v.capacityL,
         headspaceClosed: v.closed,
         temperatureK: snapshot.telemetry[b + TELEMETRY.TEMP_K],
-        moles: new Float64Array(MAX_DEFINED_SPECIES),
+        moles,
         precipitated: new Float64Array(MAX_DEFINED_SPECIES),
         heaterWatts: snapshot.telemetry[b + TELEMETRY.HEATER_W],
         condenserTargetVesselId: v.id === vessel.id ? -1 : -1,
@@ -319,7 +326,10 @@ export const spec: WindowSpec = {
     }
   },
   unmount() {
-    benchCanvas = null;
+    if (benchCanvas) {
+      benchCanvas.destroy();
+      benchCanvas = null;
+    }
     state.bench3d = null;
   },
   onSnapshot(snapshot, body) {

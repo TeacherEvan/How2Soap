@@ -1,35 +1,143 @@
 /**
- * 3D WebGL2 Lab Bench Viewport
- * Displays 3D vessels with liquid levels, heating glows, and interactive raycast picking.
+ * 3D WebGL2 Lab Bench Viewport — M1 Task 9 experiment drive.
+ * Renders vessels with kinetic feedback loops driven by VesselState (+ optional
+ * KettleState from the soap-kettle mini-game):
+ *  - liquid-fill morph scaleY from moles via exponential decay (liquidVolumeL/capacityL)
+ *  - heating glow envelope = f(heaterWatts, temperatureK), expDecay-smoothed
+ *  - boilover shake above 105°C (spring envelope × 40Hz carrier) + boil bubbles
+ *  - stir vortex weight = tracePct/100 while STIRRING (uPoseWeight + yaw spin)
+ *  - pour stream ribbon visible while POURING, length from lye+fat fill
+ * All blends use kinetic.expDecay / stepSpringSubstepped with dt in seconds.
+ * Loops freeze at the cosine midpoint (uTime = PI/2) when
+ * prefers-reduced-motion is set; DPR is clamped to [1, 2] in resizeCanvas();
+ * the canvas reserves a fixed 180px CSS height so mounting never causes CLS.
+ *
+ * Sprite-free drive: src/assets/sprites/*.png (flame 512x512 / ember / fume /
+ * bubbles atlas) are NOT imported here. miniGl exposes no texture sampler
+ * pipeline (uColor-only shader), and the entrypoint has ~9KB headroom under the
+ * 200000B hints:error budget — a WebGL texture upload path would cost far more
+ * than it returns. Boil bubbles and the pour stream are procedural quads
+ * shaded with uColor instead, keeping this canvas inside the lazy chunk.
  */
 
 import { MiniGl, mat4Perspective, mat4LookAt, mat4Model, type GlMeshBuffers } from './miniGl';
 import { MESHES } from './lowPolyMeshes';
-import { type VesselState } from '../../engine/chemistry';
+import { expDecay, stepSpringSubstepped } from './kinetic';
+import { liquidVolumeL, type VesselState } from '../../engine/chemistry';
+import type { KettleDriveState } from '../SoapKettleMiniGame';
 
 export interface Bench3DOptions {
   onSelectVessel?: (vesselId: number) => void;
+}
+
+/** Boilover threshold in °C — mirrors SoapKettleMiniGame (visual only). */
+const BOILOVER_C = 105;
+/** uTime value whose cosine is 0 → pose factor 0.5 (reduced-motion midpoint freeze). */
+const FROZEN_TIME = Math.PI / 2;
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
+}
+
+/** Column-major model matrix with a Y-rotation folded in (miniGl is untouched). */
+function mat4ModelRotY(
+  tx: number, ty: number, tz: number,
+  sx: number, sy: number, sz: number, rotY: number,
+): Float32Array {
+  const c = Math.cos(rotY);
+  const s = Math.sin(rotY);
+  const out = new Float32Array(16);
+  out[0] = c * sx; out[1] = 0; out[2] = -s * sz; out[3] = 0;
+  out[4] = 0; out[5] = sy; out[6] = 0; out[7] = 0;
+  out[8] = s * sx; out[9] = 0; out[10] = c * sz; out[11] = 0;
+  out[12] = tx; out[13] = ty; out[14] = tz; out[15] = 1;
+  return out;
+}
+
+interface FeedbackBuffers {
+  pourStream: GlMeshBuffers;
+  boilBubble: GlMeshBuffers;
 }
 
 export class LabBench3DCanvas {
   private miniGl: MiniGl;
   private canvas: HTMLCanvasElement;
   private buffers: Map<string, GlMeshBuffers> = new Map();
+  private feedback: FeedbackBuffers | null = null;
+
+  private lastVessels: VesselState[] = [];
+  private lastSelectedId = -1;
+  private lastKettle: KettleDriveState | null = null;
+  private lastRenderMs: number | null = null;
+  private animTimeSec = 0;
+  private rafId: number | null = null;
+  private destroyed = false;
+
+  private reducedMotion = false;
+  private mediaQuery: MediaQueryList | null = null;
+  private readonly onMediaChange = (): void => {
+    this.onReducedMotionChange();
+  };
+  private readonly onResize = (): void => {
+    this.resizeCanvas();
+  };
+  private readonly onClick = (event: MouseEvent): void => {
+    this.pickVessel(event);
+  };
+
+  /** Exponential-decay smoothed scalars keyed by vessel id. */
+  private smoothedGlow = new Map<number, number>();
+  private smoothedFill = new Map<number, number>();
+  private smoothedVortex = new Map<number, number>();
+  private smoothedPour = new Map<number, number>();
+  /** Boilover shake springs (x position / velocity) keyed by vessel id. */
+  private shakeSpring = new Map<number, { pos: number; vel: number }>();
 
   constructor(container: HTMLElement, public readonly options: Bench3DOptions = {}) {
     this.canvas = document.createElement('canvas');
     this.canvas.width = 400;
     this.canvas.height = 240;
     this.canvas.className = 'bench-3d-canvas';
+    this.canvas.setAttribute('role', 'img');
+    this.canvas.setAttribute('aria-label', '3D vessel diorama — click a vessel to select it');
+    this.canvas.dataset.testid = 'bench-3d-canvas';
     this.canvas.style.width = '100%';
     this.canvas.style.height = '180px';
     this.canvas.style.borderRadius = '8px';
     this.canvas.style.background = '#151922';
     this.canvas.style.marginBottom = '1rem';
+    this.canvas.style.display = 'block';
+    // Reserve bounds so the WebGL canvas never shifts layout (no CLS).
+    container.style.minHeight = '180px';
     container.prepend(this.canvas);
 
     this.miniGl = new MiniGl(this.canvas);
     this.initMeshes();
+    this.initFeedbackBuffers();
+
+    // Reduced-motion freeze (matchMedia precedent from app/splash.ts).
+    if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
+      try {
+        this.mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+        this.reducedMotion = this.mediaQuery.matches;
+        if (typeof this.mediaQuery.addEventListener === 'function') {
+          this.mediaQuery.addEventListener('change', this.onMediaChange);
+        }
+      } catch {
+        /* matchMedia unavailable — animate normally */
+      }
+    }
+
+    if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+      window.addEventListener('resize', this.onResize);
+    }
+    this.canvas.addEventListener('click', this.onClick);
+    this.resizeCanvas();
+    this.startLoop();
+  }
+
+  private onReducedMotionChange(): void {
+    this.reducedMotion = this.mediaQuery?.matches ?? false;
   }
 
   private initMeshes(): void {
@@ -39,7 +147,96 @@ export class LabBench3DCanvas {
     }
   }
 
-  public render(vessels: VesselState[], selectedId: number): void {
+  /** Procedural pour-stream ribbon + boil-bubble quad (uColor-only, no textures). */
+  private initFeedbackBuffers(): void {
+    // Vertical ribbon 0.08 wide, 1.2 tall, base at origin (translated per-vessel).
+    const pourPositions = new Float32Array([
+      -0.04, 0, 0, 0.04, 0, 0, 0.04, 1.2, 0, -0.04, 0, 0, 0.04, 1.2, 0, -0.04, 1.2, 0,
+    ]);
+    const pourNormals = new Float32Array([0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0]);
+    const pourIndices = new Uint16Array([0, 1, 2, 0, 2, 3]);
+    const pourStream = this.miniGl.createMeshBuffers(pourPositions, pourNormals, pourIndices);
+
+    // Small quad for boil bubbles, base at origin.
+    const bubblePositions = new Float32Array([
+      -0.15, 0, 0, 0.15, 0, 0, 0.15, 0.2, 0, -0.15, 0, 0, 0.15, 0.2, 0, -0.15, 0.2, 0,
+    ]);
+    const bubbleNormals = new Float32Array([0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0]);
+    const bubbleIndices = new Uint16Array([0, 1, 2, 0, 2, 3]);
+    const boilBubble = this.miniGl.createMeshBuffers(bubblePositions, bubbleNormals, bubbleIndices);
+
+    this.feedback = { pourStream, boilBubble };
+  }
+
+  /** DPR-clamped resize matching StrategyMapCanvas.resizeCanvas()'s precedent. */
+  public resizeCanvas(): void {
+    const rect = this.canvas.getBoundingClientRect();
+    const cssW = rect.width > 0 ? Math.round(rect.width) : 400;
+    const cssH = rect.height > 0 ? Math.round(rect.height) : 180;
+    const dpr = typeof window !== 'undefined'
+      ? clamp(window.devicePixelRatio || 1, 1, 2)
+      : 1;
+    this.canvas.width = Math.max(1, Math.round(cssW * dpr));
+    this.canvas.height = Math.max(1, Math.round(cssH * dpr));
+    this.canvas.style.width = `${cssW}px`;
+    this.canvas.style.height = `${cssH}px`;
+  }
+
+  private startLoop(): void {
+    if (typeof requestAnimationFrame !== 'function') return;
+    const tick = (nowMs: number): void => {
+      if (this.destroyed) return;
+      try {
+        this.render(this.lastVessels, this.lastSelectedId, this.lastKettle, nowMs);
+      } catch {
+        /* transient GL fault — skip frame */
+      }
+      if (!this.destroyed && typeof requestAnimationFrame === 'function') {
+        this.rafId = requestAnimationFrame(tick);
+      }
+    };
+    this.rafId = requestAnimationFrame(tick);
+  }
+
+  /** Click-to-select via horizontal vessel spacing (preserves onSelectVessel wiring). */
+  private pickVessel(event: MouseEvent): void {
+    const callback = this.options.onSelectVessel;
+    if (!callback || this.lastVessels.length === 0) return;
+    const rect = this.canvas.getBoundingClientRect();
+    if (rect.width <= 0) return;
+    const fx = (event.clientX - rect.left) / rect.width;
+    // Vessels sit at xPos = (idx - (n-1)/2) * 1.5; invert to fractional index.
+    const fractional = ((fx - 0.5) * (this.canvas.width / this.canvas.height) * 5) / 1.5
+      + (this.lastVessels.length - 1) / 2;
+    const idx = Math.round(clamp(fractional, 0, this.lastVessels.length - 1));
+    const vessel = this.lastVessels[idx];
+    if (vessel) callback(vessel.id);
+  }
+
+  public render(
+    vessels: VesselState[],
+    selectedId: number,
+    kettle: KettleDriveState | null = null,
+    nowMs: number = typeof performance !== 'undefined' ? performance.now() : Date.now(),
+  ): void {
+    this.lastVessels = vessels;
+    this.lastSelectedId = selectedId;
+    this.lastKettle = kettle;
+
+    // Frame-rate independent dt in seconds (expDecay handles its own floor;
+    // the spring sub-steps internally and clamps to MAX_FRAME_DT).
+    const dt = this.lastRenderMs === null
+      ? 0
+      : Math.max(0, (nowMs - this.lastRenderMs) / 1000);
+    this.lastRenderMs = nowMs;
+
+    if (this.reducedMotion) {
+      this.animTimeSec = FROZEN_TIME;
+    } else {
+      this.animTimeSec += dt;
+    }
+    const timeSec = this.animTimeSec;
+
     const gl = this.miniGl.gl;
     const u = this.miniGl.uniforms;
 
@@ -47,28 +244,57 @@ export class LabBench3DCanvas {
     gl.clearColor(0.08, 0.1, 0.14, 1.0);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     gl.enable(gl.DEPTH_TEST);
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 
     gl.useProgram(this.miniGl.program);
 
-    const aspect = this.canvas.width / this.canvas.height;
+    const aspect = this.canvas.width / Math.max(1, this.canvas.height);
     const proj = mat4Perspective((45 * Math.PI) / 180, aspect, 0.1, 50.0);
     const view = mat4LookAt([0, 3.5, 5.0], [0, 0, 0], [0, 1, 0]);
 
     gl.uniformMatrix4fv(u.uProjection, false, proj);
     gl.uniformMatrix4fv(u.uView, false, view);
     gl.uniform3f(u.uLightDir, 0.5, 1.0, 0.8);
+    gl.uniform1f(u.uTime, timeSec);
 
-    // Draw hearth / brazier under active vessels
+    const kettleFor = (): KettleDriveState | null =>
+      kettle !== null && vessels.length === 1 ? kettle : null;
+
+    // Smoothed heating-glow envelope per vessel: f(heaterWatts, temperatureK).
+    // Computed once per vessel per frame (a single expDecay advance per dt).
+    const glowById = new Map<number, number>();
+    for (const vessel of vessels) {
+      const k = kettleFor();
+      const heaterWatts = k !== null ? k.heaterWatts : vessel.heaterWatts;
+      const temperatureK = k !== null ? k.temperatureC + 273.15 : vessel.temperatureK;
+      const heaterNorm = clamp(heaterWatts / 1200, 0, 1);
+      const tempNorm = clamp((temperatureK - 273.15) / 100, 0, 1);
+      const target = clamp(0.65 * heaterNorm + 0.35 * tempNorm, 0, 1);
+      const prev = this.smoothedGlow.get(vessel.id) ?? 0;
+      const next = expDecay(prev, target, 3, dt);
+      this.smoothedGlow.set(vessel.id, next);
+      glowById.set(vessel.id, next);
+    }
+
+    // Draw hearth / brazier under active vessels — amber envelope, not a bare sin.
     const brazierBuf = this.buffers.get('HEARTH_BRAZIER');
     if (brazierBuf) {
       gl.bindVertexArray(brazierBuf.vao);
       const mHearth = mat4Model(0, -0.6, 0, 2.8, 0.5, 1.2);
       gl.uniformMatrix4fv(u.uModel, false, mHearth);
-      // If any vessel is heating, the brazier radiates an amber hearth pulse
-      const anyHeating = vessels.some((v) => v.heaterWatts > 0);
-      const timeSec = performance.now() / 1000;
-      const pulse = anyHeating ? 0.08 * Math.sin(timeSec * 4.5) : 0;
-      gl.uniform4f(u.uColor, 0.25 + (anyHeating ? 0.35 + pulse : 0), 0.26 + (anyHeating ? 0.12 : 0), 0.3, 1.0);
+      let glow = 0;
+      for (const v of vessels) glow = Math.max(glow, glowById.get(v.id) ?? 0);
+      // Flicker rides on the decayed envelope (frozen automatically via timeSec).
+      const flicker = 0.85 + 0.15 * Math.sin(timeSec * 4.5);
+      gl.uniform1f(u.uPoseWeight, 0);
+      gl.uniform4f(
+        u.uColor,
+        0.25 + glow * 0.75 * flicker,
+        0.26 + glow * 0.32,
+        0.3 + glow * 0.08,
+        1.0,
+      );
       gl.drawElements(gl.TRIANGLES, brazierBuf.indexCount, gl.UNSIGNED_SHORT, 0);
     }
 
@@ -83,19 +309,62 @@ export class LabBench3DCanvas {
       gl.bindVertexArray(buf.vao);
       const xPos = (idx - (vessels.length - 1) / 2) * 1.5;
       const isSelected = vessel.id === selectedId;
-      const isHeating = vessel.heaterWatts > 0;
+      const k = kettleFor();
 
-      const m = mat4Model(xPos, 0, 0, 1.0, 1.0, 1.0);
+      // Liquid-fill morph: moles → litres via liquidVolumeL; the kettle pour
+      // total is the fill signal when a KettleState is attached (M1 Task 9).
+      const liquidL = liquidVolumeL(vessel);
+      let fillTarget = vessel.capacityL > 0 ? clamp(liquidL / vessel.capacityL, 0, 1) : 0;
+      if (k !== null) {
+        const pourTotal = clamp((k.lyeVolume + k.fatVolume) / 200, 0, 1);
+        fillTarget = Math.max(fillTarget, pourTotal);
+      }
+      const prevFill = this.smoothedFill.get(vessel.id) ?? 0;
+      const fill = expDecay(prevFill, fillTarget, 5, dt);
+      this.smoothedFill.set(vessel.id, fill);
+
+      // Stir vortex weight = tracePct/100 while STIRRING, else 0.
+      const vortexTarget = k !== null && k.phase === 'STIRRING'
+        ? clamp(k.tracePct / 100, 0, 1)
+        : 0;
+      const prevVortex = this.smoothedVortex.get(vessel.id) ?? 0;
+      const vortex = expDecay(prevVortex, vortexTarget, 4, dt);
+      this.smoothedVortex.set(vessel.id, vortex);
+
+      // Boilover shake envelope: spring toward (T-105°C)/25 above 105°C.
+      const temperatureC = k !== null ? k.temperatureC : vessel.temperatureK - 273.15;
+      const isBoiling = k !== null ? k.isBoilingOver : temperatureC > BOILOVER_C;
+      const shakeTarget = isBoiling ? clamp((temperatureC - BOILOVER_C) / 25, 0, 1) : 0;
+      const spring = this.shakeSpring.get(vessel.id) ?? { pos: 0, vel: 0 };
+      const stepped = this.reducedMotion
+        ? { pos: spring.pos, vel: spring.vel }
+        : stepSpringSubstepped(spring.pos, spring.vel, shakeTarget, 120, 2 * Math.sqrt(120) * 0.5, dt);
+      this.shakeSpring.set(vessel.id, stepped);
+      const jitter = this.reducedMotion
+        ? 0
+        : stepped.pos * Math.sin(timeSec * 40) * 0.06;
+
+      const yaw = this.reducedMotion ? vortex * (Math.PI / 4) : vortex * timeSec * 1.5;
+      const scaleY = 0.8 + 0.25 * fill;
+      const m = mat4ModelRotY(xPos + jitter, 0, 0, 1.0, scaleY, 1.0, yaw);
       gl.uniformMatrix4fv(u.uModel, false, m);
+      gl.uniform1f(u.uPoseWeight, vortex);
 
       // Color scheme based on material & heating state
       let r = 0.5, g = 0.35, b = 0.2; // Wood
       if (vessel.material === 'FIRED_CERAMIC') { r = 0.7; g = 0.45; b = 0.35; }
       else if (vessel.material === 'COPPER') { r = 0.8; g = 0.4; b = 0.2; }
 
-      if (isHeating) {
-        r = Math.min(1.0, r + 0.3);
-        g = Math.min(1.0, g + 0.1);
+      const glow = glowById.get(vessel.id) ?? 0;
+      r = Math.min(1.0, r + glow * 0.45);
+      g = Math.min(1.0, g + glow * 0.18);
+      // Kettle pour tint: lye blue vs fat amber blends with fill.
+      if (k !== null && (k.lyeVolume > 0 || k.fatVolume > 0)) {
+        const total = Math.max(1, k.lyeVolume + k.fatVolume);
+        const lyeFrac = k.lyeVolume / total;
+        r = r * (1 - fill * 0.3) + 1.0 * fill * 0.3 * (1 - lyeFrac);
+        g = g * (1 - fill * 0.25) + 0.82 * fill * 0.25 * (1 - lyeFrac);
+        b = b * (1 - fill * 0.3) + 0.65 * fill * 0.3 * lyeFrac;
       }
       if (isSelected) {
         b = Math.min(1.0, b + 0.3);
@@ -103,12 +372,64 @@ export class LabBench3DCanvas {
 
       gl.uniform4f(u.uColor, r, g, b, 1.0);
       gl.drawElements(gl.TRIANGLES, buf.indexCount, gl.UNSIGNED_SHORT, 0);
+
+      // Procedural feedback quads (sprite-free).
+      if (this.feedback) {
+        const { pourStream, boilBubble } = this.feedback;
+
+        // Pour stream: visible while POURING, length from lye+fat fill.
+        const pourTarget = k !== null && k.phase === 'POURING'
+          ? clamp((k.lyeVolume + k.fatVolume) / 200, 0, 1)
+          : 0;
+        const prevPour = this.smoothedPour.get(vessel.id) ?? 0;
+        const pour = expDecay(prevPour, pourTarget, 6, dt);
+        this.smoothedPour.set(vessel.id, pour);
+        if (pour > 0.02) {
+          gl.bindVertexArray(pourStream.vao);
+          const mPour = mat4Model(xPos + jitter, 1.05, 0, 1.0, 0.4 + pour * 0.6, 1.0);
+          gl.uniformMatrix4fv(u.uModel, false, mPour);
+          gl.uniform1f(u.uPoseWeight, 0);
+          // Lye-blue when lye is flowing, fat-amber when fat is flowing.
+          const flowingLye = k !== null && k.lyeVolume >= k.fatVolume;
+          gl.uniform4f(
+            u.uColor,
+            flowingLye ? 0.35 : 1.0,
+            flowingLye ? 0.65 : 0.82,
+            flowingLye ? 1.0 : 0.4,
+            0.85,
+          );
+          gl.drawElements(gl.TRIANGLES, pourStream.indexCount, gl.UNSIGNED_SHORT, 0);
+        }
+
+        // Boil bubbles: two procedural quads bouncing above the rim.
+        if (isBoiling && stepped.pos > 0.02) {
+          const bounce = this.reducedMotion ? 0 : Math.sin(timeSec * 12) * 0.05;
+          gl.bindVertexArray(boilBubble.vao);
+          const mBubble = mat4Model(xPos + jitter, 1.35 + bounce, 0, 1.0 + stepped.pos, 1.0, 1.0);
+          gl.uniformMatrix4fv(u.uModel, false, mBubble);
+          gl.uniform1f(u.uPoseWeight, 0);
+          gl.uniform4f(u.uColor, 1.0, 0.95, 0.85, 0.9);
+          gl.drawElements(gl.TRIANGLES, boilBubble.indexCount, gl.UNSIGNED_SHORT, 0);
+        }
+      }
     });
 
     gl.bindVertexArray(null);
   }
 
   public destroy(): void {
+    this.destroyed = true;
+    if (this.rafId !== null && typeof cancelAnimationFrame === 'function') {
+      cancelAnimationFrame(this.rafId);
+      this.rafId = null;
+    }
+    if (typeof window !== 'undefined' && typeof window.removeEventListener === 'function') {
+      window.removeEventListener('resize', this.onResize);
+    }
+    if (this.mediaQuery && typeof this.mediaQuery.removeEventListener === 'function') {
+      this.mediaQuery.removeEventListener('change', this.onMediaChange);
+    }
+    this.canvas.removeEventListener('click', this.onClick);
     if (this.canvas.parentElement) {
       this.canvas.remove();
     }

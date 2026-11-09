@@ -30,6 +30,25 @@ export interface CouplingEffects {
   };
 }
 
+/**
+ * Visual-drive snapshot for LabBench3DCanvas (M1 Task 9).
+ * Read-only mirror of the mini-game's public phase state — it never feeds
+ * back into phase/threshold logic. Heater wattage mirrors the workbench
+ * "Toggle 400 W" affordance and is non-zero only while HEATING.
+ */
+export interface KettleDriveState {
+  phase: KettlePhase;
+  lyeVolume: number; // 0..100
+  fatVolume: number; // 0..100
+  temperatureC: number;
+  tracePct: number; // 0..100
+  isBoilingOver: boolean;
+  heaterWatts: number;
+}
+
+/** Heater wattage shown on the kettle bench while HEATING (matches workbench toggle). */
+export const KETTLE_HEATER_WATTS = 400;
+
 export class SoapKettleMiniGame {
   public phase: KettlePhase = 'IDLE';
 
@@ -95,6 +114,23 @@ export class SoapKettleMiniGame {
       t = Math.imul(t ^ (t >>> 15), t | 1);
       t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
       return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  /**
+   * Visual hook only (M1 Task 9) — exposes the current phase readings for
+   * LabBench3DCanvas feedback loops (fill morph, glow envelope, boilover
+   * shake, vortex weight, pour stream). Pure read; phase numbers untouched.
+   */
+  public getVisualState(): KettleDriveState {
+    return {
+      phase: this.phase,
+      lyeVolume: this.lyeVolume,
+      fatVolume: this.fatVolume,
+      temperatureC: this.temperatureC,
+      tracePct: this.tracePct,
+      isBoilingOver: this.isBoilingOver,
+      heaterWatts: this.phase === 'HEATING' ? KETTLE_HEATER_WATTS : 0,
     };
   }
 

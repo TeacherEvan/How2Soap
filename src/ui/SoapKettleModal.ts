@@ -1,7 +1,9 @@
 import './soapKettle.css';
-import { SoapKettleMiniGame, type KettleBatchResult } from './SoapKettleMiniGame';
+import { SoapKettleMiniGame, type KettleBatchResult, type KettleDriveState } from './SoapKettleMiniGame';
 import { recordLabTrial } from './JournalPanel';
 import { state } from '../app/state';
+import { MAX_SPECIES } from '../engine/memoryLayout';
+import type { VesselState } from '../engine/chemistry';
 
 export function mountSoapKettleModal(
   container: HTMLElement,
@@ -18,10 +20,11 @@ export function mountSoapKettleModal(
       </div>
       <div class="kettle-body">
         <div class="kettle-status-banner">Prepare your soap batch!</div>
+        <div class="kettle-bench-host" data-testid="kettle-bench-3d" aria-label="3D kettle diorama" style="height:140px;min-height:140px;margin-bottom:12px;border-radius:8px;overflow:hidden;background:#151922;border:1px solid #5a4628;"></div>
         <div class="kettle-gauges">
           <div class="gauge-col" id="col-pour">
             <h4>1. Pouring Mix</h4>
-            <div class="pour-track"><div class="pour-fill-lye" style="height:0%"></div><div class="pour-fill-fat" style="height:0%"></div><div class="pour-target-band"></div></div>
+            <div class="pour-track"><div class="pour-fill-lye" style="height:0%"></div><div class="pour-fill-fat" style="height:0%"></div><div class="pour-target-band"></div><div class="pour-stream" style="position:absolute;left:50%;top:0;width:3px;height:100%;margin-left:-1.5px;background:linear-gradient(#5aa5ff,#5aa5ff);opacity:0;transform-origin:top center;pointer-events:none;"></div></div>
             <div class="pour-buttons">
               <button id="btn-pour-lye" class="btn-dock">Hold: Lye</button>
               <button id="btn-pour-fat" class="btn-dock">Hold: Fat</button>
@@ -29,7 +32,7 @@ export function mountSoapKettleModal(
           </div>
           <div class="gauge-col" id="col-heat">
             <h4>2. Bellows & Heat</h4>
-            <div class="thermo-track"><div class="thermo-fill" style="height:25%"></div><div class="thermo-target-band" title="80-95 C"></div></div>
+            <div class="thermo-track"><div class="thermo-glow" style="position:absolute;inset:0;background:#ff5722;opacity:0;pointer-events:none;"></div><div class="thermo-fill" style="height:25%"></div><div class="thermo-target-band" title="80-95 C"></div></div>
             <div class="heat-readout">25 °C</div>
             <div class="heat-buttons">
               <button id="btn-pump-bellows" class="btn-dock">Pump Bellows (+12°C)</button>
@@ -49,12 +52,40 @@ export function mountSoapKettleModal(
 
   container.appendChild(modal);
 
+  // M1 Task 9: LabBench3DCanvas driven by KettleState (dynamic import keeps
+  // the entrypoint lean — sprite-free procedural drive, no PNG import).
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let kettleBench: { render(vessels: VesselState[], selectedId: number, kettle: KettleDriveState | null): void; destroy(): void } | null = null;
+  const benchHost = modal.querySelector<HTMLElement>('.kettle-bench-host');
+  if (benchHost) {
+    import('./gl/LabBench3DCanvas')
+      .then(({ LabBench3DCanvas }) => {
+        if (!benchHost.isConnected) return;
+        kettleBench = new LabBench3DCanvas(
+          benchHost,
+          // The kettle has a single vessel — selection is a no-op here.
+          {},
+        ) as never;
+      })
+      .catch(() => {
+        kettleBench = null;
+      });
+  }
+
+  const reducedMotion = typeof window !== 'undefined'
+    && typeof window.matchMedia === 'function'
+    && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
   let animId: number | null = null;
 
   const cleanupAndClose = (callback?: () => void) => {
     if (animId !== null) {
       cancelAnimationFrame(animId);
       animId = null;
+    }
+    if (kettleBench) {
+      kettleBench.destroy();
+      kettleBench = null;
     }
     callback?.();
     modal.remove();
@@ -90,7 +121,10 @@ export function mountSoapKettleModal(
   const statusBanner = modal.querySelector('.kettle-status-banner') as HTMLElement;
   const lyeFill = modal.querySelector('.pour-fill-lye') as HTMLElement;
   const fatFill = modal.querySelector('.pour-fill-fat') as HTMLElement;
+  const pourStream = modal.querySelector('.pour-stream') as HTMLElement | null;
   const thermoFill = modal.querySelector('.thermo-fill') as HTMLElement;
+  const thermoGlow = modal.querySelector('.thermo-glow') as HTMLElement | null;
+  const stirCircle = modal.querySelector('.stir-circle') as HTMLElement | null;
   const heatReadout = modal.querySelector('.heat-readout') as HTMLElement;
   const stirReadout = modal.querySelector('.stir-readout') as HTMLElement;
   const stirPaddle = modal.querySelector('.stir-paddle') as HTMLElement;
@@ -181,6 +215,62 @@ export function mountSoapKettleModal(
       statusBanner.textContent = `Heat saponification progress: ${Math.round(game.heatProgressPct)}% (Keep 80-95°C!)`;
     } else if (game.phase === 'STIRRING') {
       statusBanner.textContent = 'Mix heated! Click Stir Paddle to bring soap to trace!';
+    }
+
+    // M1 Task 9 — LabBench experiment drive from KettleState (visual only).
+    // Compositor-only DOM feedback (transform/opacity); the 3D drive lives in
+    // LabBench3DCanvas with expDecay/spring blends in seconds.
+    const drive = game.getVisualState();
+    if (pourStream) {
+      const pouring = drive.phase === 'POURING';
+      pourStream.style.opacity = pouring ? '0.85' : '0';
+      const pourFrac = Math.min(1, Math.max(0, (drive.lyeVolume + drive.fatVolume) / 200));
+      pourStream.style.transform = reducedMotion
+        ? `scaleY(${pourFrac})`
+        : `scaleY(${pourFrac})`;
+      pourStream.style.background = drive.lyeVolume >= drive.fatVolume
+        ? 'linear-gradient(#5aa5ff,#5aa5ff)'
+        : 'linear-gradient(#ffd166,#ffd166)';
+    }
+    if (thermoGlow) {
+      const tempNorm = Math.min(1, Math.max(0, (drive.temperatureC - 25) / 100));
+      const heaterNorm = Math.min(1, drive.heaterWatts / 400);
+      thermoGlow.style.opacity = String(Math.min(0.55, (0.65 * heaterNorm + 0.35 * tempNorm) * 0.55));
+    }
+    if (stirCircle) {
+      const vortex = drive.phase === 'STIRRING' ? Math.min(1, Math.max(0, drive.tracePct / 100)) : 0;
+      const deg = reducedMotion ? vortex * 180 : vortex * 360;
+      stirCircle.style.transform = `rotate(${deg}deg)`;
+    }
+    // Boilover shake (transform-only; frozen for reduced-motion).
+    const panel = modal.querySelector('.soap-kettle-panel') as HTMLElement | null;
+    if (panel) {
+      if (!reducedMotion && drive.isBoilingOver) {
+        const amp = Math.min(1, Math.max(0, (drive.temperatureC - 105) / 25));
+        const shift = Math.sin(performance.now() / 16) * amp * 3;
+        panel.style.transform = `translateX(${shift.toFixed(2)}px)`;
+      } else if (panel.style.transform) {
+        panel.style.transform = '';
+      }
+    }
+
+    if (kettleBench) {
+      const synthVessel: VesselState = {
+        id: 0,
+        material: 'FIRED_CERAMIC',
+        capacityL: 5,
+        headspaceClosed: false,
+        temperatureK: drive.temperatureC + 273.15,
+        moles: new Float64Array(MAX_SPECIES),
+        precipitated: new Float64Array(MAX_SPECIES),
+        heaterWatts: drive.heaterWatts,
+        condenserTargetVesselId: -1,
+        pressureKPa: 101.325,
+        ruptured: false,
+        appliedVolts: 0,
+        cellResistanceOhm: 10,
+      };
+      kettleBench.render([synthVessel], 0, drive);
     }
 
     animId = requestAnimationFrame(loop);
