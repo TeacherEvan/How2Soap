@@ -24,7 +24,7 @@
   --biome-brine: oklch(0.18 0.035 250);
   --biome-ruin: oklch(0.32 0.050 310);
   --biome-unrevealed: oklch(0.05 0.000 0);
-  --biome-road-wear: oklch(0.68 0.190 260 / 0.4);
+  --biome-road-wear: oklch(0.70 0.150 75 / 0.4);
   
   color-scheme: dark;
 }

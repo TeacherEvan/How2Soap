@@ -112,7 +112,7 @@ export function getArchetypeColor(archetype: ColonistArchetype): string {
     case 'FORAGER':
       return 'oklch(0.70 0.150 160)'; // Leaf green — nominal status
     case 'MINER':
-      return 'oklch(0.68 0.190 260)'; // Brass/amber — primary accent
+      return 'oklch(0.70 0.150 75)'; // Brass/amber — primary accent
     case 'HERBALIST':
       return 'oklch(0.65 0.120 180)'; // Sage/teal — accent-2
     case 'APPRENTICE_CHEMIST':
@@ -153,7 +153,7 @@ export function getBiomeColor(biome: string): string {
  * Returns road wear color for desire paths.
  */
 export function getRoadWearColor(): string {
-  return 'oklch(0.68 0.190 260 / 0.4)';
+  return 'oklch(0.70 0.150 75 / 0.4)';
 }
 
 /**
