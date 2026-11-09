@@ -1,0 +1,146 @@
+{
+  "format": "workbench_actions/1",
+  "contract": "Downstream Float32Array bake MUST combine exported_channels (from the GLB, verified above) with blender_only_channels (from this manifest / the original Blender actions). GLB alone does NOT carry curve-offset UV flow or emission-strength curves.",
+  "actions": {
+    "hearth_flame": {
+      "glb": "public/assets/workbench/hearth_flame.glb",
+      "frames": 30,
+      "fps": 30,
+      "exported_channels": {
+        "hearth_flame": [
+          "scale"
+        ],
+        "hearth_flame_inner": [
+          "scale"
+        ]
+      },
+      "blender_only_channels": []
+    },
+    "bellows_pump": {
+      "glb": "public/assets/workbench/bellows_pump.glb",
+      "frames": 30,
+      "fps": 30,
+      "exported_channels": {
+        "bellows_pump_base": [
+          "scale"
+        ],
+        "bellows_pump": [
+          "translation"
+        ]
+      },
+      "blender_only_channels": []
+    },
+    "pour_stream": {
+      "glb": "public/assets/workbench/pour_stream.glb",
+      "frames": 30,
+      "fps": 30,
+      "exported_channels": {
+        "pour_stream": [
+          "rotation",
+          "scale",
+          "translation"
+        ]
+      },
+      "blender_only_channels": [
+        {
+          "channel": "curve.data.offset (UV ribbon flow)",
+          "frames": [
+            1,
+            15,
+            30
+          ],
+          "values": [
+            0.0,
+            0.55,
+            0.0
+          ],
+          "note": "Curve-data curve; no glTF equivalent. Re-apply as UV scroll or shader flow in the runtime bake."
+        }
+      ]
+    },
+    "stir_vortex": {
+      "glb": "public/assets/workbench/stir_vortex.glb",
+      "frames": 30,
+      "fps": 30,
+      "exported_channels": {
+        "stir_vortex_spoon": [
+          "rotation"
+        ],
+        "stir_vortex": [
+          "scale"
+        ]
+      },
+      "blender_only_channels": []
+    },
+    "boil_shake": {
+      "glb": "public/assets/workbench/boil_shake.glb",
+      "frames": 30,
+      "fps": 30,
+      "exported_channels": {
+        "boil_shake_liquid": [
+          "scale"
+        ],
+        "boil_shake": [
+          "translation"
+        ]
+      },
+      "blender_only_channels": []
+    },
+    "liquid_fill": {
+      "glb": "public/assets/workbench/liquid_fill.glb",
+      "frames": 90,
+      "fps": 30,
+      "exported_channels": {
+        "liquid_fill": [
+          "scale",
+          "translation"
+        ]
+      },
+      "blender_only_channels": []
+    },
+    "crystal_shimmer": {
+      "glb": "public/assets/workbench/crystal_shimmer.glb",
+      "frames": 60,
+      "fps": 30,
+      "exported_channels": {
+        "crystal_shimmer": [
+          "rotation",
+          "scale"
+        ]
+      },
+      "blender_only_channels": [
+        {
+          "channel": "material.emission_strength",
+          "frames": [
+            1,
+            15,
+            30,
+            45,
+            60
+          ],
+          "values": [
+            0.5,
+            2.4,
+            0.5,
+            2.4,
+            0.5
+          ],
+          "note": "Blender glTF exporter has no emissive-strength channel. Re-apply as emissive color intensity in the runtime bake; scale-breathing in GLB carries the motion twin."
+        }
+      ]
+    },
+    "colonist_walk_idle": {
+      "glb": "public/assets/workbench/colonist_walk_idle.glb",
+      "frames": 60,
+      "fps": 30,
+      "exported_channels": {
+        "colonist_walk_idle": [
+          "rotation",
+          "scale",
+          "translation"
+        ]
+      },
+      "blender_only_channels": []
+    }
+  }
+}

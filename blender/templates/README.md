@@ -27,20 +27,22 @@ Hero stations + baked 30fps Actions (GLB under `public/assets/workbench/`, baked
 |---|---|---|
 | `hearth_flame` | 30f loop | brazier cone squash + flicker |
 | `bellows_pump` | 30f loop | bellows-body pump |
-| `pour_stream` | 30f loop | bezier ribbon flow |
+| `pour_stream` | 30f loop | bezier ribbon flow (GLB: object transforms; Blender-side curve-offset UV in manifest) |
 | `stir_vortex` | 30f loop | spoon orbit + vortex cone pulse |
 | `boil_shake` | 30f loop | cauldron shake + liquid surface pulse |
 | `liquid_fill` | 90f one-shot | vessel liquid 0% → 100% morph |
-| `crystal_shimmer` | 60f loop | crystal rotate + emission shimmer |
+| `crystal_shimmer` | 60f loop | crystal rotate + scale breathing (emission-strength curve lives Blender-side, see manifest) |
 | `colonist_walk_idle` | 60f loop | walk-in-place bob + idle sway (4-bone rig, skinning baked) |
 
 ## Sprite Atlas (`blender/scripts/bake_sprites.py`)
 Headless: `blender --background --python blender/scripts/bake_sprites.py -- --dry-run` / full render
-Eevee, transparent film, PNG RGBA, 256px cells; per-frame poses duplicated into a grid and rendered once. Grid + manifest in `src/assets/sprites/atlas.json`:
+Eevee, transparent film, PNG RGBA; per-frame poses duplicated into a grid and rendered once. Grid + manifest in `src/assets/sprites/atlas.json`. Per-sheet cell sizes keep every PNG under webpack `maxAssetSize` (200000B): flame renders at 128px cells (512×512 sheet — a 1024×1024 sheet would be ~568KB, 2.8× budget), ember/fume/bubbles at 256px cells. 4×4/4×1 layouts and fps are unchanged.
+
+**GLB channel contract:** `build_workbench.py` regenerates `blender/templates/workbench_actions.json` on every bake. The downstream Float32Array bake MUST combine `exported_channels` (read back from each GLB) with `blender_only_channels` from that manifest (curve-data `offset` UV flow for `pour_stream`; material `emission_strength` curve for `crystal_shimmer`). The GLB alone does NOT carry those channels, so a bake that reads GLB only silently loses the pour flow and the crystal shimmer glow.
 
 | Sheet | File | Grid | Frames | FPS |
 |---|---|---|---|---|
-| flame | `flame.png` | 4×4 | 16 | 30 (loop) |
+| flame | `flame.png` (512×512) | 4×4 @128px cells | 16 | 30 (loop) |
 | ember | `ember.png` | 4×1 | 4 | 12 |
 | fume | `fume.png` | 4×1 | 4 | 12 |
 | bubbles | `bubbles.png` | 4×1 | 4 | 12 |

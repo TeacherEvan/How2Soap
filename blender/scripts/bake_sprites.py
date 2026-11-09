@@ -7,10 +7,14 @@ Usage:
     blender --background --python blender/scripts/bake_sprites.py                # render all sheets
 
 Atlas grid (also written to ``src/assets/sprites/atlas.json``):
-    flame     4x4 (16 frames, 256px cells -> 1024x1024 atlas, 30fps loop)
+    flame     4x4 (16 frames, 128px cells -> 512x512 atlas, 30fps loop)
     ember     4x1 (4 frames, 256px -> 1024x256 strip, 12fps)
     fume      4x1 (4 frames, 256px -> 1024x256 strip, 12fps)
     bubbles   4x1 (4 frames, 256px -> 1024x256 strip, 12fps)
+
+Bundle budget: webpack ``maxAssetSize=200000`` covers PNGs (assetFilter only
+exempts mp4/webm/map), so flame renders at 128px cells (512x512 px, <150KB
+class). Layout/grid/fps are unchanged; only flame's cell resolution differs.
 
 Method: each sheet's sprite is animated (transform-only) in Blender, the
 evaluated pose per frame is duplicated into a grid of sprite copies, and the
@@ -32,7 +36,7 @@ import math
 import os
 import sys
 
-CELL_PX = 256
+CELL_PX = 256        # default cell size; flame uses 128px cells (512x512 sheet)
 CELL_WORLD = 1.6      # world units per atlas cell (ortho framing)
 OUT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "src", "assets", "sprites"))
 
@@ -56,14 +60,22 @@ fume.png (4x1), bubbles.png (4x1), atlas.json.
 def parse_args():
     argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
     args = {"help": False, "only": [], "dry_run": False}
-    it = iter(argv)
-    for a in it:
+    i = 0
+    while i < len(argv):
+        a = argv[i]
         if a == "--help":
             args["help"] = True
         elif a == "--only":
-            args["only"] = [x for x in it if not x.startswith("--")]
+            # Consume only the values after --only; stop at the next --flag so
+            # trailing flags (e.g. --dry-run) are still parsed.
+            i += 1
+            while i < len(argv) and not argv[i].startswith("--"):
+                args["only"].append(argv[i])
+                i += 1
+            continue
         elif a == "--dry-run":
             args["dry_run"] = True
+        i += 1
     return args
 
 
@@ -115,7 +127,7 @@ def kf(obj, frame, path, value):
     obj.keyframe_insert(data_path=path, frame=int(frame))
 
 
-def setup_render(cols, rows, fps):
+def setup_render(cols, rows, fps, cell_px=CELL_PX):
     scene = bpy.context.scene
     # Eevee engine (name differs across Blender versions)
     for engine in ('BLENDER_EEVEE_NEXT', 'BLENDER_EEVEE'):
@@ -124,8 +136,8 @@ def setup_render(cols, rows, fps):
             break
         except TypeError:
             continue
-    scene.render.resolution_x = cols * CELL_PX
-    scene.render.resolution_y = rows * CELL_PX
+    scene.render.resolution_x = cols * cell_px
+    scene.render.resolution_y = rows * cell_px
     scene.render.resolution_percentage = 100
     scene.render.film_transparent = True
     scene.render.image_settings.file_format = 'PNG'
@@ -151,7 +163,7 @@ def setup_render(cols, rows, fps):
     scene.camera = cam
 
 
-def render_sheet(name, cols, rows, frames, fps, base_objects):
+def render_sheet(name, cols, rows, frames, fps, base_objects, cell_px=CELL_PX):
     """Duplicate evaluated per-frame poses into a grid and render once."""
     scene = bpy.context.scene
     scene.frame_start = 1
@@ -181,12 +193,12 @@ def render_sheet(name, cols, rows, frames, fps, base_objects):
     # Hide base rig objects so only the grid renders
     for obj in base_objects:
         obj.hide_render = True
-    setup_render(cols, rows, fps)
+    setup_render(cols, rows, fps, cell_px)
     os.makedirs(OUT_DIR, exist_ok=True)
     out_path = os.path.join(OUT_DIR, f"{name}.png")
     scene.render.filepath = out_path
     bpy.ops.render.render(write_still=True)
-    print(f"RENDERED: {out_path} ({cols * CELL_PX}x{rows * CELL_PX}px, {frames} frames @ {fps}fps)")
+    print(f"RENDERED: {out_path} ({cols * cell_px}x{rows * cell_px}px, {frames} frames @ {fps}fps)")
     return out_path
 
 
@@ -266,10 +278,10 @@ def build_bubbles():
 
 
 SHEETS = {
-    "flame":   {"cols": 4, "rows": 4, "frames": 16, "fps": 30, "builder": build_flame},
-    "ember":   {"cols": 4, "rows": 1, "frames": 4,  "fps": 12, "builder": build_ember},
-    "fume":    {"cols": 4, "rows": 1, "frames": 4,  "fps": 12, "builder": build_fume},
-    "bubbles": {"cols": 4, "rows": 1, "frames": 4,  "fps": 12, "builder": build_bubbles},
+    "flame":   {"cols": 4, "rows": 4, "frames": 16, "fps": 30, "cell_px": 128, "builder": build_flame},
+    "ember":   {"cols": 4, "rows": 1, "frames": 4,  "fps": 12, "cell_px": 256, "builder": build_ember},
+    "fume":    {"cols": 4, "rows": 1, "frames": 4,  "fps": 12, "cell_px": 256, "builder": build_fume},
+    "bubbles": {"cols": 4, "rows": 1, "frames": 4,  "fps": 12, "cell_px": 256, "builder": build_bubbles},
 }
 
 
@@ -278,13 +290,15 @@ def write_manifest():
     manifest = {
         "format": "PNG RGBA, Eevee, transparent film, transform-only pose bake",
         "origin": "row 0 = BOTTOM row (Blender origin); row_from_top = rows - 1 - row",
-        "cell_px": CELL_PX,
+        "cell_px_default": CELL_PX,
+        "cell_px_note": "Per-sheet cell_px in sheets[]. flame renders at 128px cells (512x512 sheet) so its PNG stays <200KB under webpack maxAssetSize; other sheets use 256px cells. 4x4 layout/fps unchanged.",
         "cell_world": CELL_WORLD,
         "sheets": {
             name: {
                 "file": f"{name}.png",
                 "cols": s["cols"], "rows": s["rows"], "frames": s["frames"], "fps": s["fps"],
-                "atlas_px": [s["cols"] * CELL_PX, s["rows"] * CELL_PX],
+                "cell_px": s["cell_px"],
+                "atlas_px": [s["cols"] * s["cell_px"], s["rows"] * s["cell_px"]],
                 "loop": name == "flame",
             }
             for name, s in SHEETS.items()
@@ -302,11 +316,11 @@ def main():
         sys.exit(0)
     wanted = args["only"] or list(SHEETS)
     if args["dry_run"]:
-        print("DRY-RUN — sprite sheet plan (cell 256px, ortho, Eevee, PNG RGBA):")
+        print("DRY-RUN — sprite sheet plan (ortho, Eevee, PNG RGBA; per-sheet cell_px):")
         for name in wanted:
             s = SHEETS[name]
-            print(f"  {name}: {s['cols']}x{s['rows']} = {s['frames']} frames -> "
-                  f"{OUT_DIR}/{name}.png ({s['cols'] * CELL_PX}x{s['rows'] * CELL_PX}px) @ {s['fps']}fps")
+            print(f"  {name}: {s['cols']}x{s['rows']} = {s['frames']} frames @ {s['cell_px']}px cells -> "
+                  f"{OUT_DIR}/{name}.png ({s['cols'] * s['cell_px']}x{s['rows'] * s['cell_px']}px) @ {s['fps']}fps")
         write_manifest()
         sys.exit(0)
     for name in wanted:
@@ -315,7 +329,7 @@ def main():
             continue
         s = SHEETS[name]
         objs = s["builder"]()
-        render_sheet(name, s["cols"], s["rows"], s["frames"], s["fps"], objs)
+        render_sheet(name, s["cols"], s["rows"], s["frames"], s["fps"], objs, cell_px=s["cell_px"])
     write_manifest()
     print(f"ALL SPRITE SHEETS COMPLETE — {len(wanted)} sheet(s)")
 
