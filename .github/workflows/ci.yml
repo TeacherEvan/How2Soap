@@ -32,6 +32,9 @@ jobs:
       - name: Production Webpack build
         run: npm run build
 
+      - name: Check bundle budget (entrypoint JS < 180 KB)
+        run: node scripts/check-bundle.js
+
       # Khronos glTF Validator — every .glb must pass before merge
       - name: Validate glTF assets (Khronos)
         run: |

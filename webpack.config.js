@@ -63,6 +63,11 @@ module.exports = (env, argv) => {
           exclude: /node_modules/,
         },
         {
+          test: /\.ts$/,
+          use: [{ loader: 'ts-loader', options: { transpileOnly: true } }],
+          include: /tests[\\/]bundle-lazy-imports\.test\.ts$/,
+        },
+        {
           test: /\.css$/,
           use: [MiniCssExtractPlugin.loader, 'css-loader'],
         },
@@ -133,5 +138,6 @@ module.exports = (env, argv) => {
       hot: true,
       headers: isolationHeaders,
     },
+    stats: production ? 'verbose' : 'normal',
   };
 };
