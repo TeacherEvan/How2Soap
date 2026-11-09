@@ -4,11 +4,9 @@
  * - Loading Screen: Uses the original intro video as a cinematic loading veil
  *   between tab displays / window switches.
  */
-import newSplashMp4 from '../media/how2soap-splash-new.mp4';
 import newSplashWebm from '../media/how2soap-splash-new.webm';
 import newSplashPoster from '../media/how2soap-splash-new.png';
 
-import loaderMp4 from '../media/how2soap-intro.mp4';
 import loaderWebm from '../media/how2soap-intro.webm';
 import loaderPoster from '../media/how2soap-poster.png';
 
@@ -35,13 +33,16 @@ export function launchSplash(): void {
   video.preload = 'metadata';
   video.poster = newSplashPoster;
 
-  const mp4Source = document.createElement('source');
-  mp4Source.src = newSplashMp4;
-  mp4Source.type = 'video/mp4';
   const webmSource = document.createElement('source');
   webmSource.src = newSplashWebm;
   webmSource.type = 'video/webm';
-  video.append(mp4Source, webmSource);
+  video.append(webmSource);
+
+  // Fallback for Safari (MP4 via public folder reference — not bundled)
+  const fallbackSource = document.createElement('source');
+  fallbackSource.src = '/assets/splash-720p.webm';
+  fallbackSource.type = 'video/webm';
+  video.append(fallbackSource);
 
   // Astrolabe lens vignette & scanline overlay
   const lens = document.createElement('div');
@@ -138,13 +139,16 @@ export function transitionDisplay(
   video.preload = 'metadata';
   video.poster = loaderPoster;
 
-  const mp4Source = document.createElement('source');
-  mp4Source.src = loaderMp4;
-  mp4Source.type = 'video/mp4';
   const webmSource = document.createElement('source');
   webmSource.src = loaderWebm;
   webmSource.type = 'video/webm';
-  video.append(mp4Source, webmSource);
+  video.append(webmSource);
+
+  // Fallback for Safari (WebM 720p via public folder — not bundled)
+  const fallbackSource = document.createElement('source');
+  fallbackSource.src = '/assets/loader-720p.webm';
+  fallbackSource.type = 'video/webm';
+  video.append(fallbackSource);
 
   const lens = document.createElement('div');
   lens.className = 'splash-lens';

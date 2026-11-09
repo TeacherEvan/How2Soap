@@ -9,3 +9,5 @@ coverage/
 __pycache__/
 *.pyc
 scripts/make-splash/out/
+*.mp4
+!src/media/*.mp4
