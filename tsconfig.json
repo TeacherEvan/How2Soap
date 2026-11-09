@@ -15,5 +15,6 @@
     "sourceMap": true,
     "outDir": "dist"
   },
-  "include": ["src", "tests", "webpack.config.js"]
+  "include": ["src", "webpack.config.js"],
+  "exclude": ["tests"]
 }

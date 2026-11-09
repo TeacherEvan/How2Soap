@@ -13,7 +13,7 @@ let autoSaveTimer: number | null = null;
 let lastSaveWriteMs = 0;
 const MIN_AUTOSAVE_INTERVAL_MS = 2000;
 
-function computeInventoryDigest(inventory: SerializedWorldSave['inventory']): string {
+export function computeInventoryDigest(inventory: SerializedWorldSave['inventory']): string {
   if (!inventory) return '';
   const slots = [
     ...(inventory.bareHands?.slots ?? []),
@@ -28,7 +28,7 @@ function computeInventoryDigest(inventory: SerializedWorldSave['inventory']): st
   return digest;
 }
 
-function computeColonyDigest(colony: SerializedWorldSave['colony']): string {
+export function computeColonyDigest(colony: SerializedWorldSave['colony']): string {
   if (!colony) return '';
   const digest = (colony.colonists ?? [])
     .map((c) => `${c.id}:${c.status}:${c.assignedJob?.speciesId ?? ''}:${c.morale}`)
