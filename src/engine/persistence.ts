@@ -249,8 +249,9 @@ export async function decompressBase64ToSave(base64: string): Promise<Serialized
     }
     const ds = new DecompressionStream('gzip');
     const writer = ds.writable.getWriter();
-    writer.write(bytes);
-    writer.close();
+    // Catch writer errors to avoid unhandled rejections on corrupted/truncated streams
+    writer.write(bytes).catch(() => {});
+    writer.close().catch(() => {});
 
     const reader = ds.readable.getReader();
     const chunks: Uint8Array[] = [];
