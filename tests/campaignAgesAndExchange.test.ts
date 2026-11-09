@@ -6,7 +6,7 @@ import {
   startTeachTheRealm,
   stepTeachTheRealm,
   type TechNode,
-} from '../src/engine/campaign/ageTransitions';
+} from '../src/engine/campaign/dormant/ageTransitions';
 import {
   createInitialBuiltWorks,
   constructBuiltWork,
@@ -17,7 +17,7 @@ import {
   registerCodexRecipe,
   updateProvenance,
   tradeRecipe,
-} from '../src/engine/campaign/codexExchange';
+} from '../src/engine/campaign/dormant/codexExchange';
 import {
   createInitialMissions,
   executeMission,
@@ -28,17 +28,17 @@ import {
   createInitialNotables,
   startCohortTrial,
   stepCohortTrials,
-} from '../src/engine/campaign/notables';
+} from '../src/engine/campaign/dormant/notables';
 import {
   createInitialIncursions,
   spawnIncursion,
   resolveIncursion,
-} from '../src/engine/campaign/incursions';
+} from '../src/engine/campaign/dormant/incursions';
 import { getPatronEnding } from '../src/engine/campaign/patron';
 import {
   executeDeepMineOrder,
   resolveCaveInResponse,
-} from '../src/engine/campaign/deepMine';
+} from '../src/engine/campaign/dormant/deepMine';
 
 describe('Milestone M7: Age Transitions & Tech Maturity', () => {
   it('defines 8 civs across Ages I, II, and III', () => {

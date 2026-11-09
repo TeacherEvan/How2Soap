@@ -48,7 +48,7 @@ export interface SerializedWorldSave {
   experiments?: import('./campaign/experiments').ExperimentQueueState;
   realm?: import('./campaign/realm').RealmState;
   patron?: import('./campaign/patron').PatronState;
-  ageProgress?: import('./campaign/ageProgress').AgeProgressState;
+  ageProgress?: import('./campaign/dormant/ageProgress').AgeProgressState;
   settlements?: import('./campaign/settlements').SettlementsState;
   blacksmith?: import('./campaign/blacksmith').BlacksmithState;
   campaign?: {

@@ -129,7 +129,7 @@ export const state = {
   experiments: null as import('../engine/campaign/experiments').ExperimentQueueState | null,
   realm: null as import('../engine/campaign/realm').RealmState | null,
   patron: null as import('../engine/campaign/patron').PatronState | null,
-  ageProgress: null as import('../engine/campaign/ageProgress').AgeProgressState | null,
+  ageProgress: null as import('../engine/campaign/dormant/ageProgress').AgeProgressState | null,
   settlements: null as import('../engine/campaign/settlements').SettlementsState | null,
   blacksmith: null as import('../engine/campaign/blacksmith').BlacksmithState | null,
   ledger: null as import('../engine/campaign/ledger').LedgerState | null,

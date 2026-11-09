@@ -7,25 +7,25 @@ import {
   createInitialDispatches,
   fulfillDispatch,
   stepDispatches,
-} from '../src/engine/campaign/dispatches';
+} from '../src/engine/campaign/dormant/dispatches';
 import {
   performArchimedesAssay,
   resolveQuarantineGate,
-} from '../src/engine/campaign/harbour';
+} from '../src/engine/campaign/dormant/harbour';
 import {
   createInitialPetitionersBoard,
   resolvePetition,
-} from '../src/engine/campaign/petitioners';
+} from '../src/engine/campaign/dormant/petitioners';
 import {
   createInitialBounties,
   claimBounty,
   upgradeMagistersGuard,
-} from '../src/engine/campaign/bounties';
+} from '../src/engine/campaign/dormant/bounties';
 import {
   createInitialIncursions,
   spawnIncursion,
   resolveIncursion,
-} from '../src/engine/campaign/incursions';
+} from '../src/engine/campaign/dormant/incursions';
 
 describe('Milestone M6: Influence, Independent Powers & The Realm\'s Hands', () => {
   it('manages Independent Powers actions: Befriend, Levy, Incite, Incorporate', () => {

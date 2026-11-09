@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { TUTORIAL_LESSONS } from '../src/ui/tutorialCurriculum';
 import { COUNTRIES } from '../src/engine/campaign/realm';
 import { PATRONS, assignPatronFromRecipe } from '../src/engine/campaign/patron';
-import { AGE_I_CIVS, DEDICATIONS, createInitialAgeProgress, addAgeProgress } from '../src/engine/campaign/ageProgress';
+import { AGE_I_CIVS, DEDICATIONS, createInitialAgeProgress, addAgeProgress } from '../src/engine/campaign/dormant/ageProgress';
 import * as fs from 'fs';
 import * as path from 'path';
 

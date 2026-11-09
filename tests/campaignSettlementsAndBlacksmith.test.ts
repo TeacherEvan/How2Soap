@@ -10,7 +10,7 @@ import {
   startBatchJob,
   stepBlacksmith,
 } from '../src/engine/campaign/blacksmith';
-import { HIRE_TIERS } from '../src/engine/campaign/hires';
+import { HIRE_TIERS } from '../src/engine/campaign/dormant/hires';
 
 describe('Milestone M4: Settlements, Blacksmith & Tiered Hires (§6.4, §6.19.1, §6.20.2)', () => {
   describe('Settlements & Municipal Yields', () => {

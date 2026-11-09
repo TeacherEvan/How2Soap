@@ -21,16 +21,17 @@ export * from './influence';
 export * from './missions';
 export * from './correspondence';
 
-// Dormant / Future Expansion Subsystems
-export * as Bounties from './bounties';
-export * as Incursions from './incursions';
-export * as Dispatches from './dispatches';
-export * as CodexExchange from './codexExchange';
-export * as Petitioners from './petitioners';
-export * as DeepMine from './deepMine';
-export * as Harbour from './harbour';
-export * as HexMap from './hexMap';
-export * as Notables from './notables';
-export * as Hires from './hires';
-export * as AgeProgress from './ageProgress';
-export * as AgeTransitions from './ageTransitions';
+// Dormant / Future Expansion Subsystems (archived to ./dormant/)
+// See ./dormant/README.md for reactivation checklist
+// export * as Bounties from './dormant/bounties';
+// export * as Incursions from './dormant/incursions';
+// export * as Dispatches from './dormant/dispatches';
+// export * as CodexExchange from './dormant/codexExchange';
+// export * as Petitioners from './dormant/petitioners';
+// export * as DeepMine from './dormant/deepMine';
+// export * as Harbour from './dormant/harbour';
+// export * as HexMap from './hexMap';
+// export * as Notables from './dormant/notables';
+// export * as Hires from './dormant/hires';
+// export * as AgeProgress from './dormant/ageProgress';
+// export * as AgeTransitions from './dormant/ageTransitions';

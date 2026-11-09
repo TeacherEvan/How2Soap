@@ -151,6 +151,20 @@ export class MiniGl {
     gl.bindVertexArray(null);
     return { vao, indexCount: indices.length, animation: animData, animationBuffer: aBuf };
   }
+
+  /**
+   * Replace the per-vertex animation offsets for a mesh (one baked frame).
+   * The LabBench uploads the current BAKED_CLIPS frame here each tick so
+   * the shader's aAnimOffset reflects motion; uPoseWeight scales it.
+   * No-op when the mesh has no animation buffer or sizes mismatch.
+   */
+  public updateAnimation(buf: GlMeshBuffers, frame: Float32Array): void {
+    if (!buf.animationBuffer || !buf.animation) return;
+    if (frame.length !== buf.animation.length) return;
+    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, buf.animationBuffer);
+    this.gl.bufferData(this.gl.ARRAY_BUFFER, frame, this.gl.DYNAMIC_DRAW);
+    buf.animation.set(frame);
+  }
 }
 
 // 4x4 Column-Major Matrix Math Helpers

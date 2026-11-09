@@ -198,15 +198,26 @@ export class LabBench3DCanvas {
   }
 
   private initAnimationPlayers(): void {
-    this.animationPlayers = new Map<string, AnimationPlayer>([
-      ['hearth_flame', new AnimationPlayer(this.reducedMotion)],
-      ['bellows_pump', new AnimationPlayer(this.reducedMotion)],
-      ['boil_shake', new AnimationPlayer(this.reducedMotion)],
-      ['stir_vortex', new AnimationPlayer(this.reducedMotion)],
-      ['pour_stream', new AnimationPlayer(this.reducedMotion)],
-      ['liquid_fill', new AnimationPlayer(this.reducedMotion)],
-      ['crystal_shimmer', new AnimationPlayer(this.reducedMotion)],
-    ]);
+    // P0 fix: the old code constructed AnimationPlayer with clip=null and
+    // never called setClip, so advance() always returned null and every
+    // baked frame read fell back to procedural scalars. Arm each player
+    // with its BAKED_CLIPS entry (unknown names leave clip null, safely).
+    // Also note: advance() is called ONCE per tick in render() (loop at top);
+    // do not call advance() again per-mesh or clips run at 2x speed.
+    const names = [
+      'hearth_flame',
+      'bellows_pump',
+      'boil_shake',
+      'stir_vortex',
+      'pour_stream',
+      'liquid_fill',
+      'crystal_shimmer',
+    ];
+    this.animationPlayers = new Map(names.map((n) => {
+      const p = new AnimationPlayer(this.reducedMotion);
+      p.setClip(n);
+      return [n, p] as const;
+    }));
   }
 
   private initMeshes(): void {
@@ -363,16 +374,25 @@ export class LabBench3DCanvas {
     }
 
     // Draw hearth / brazier under active vessels — amber envelope with baked flame animation.
+    // P0 fix: upload the current baked frame into the brazier's aAnimOffset buffer
+    // (it was zero-filled before, so uPoseWeight did nothing). uPoseWeight rides
+    // the decayed glow so the flame morph only shows when the hearth is hot; the
+    // AnimationPlayer freeze at FROZEN_TIME keeps reduced-motion at a still frame.
+    // Vessels share WOOD_BUCKET/CERAMIC_CRUCIBLE buffers, so they keep scalar drives
+    // (fill/stir/boil below) rather than per-vessel vertex uploads — documented limit.
     const brazierBuf = this.buffers.get('HEARTH_BRAZIER');
     if (brazierBuf) {
+      let glow = 0;
+      for (const v of vessels) glow = Math.max(glow, glowById.get(v.id) ?? 0);
+      if (flameFrame) {
+        this.miniGl.updateAnimation(brazierBuf, flameFrame);
+      }
       gl.bindVertexArray(brazierBuf.vao);
       const mHearth = mat4Model(0, -0.6, 0, 2.8, 0.5 * flameSquash, 1.2);
       gl.uniformMatrix4fv(u.uModel, false, mHearth);
-      let glow = 0;
-      for (const v of vessels) glow = Math.max(glow, glowById.get(v.id) ?? 0);
       // Flicker rides on the decayed envelope (frozen automatically via timeSec).
       const flicker = 0.85 + 0.15 * Math.sin(timeSec * 4.5) * flameIntensity;
-      gl.uniform1f(u.uPoseWeight, 0);
+      gl.uniform1f(u.uPoseWeight, glow);
       gl.uniform4f(
         u.uColor,
         0.25 + glow * 0.75 * flicker,
@@ -383,11 +403,12 @@ export class LabBench3DCanvas {
       gl.drawElements(gl.TRIANGLES, brazierBuf.indexCount, gl.UNSIGNED_SHORT, 0);
     }
 
-    // Bellows pump animation (baked clip: bellows_pump) — could attach to a UI element
-    // For now, we just advance the player; visual hook would be a bellows mesh near hearth.
-    this.animationPlayers.get('bellows_pump')?.advance(dt);
-
     // Render each vessel on the bench
+    // NOTE: bellows_pump / crystal_shimmer players are advanced once in the
+    // tick loop above. They have no dedicated mesh drawn here yet (bellows has
+    // no hero mesh; BIOME_CRYSTAL is not drawn on the bench), so their frames
+    // are correct but unrendered — do NOT advance them again here (that was
+    // the old 2x-speed double-advance bug).
     const bucketBuf = this.buffers.get('WOOD_BUCKET');
     const crucibleBuf = this.buffers.get('CERAMIC_CRUCIBLE');
 
@@ -402,10 +423,6 @@ export class LabBench3DCanvas {
 
     // Pour stream animation (baked clip: pour_stream) — includes UV flow in blender_only_channels
     const pourPlayer = this.animationPlayers.get('pour_stream');
-
-    // Crystal shimmer animation (baked clip: crystal_shimmer) — emission pulse
-    // Just advance the player; no current vessel type uses it
-    this.animationPlayers.get('crystal_shimmer')?.advance(dt);
 
     vessels.forEach((vessel, idx) => {
       const buf = vessel.material === 'WOOD' ? bucketBuf : crucibleBuf;
@@ -499,10 +516,10 @@ export class LabBench3DCanvas {
       gl.uniform4f(u.uColor, r, g, b, 1.0);
       gl.drawElements(gl.TRIANGLES, buf.indexCount, gl.UNSIGNED_SHORT, 0);
 
-      // Crystal shimmer for biome crystals (if any vessel is a crystal)
-      // VesselMaterialKey doesn't include CRYSTAL; this is a placeholder for future biome crystal vessels
-      // For now, we just advance the crystal animation player
-      this.animationPlayers.get('crystal_shimmer')?.advance(dt);
+      // NOTE: crystal_shimmer is advanced once in the tick loop above (not here;
+      // the old per-vessel advance caused a double-step). BIOME_CRYSTAL has no
+      // bench draw yet, so its baked emission-pulse offsets are data-correct but
+      // unrendered until a crystal vessel type lands.
 
       // Procedural feedback quads (sprite-free).
       if (this.feedback) {
