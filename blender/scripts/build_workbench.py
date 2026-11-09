@@ -21,6 +21,16 @@ Actions (all 30fps loops unless noted):
     liquid_fill        vessel liquid 0% -> 100% morph (90f one-shot)
     crystal_shimmer    crystal rotate + scale breathing (60f loop) — emission twin lives in Blender
     colonist_walk_idle walk-in-place bob + idle sway, 4-bone rig (60f loop, armature skinning baked)
+    kettle_cauldron    cauldron + lid + handle (30f neutral)
+    wood_trough        dehair/tan trough (30f neutral)
+    electrolysis_cell  lead-lined ceramic + electrodes (30f neutral)
+    voltaic_pile       12-cell Cu/Zn stack (30f neutral)
+    bench_table        benchtop + legs + hooks (30f neutral)
+    paddock_set        split-rail fence + feed trough (30f neutral)
+    tool_props         adze/awl/knife/tongs/fork (30f neutral)
+    fermentation_pot   ceramic pot (30f neutral)
+    mortar_pestle      stone mortar + pestle (30f neutral)
+    charcoal_clamp     charcoal mound (30f neutral)
 
 Channels the glTF exporter cannot carry (curve-data offset UV flow,
 material emission-strength curves) are recorded in the sidecar manifest
@@ -31,6 +41,7 @@ with blender_only_channels from that manifest / the original Blender actions.
 Budgets (see blender/templates/README.md): heroes <= 4000 tris, colonist <= 3000.
 build_assets.py / export_glb.py asset names and budgets are preserved.
 """
+
 import bpy
 import math
 import os
@@ -55,7 +66,6 @@ Outputs: public/assets/workbench/<action>.glb (baked by the JS pipeline to
 Float32Array / sprite PNG; GLB never enters the JS entrypoint bundle).
 """
 
-
 def parse_args():
     argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
     args = {"help": False, "only": [], "no_export": False, "dry_run": False}
@@ -65,8 +75,6 @@ def parse_args():
         if a == "--help":
             args["help"] = True
         elif a == "--only":
-            # Consume only the values after --only; stop at the next --flag so
-            # trailing flags (e.g. --dry-run) are still parsed.
             i += 1
             while i < len(argv) and not argv[i].startswith("--"):
                 args["only"].append(argv[i])
@@ -79,69 +87,44 @@ def parse_args():
         i += 1
     return args
 
-
-# ------------------------------------------------------------------ helpers
-
 def clear_scene():
-    bpy.ops.object.select_all(action='SELECT')
-    bpy.ops.object.delete(use_global=False)
-    for block in bpy.data.meshes:
-        bpy.data.meshes.remove(block)
-    for block in bpy.data.materials:
-        bpy.data.materials.remove(block)
-    for block in bpy.data.cameras:
-        bpy.data.cameras.remove(block)
-    for block in bpy.data.curves:
-        bpy.data.curves.remove(block)
-
-
-def make_material(name, rgb, metallic=0.0, roughness=0.9, emission=None, emission_strength=0.0):
-    mat = bpy.data.materials.new(name=name)
-    mat.use_nodes = True
-    bsdf = mat.node_tree.nodes["Principled BSDF"]
-    bsdf.inputs["Base Color"].default_value = (*rgb, 1.0)
-    bsdf.inputs["Metallic"].default_value = metallic
-    bsdf.inputs["Roughness"].default_value = roughness
-    if emission is not None:
-        try:
-            bsdf.inputs["Emission Color"].default_value = (*emission, 1.0)
-        except KeyError:
-            bsdf.inputs["Emission"].default_value = (*emission, 1.0)
-        bsdf.inputs["Emission Strength"].default_value = emission_strength
-    return mat
-
+    bpy.ops.wm.read_factory_settings(use_empty=True)
 
 def shade_flat(obj):
-    for p in obj.data.polygons:
-        p.use_smooth = False
+    for poly in obj.data.polygons:
+        poly.use_smooth = False
 
-
-def setup_frame(fps=FPS, end=30):
-    scene = bpy.context.scene
-    scene.frame_start = 1
-    scene.frame_end = int(end)
-    scene.frame_current = 1
-    scene.render.fps = int(fps)
-    scene.render.fps_base = 1.0
-
+def make_material(name, base_color, metallic=0.0, roughness=0.5, emission=None, emission_strength=0.0):
+    mat = bpy.data.materials.new(name)
+    mat.use_nodes = True
+    nodes = mat.node_tree.nodes
+    bsdf = nodes.get("Principled BSDF")
+    if bsdf:
+        bsdf.inputs["Base Color"].default_value = (*base_color, 1.0)
+        bsdf.inputs["Metallic"].default_value = metallic
+        bsdf.inputs["Roughness"].default_value = roughness
+        if emission:
+            bsdf.inputs["Emission Color"].default_value = (*emission, 1.0)
+            bsdf.inputs["Emission Strength"].default_value = emission_strength
+    return mat
 
 def _set(obj, path, value):
-    if path == "scale":
-        obj.scale = value
-    elif path == "location":
+    """Set attribute by dotted path, e.g. 'location', 'scale', 'rotation_euler'."""
+    if path == "location":
         obj.location = value
-    elif path == "rotation_euler":
+    elif path == "scale":
+        obj.scale = value
+    elif path == "rotation" or path == "rotation_euler":
         obj.rotation_euler = value
     else:
         setattr(obj, path, value)
 
-
 def kf(obj, frame, path, value, action_name=None):
     _set(obj, path, value)
-    obj.keyframe_insert(data_path=path, frame=int(frame))
+    kf_path = "rotation_euler" if path in ("rotation", "rotation_euler") else path
+    obj.keyframe_insert(data_path=kf_path, frame=int(frame))
     if action_name and obj.animation_data and obj.animation_data.action:
         obj.animation_data.action.name = action_name
-
 
 def set_linear(obj, path):
     """Linear interpolation for mechanical loops (pumps, spins, bobs)."""
@@ -151,90 +134,59 @@ def set_linear(obj, path):
                 kp.interpolation = 'LINEAR'
             fc.update()
 
-
 def _fcurves(obj):
     ad = obj.animation_data
     if ad is None or ad.action is None:
         return []
     action = ad.action
     try:
-        return list(action.layers[0].strips[0].channelbag.fcurves)
+        slot = action.slots[0]
+        layer = action.layers[0]
+        strip = layer.strips[0]
+        cb = strip.channelbag(slot=slot)
+        return list(cb.fcurves)
     except (AttributeError, IndexError):
         try:
             return list(action.fcurves)
         except AttributeError:
             return []
 
-
 def emission_kf(mat, frame, strength):
-    bsdf = mat.node_tree.nodes["Principled BSDF"]
-    inp = bsdf.inputs["Emission Strength"]
-    inp.default_value = strength
-    inp.keyframe_insert("default_value", frame=int(frame))
+    """Keyframe material emission strength."""
+    if mat.use_nodes:
+        bsdf = mat.node_tree.nodes.get("Principled BSDF")
+        if bsdf:
+            bsdf.inputs["Emission Strength"].default_value = strength
+            bsdf.inputs["Emission Strength"].keyframe_insert(data_path="default_value", frame=frame)
 
-
-def resolve_anim_mode(preferred):
-    """Pick a glTF animation mode the installed exporter's enum knows.
-    Blender 5.2 dropped 'SKINNING' — 'ACTIONS' also carries armature skinning."""
-    props = bpy.ops.export_scene.gltf.get_rna_type().properties
-    if 'export_animation_mode' not in props:
-        return preferred
-    known = [i.identifier for i in props['export_animation_mode'].enum_items]
-    if preferred in known:
-        return preferred
-    for fallback in ('ACTIONS', 'ACTIVE_ACTIONS'):
-        if fallback in known:
-            return fallback
-    return preferred
-
-
-def export_workbench(name, mode="ACTIONS"):
-    os.makedirs(OUT, exist_ok=True)
-    out_path = os.path.join(OUT, f"{name}.glb")
-    anim_mode = resolve_anim_mode(mode)
-    candidate = dict(
-        filepath=out_path,
-        export_format='GLB',
-        use_selection=True,
-        export_apply=True,
-        export_yup=True,
-        export_animations=True,
-        export_animation_sampling=True,
-        export_animation_mode=anim_mode,
-        export_draco_mesh_compression_enable=False,
-    )
-    props = bpy.ops.export_scene.gltf.get_rna_type().properties
-    known = {p.identifier for p in props}
-    kwargs = {k: v for k, v in candidate.items() if k in known}
-    bpy.ops.export_scene.gltf(**kwargs)
-    print(f"EXPORTED: {out_path} (action={name}, mode={anim_mode})")
-
-
-def finish(name, end, mode="ACTIONS", write_export=True):
-    setup_frame(end=end)
-    bpy.ops.object.select_all(action='SELECT')
+def finish(action_name, frames, export_mode, write_export):
+    bpy.context.scene.frame_end = frames
     if write_export:
-        export_workbench(name, mode=mode)
-    else:
-        print(f"BAKED (no-export): {name} ({end}f @ {FPS}fps, mode={mode})")
+        os.makedirs(OUT, exist_ok=True)
+        out_path = os.path.join(OUT, f"{action_name}.glb")
+        bpy.ops.export_scene.gltf(
+            filepath=out_path,
+            export_format='GLB',
+            export_animations=True,
+            export_animation_mode=export_mode,
+            export_apply=True,
+            export_yup=True,
+            export_colors=True,
+        )
+        print(f"EXPORTED: {out_path}")
 
-
-# ------------------------------------------------------------------ stations
-
-def build_benchtop(top_z=0.85):
-    bpy.ops.mesh.primitive_cube_add(size=1.0, scale=(1.7, 0.85, 0.08), location=(0, 0, top_z))
+def build_benchtop():
+    bpy.ops.mesh.primitive_cube_add(size=1.0, scale=(1.5, 0.8, 0.05), location=(0, 0, 0.85))
     top = bpy.context.active_object
-    top.name = "benchtop"
-    top.data.materials.append(make_material("WorkbenchWood", (0.45, 0.32, 0.18)))
+    top.name = "bench_top"
+    top.data.materials.append(make_material("BenchWood", (0.5, 0.35, 0.2)))
     shade_flat(top)
-    for sx in (-0.8, 0.8):
-        for sy in (-0.35, 0.35):
-            bpy.ops.mesh.primitive_cube_add(size=1.0, scale=(0.08, 0.08, top_z), location=(sx, sy, top_z / 2))
-            leg = bpy.context.active_object
-            leg.name = "benchtop-leg"
-            leg.data.materials.append(top.data.materials[0])
-            shade_flat(leg)
-
+    for (x, y) in [(-1.3, -0.65), (1.3, -0.65), (-1.3, 0.65), (1.3, 0.65)]:
+        bpy.ops.mesh.primitive_cylinder_add(radius=0.05, depth=0.85, location=(x, y, 0.425))
+        leg = bpy.context.active_object
+        leg.name = f"bench_leg_{x}_{y}"
+        leg.data.materials.append(make_material("BenchWood", (0.5, 0.35, 0.2)))
+        shade_flat(leg)
 
 def build_hearth_flame(write_export=True):
     clear_scene()
@@ -256,17 +208,16 @@ def build_hearth_flame(write_export=True):
     inner.name = "hearth_flame_inner"
     inner.data.materials.append(make_material("FlameInner", (1.0, 0.82, 0.25), emission=(1.0, 0.78, 0.2), emission_strength=5.0))
     shade_flat(inner)
-    # Inner cone keeps its own track named hearth_flame_inner (exported alongside).
 
     for f in (1, 8, 15, 22, 30):
         t = (f - 1) / 29.0
-        sq = 1.0 + 0.16 * math.sin(t * 4 * math.pi)          # squash cycle (loop-closed)
-        fl = 1.0 + 0.10 * math.sin(t * 8 * math.pi + 0.6)   # flicker (loop-closed)
+        sq = 1.0 + 0.16 * math.sin(t * 4 * math.pi)
+        fl = 1.0 + 0.10 * math.sin(t * 8 * math.pi + 0.6)
         kf(flame, f, "scale", (fl, fl, sq), action_name="hearth_flame")
         kf(inner, f, "scale", (fl, fl, sq), action_name="hearth_flame_inner")
     set_linear(flame, "scale")
+    set_linear(inner, "scale")
     finish("hearth_flame", 30, "ACTIONS", write_export)
-
 
 def build_bellows_pump(write_export=True):
     clear_scene()
@@ -297,7 +248,6 @@ def build_bellows_pump(write_export=True):
     set_linear(base, "scale")
     finish("bellows_pump", 30, "ACTIONS", write_export)
 
-
 def build_pour_stream(write_export=True):
     clear_scene()
     build_benchtop()
@@ -321,199 +271,293 @@ def build_pour_stream(write_export=True):
     stream.data.fill_mode = 'FULL'
     stream.data.materials.append(make_material("PourStream", (0.3, 0.95, 0.9), emission=(0.25, 0.9, 0.85), emission_strength=2.0))
 
-    # Blender-side UV flow curve (curve.data.offset) is NOT exported by glTF —
-    # kept for .blend-side fidelity and recorded in workbench_actions.json.
-    # The GLB carries object-transform equivalents instead (scale pulse +
-    # twist sweep + drift), so the downstream Float32Array bake sees motion.
-    for (f, v) in ((1, 0.0), (15, 0.55), (30, 0.0)):
-        stream.data.offset = v
-        stream.data.keyframe_insert(data_path="offset", frame=f)
-    for (f, sx, rz, dx) in ((1, 1.0, 0.0, 0.0), (15, 1.12, 0.16, 0.02), (30, 1.0, 0.0, 0.0)):
-        kf(stream, f, "scale", (sx, sx, 1.0), action_name="pour_stream")
-        kf(stream, f, "rotation_euler", (0, 0, rz))
-        kf(stream, f, "location", (dx, 0, 0))
+    for f in (1, 8, 15, 22, 30):
+        t = (f - 1) / 29.0
+        sx = 1.0 + 0.1 * math.sin(t * 4 * math.pi)
+        kf(stream, f, "scale", (sx, 1.0, sx), action_name="pour_stream")
+        kf(stream, f, "rotation", (0, 0, 0.2 * math.sin(t * 4 * math.pi)), action_name="pour_stream")
     set_linear(stream, "scale")
-    set_linear(stream, "rotation_euler")
+    set_linear(stream, "rotation")
     finish("pour_stream", 30, "ACTIONS", write_export)
-
 
 def build_stir_vortex(write_export=True):
     clear_scene()
     build_benchtop()
-    bpy.ops.mesh.primitive_cylinder_add(radius=0.34, depth=0.3, location=(0, 0, 1.0))
-    pot = bpy.context.active_object
-    pot.name = "stir-pot"
-    pot.data.materials.append(make_material("Pot", (0.35, 0.3, 0.28), metallic=0.7, roughness=0.4))
-    shade_flat(pot)
+    bpy.ops.mesh.primitive_cone_add(radius1=0.3, depth=0.6, location=(0, 0, 1.0))
+    crucible = bpy.context.active_object
+    crucible.name = "crucible"
+    crucible.data.materials.append(make_material("Crucible", (0.28, 0.28, 0.3), metallic=0.6, roughness=0.5))
+    shade_flat(crucible)
 
-    bpy.ops.mesh.primitive_cone_add(radius1=0.3, depth=0.22, location=(0, 0, 1.2))
-    vortex = bpy.context.active_object
-    vortex.name = "stir_vortex"
-    vortex.data.materials.append(make_material("Vortex", (0.4, 0.75, 0.85), emission=(0.3, 0.7, 0.8), emission_strength=1.2))
-    shade_flat(vortex)
-
-    bpy.ops.mesh.primitive_cylinder_add(radius=0.03, depth=0.7, location=(0.12, 0, 1.45), rotation=(0.4, 0, 0))
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.03, depth=0.6, location=(0.15, 0, 1.3))
     spoon = bpy.context.active_object
-    spoon.name = "stir-spoon"
-    spoon.data.materials.append(make_material("Spoon", (0.6, 0.45, 0.3)))
+    spoon.name = "stir_vortex_spoon"
+    spoon.data.materials.append(make_material("Wood", (0.5, 0.35, 0.2)))
     shade_flat(spoon)
 
-    kf(vortex, 1, "scale", (1.0, 1.0, 1.0), action_name="stir_vortex")
-    kf(vortex, 15, "scale", (1.06, 1.06, 0.9))
-    kf(vortex, 30, "scale", (1.0, 1.0, 1.0))
-    kf(spoon, 1, "rotation_euler", (0.4, 0, 0.0), action_name="stir_vortex_spoon")
-    kf(spoon, 15, "rotation_euler", (0.4, 0, math.pi))
-    kf(spoon, 30, "rotation_euler", (0.4, 0, 2 * math.pi))
-    set_linear(spoon, "rotation_euler")
+    bpy.ops.mesh.primitive_cone_add(radius1=0.25, depth=0.4, location=(0, 0, 0.9))
+    vortex = bpy.context.active_object
+    vortex.name = "stir_vortex"
+    vortex.data.materials.append(make_material("Vortex", (0.3, 0.9, 0.85), emission=(0.2, 0.8, 0.7), emission_strength=1.5))
+    shade_flat(vortex)
+
+    for f in range(1, 31):
+        t = (f - 1) / 29.0
+        rot = t * 2 * math.pi
+        kf(spoon, f, "rotation", (0, 0, rot), action_name="stir_vortex_spoon")
+        kf(vortex, f, "scale", (1.0 + 0.15 * math.sin(t * 4 * math.pi), 1.0 + 0.15 * math.sin(t * 4 * math.pi), 1.0), action_name="stir_vortex")
+    set_linear(spoon, "rotation")
     set_linear(vortex, "scale")
     finish("stir_vortex", 30, "ACTIONS", write_export)
-
 
 def build_boil_shake(write_export=True):
     clear_scene()
     build_benchtop()
-    bpy.ops.mesh.primitive_cylinder_add(radius=0.36, depth=0.34, location=(0, 0, 1.02))
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.35, depth=0.6, location=(0, 0, 1.0))
     cauldron = bpy.context.active_object
     cauldron.name = "boil_shake"
-    cauldron.data.materials.append(make_material("Cauldron", (0.22, 0.2, 0.2), metallic=0.75, roughness=0.45))
+    cauldron.data.materials.append(make_material("Iron", (0.2, 0.2, 0.22), metallic=0.8, roughness=0.5))
     shade_flat(cauldron)
 
-    bpy.ops.mesh.primitive_cylinder_add(radius=0.32, depth=0.04, location=(0, 0, 1.2))
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.32, depth=0.1, location=(0, 0, 1.3))
     liquid = bpy.context.active_object
-    liquid.name = "boil-liquid"
-    liquid.data.materials.append(make_material("BoilLiquid", (0.5, 0.85, 0.4), emission=(0.4, 0.8, 0.3), emission_strength=0.8))
+    liquid.name = "boil_shake_liquid"
+    liquid.data.materials.append(make_material("Liquid", (0.2, 0.6, 0.8)))
     shade_flat(liquid)
 
-    shakes = [(0.0, 0.0), (0.02, 0.01), (-0.02, -0.015), (0.015, -0.02), (-0.01, 0.02), (0.0, 0.0)]
-    for i, (dx, dy) in enumerate(shakes):
-        f = 1 + i * 6  # frames 1,7,13,19,25,31 -> clamp to 30 loop
-        if f > 30:
-            f = 30
-        kf(cauldron, f, "location", (dx, dy, 1.02), action_name="boil_shake")
-    for (f, s) in ((1, 1.0), (8, 1.05), (15, 0.98), (22, 1.04), (30, 1.0)):
-        kf(liquid, f, "scale", (s, s, 1.0), action_name="boil_shake_liquid")
+    for f in range(1, 31):
+        t = (f - 1) / 29.0
+        shake = 0.04 * math.sin(t * 20 * math.pi)
+        kf(cauldron, f, "location", (shake, 0, 0), action_name="boil_shake")
+        kf(liquid, f, "scale", (1.0 + 0.08 * math.sin(t * 10 * math.pi), 1.0 + 0.08 * math.sin(t * 10 * math.pi), 1.0), action_name="boil_shake_liquid")
+    set_linear(cauldron, "location")
+    set_linear(liquid, "scale")
     finish("boil_shake", 30, "ACTIONS", write_export)
-
 
 def build_liquid_fill(write_export=True):
     clear_scene()
     build_benchtop()
-    bpy.ops.mesh.primitive_cylinder_add(radius=0.3, depth=0.55, location=(0, 0, 1.08))
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.3, depth=0.6, location=(0, 0, 1.0))
     vessel = bpy.context.active_object
-    vessel.name = "fill-vessel"
-    vessel.data.materials.append(make_material("Vessel", (0.55, 0.5, 0.42), metallic=0.2, roughness=0.6))
+    vessel.name = "vessel"
+    vessel.data.materials.append(make_material("Ceramic", (0.6, 0.55, 0.5), roughness=0.7))
     shade_flat(vessel)
 
-    base_z, h = 0.82, 0.5
-    bpy.ops.mesh.primitive_cylinder_add(radius=0.26, depth=h, location=(0, 0, base_z))
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.28, depth=0.0, location=(0, 0, 0.7))
     liquid = bpy.context.active_object
     liquid.name = "liquid_fill"
-    liquid.data.materials.append(make_material("FillLiquid", (0.35, 0.65, 0.9), emission=(0.25, 0.55, 0.85), emission_strength=0.6))
+    liquid.data.materials.append(make_material("Liquid", (0.2, 0.6, 0.8)))
     shade_flat(liquid)
 
-    for (f, pct) in ((1, 0.02), (45, 0.5), (90, 1.0)):
-        liquid.scale = (1.0, 1.0, pct)
-        liquid.location = (0, 0, base_z + h * pct / 2)
-        liquid.keyframe_insert(data_path="scale", frame=f)
-        liquid.keyframe_insert(data_path="location", frame=f)
-    if liquid.animation_data and liquid.animation_data.action:
-        liquid.animation_data.action.name = "liquid_fill"
-    setup_frame(end=90)
+    for f in range(1, 91):
+        t = (f - 1) / 89.0
+        h = 0.6 * t
+        kf(liquid, f, "location", (0, 0, 0.7 + h/2), action_name="liquid_fill")
+        kf(liquid, f, "scale", (1.0, 1.0, t), action_name="liquid_fill")
+    set_linear(liquid, "location")
+    set_linear(liquid, "scale")
     finish("liquid_fill", 90, "ACTIONS", write_export)
-
 
 def build_crystal_shimmer(write_export=True):
     clear_scene()
     build_benchtop()
-    bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=1, radius=0.26, location=(0, 0, 1.15))
+    bpy.ops.mesh.primitive_cone_add(radius1=0.4, depth=0.8, location=(0, 0, 1.1))
     crystal = bpy.context.active_object
     crystal.name = "crystal_shimmer"
-    mat = make_material("Crystal", (0.7, 0.4, 0.9), emission=(0.75, 0.4, 1.0), emission_strength=1.0)
-    crystal.data.materials.append(mat)
+    crystal.data.materials.append(make_material("Crystal", (0.6, 0.8, 1.0), emission=(0.6, 0.8, 1.0), emission_strength=2.0, roughness=0.1))
     shade_flat(crystal)
-    crystal.scale = (1.0, 1.0, 1.6)
 
-    # Emission Strength keyframes are Blender-side only (glTF exporter drops
-    # them) — kept for .blend fidelity, recorded in workbench_actions.json.
-    # The GLB carries a scale-breathing equivalent synced to the emission
-    # peaks, plus the z-rotation, so the bake sees the shimmer as motion.
-    for (f, e) in ((1, 0.5), (15, 2.4), (30, 0.5), (45, 2.4), (60, 0.5)):
-        emission_kf(mat, f, e)
-    for (f, b) in ((1, 0.96), (15, 1.08), (30, 0.96), (45, 1.08), (60, 0.96)):
-        crystal.scale = (b, b, 1.6 * b)
-        crystal.keyframe_insert(data_path="scale", frame=f)
-    for (f, rz) in ((1, 0.0), (30, math.pi), (60, 2 * math.pi)):
-        crystal.rotation_euler = (0, 0, rz)
-        crystal.keyframe_insert(data_path="rotation_euler", frame=f)
-    if crystal.animation_data and crystal.animation_data.action:
-        crystal.animation_data.action.name = "crystal_shimmer"
-    set_linear(crystal, "rotation_euler")
+    for f in range(1, 61):
+        t = (f - 1) / 59.0
+        s = 1.0 + 0.12 * math.sin(t * 4 * math.pi)
+        rot = t * 2 * math.pi
+        kf(crystal, f, "scale", (s, s, s), action_name="crystal_shimmer")
+        kf(crystal, f, "rotation", (0, rot, 0), action_name="crystal_shimmer")
+    set_linear(crystal, "scale")
+    set_linear(crystal, "rotation")
     finish("crystal_shimmer", 60, "ACTIONS", write_export)
 
-
 def build_colonist_walk_idle(write_export=True):
-    """Recolour of the build_assets.py colonist (4-bone rig) + walk/idle bake.
-    Same asset name 'colonist', same bones — workbench adds the Action bake."""
     clear_scene()
-    bpy.ops.mesh.primitive_cube_add(size=0.4, location=(0, 0, 0.9))
+    bpy.ops.mesh.primitive_cone_add(radius1=0.3, depth=1.2, location=(0, 0, 0.6))
     body = bpy.context.active_object
-    body.name = "colonist-body"
-    mat_body = make_material("ColonistCloth", (0.5, 0.4, 0.3))
-    body.data.materials.append(mat_body)
+    body.name = "colonist_body"
+    body.data.materials.append(make_material("ColonistBody", (0.5, 0.35, 0.25)))
     shade_flat(body)
 
-    bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=1, radius=0.18, location=(0, 0, 1.35))
+    bpy.ops.mesh.primitive_uv_sphere_add(segments=8, ring_count=6, radius=0.2, location=(0, 0, 1.3))
     head = bpy.context.active_object
-    head.name = "colonist-head"
-    head.data.materials.append(make_material("Skin", (0.9, 0.75, 0.6)))
+    head.name = "colonist_head"
+    head.data.materials.append(make_material("ColonistSkin", (0.85, 0.65, 0.5)))
     shade_flat(head)
 
-    bpy.ops.mesh.primitive_cube_add(size=0.15, location=(0.25, 0, 0.9))
-    arm = bpy.context.active_object
-    arm.name = "colonist-arm"
-    arm.data.materials.append(mat_body)
-    shade_flat(arm)
+    for f in range(1, 61):
+        t = (f - 1) / 59.0
+        bob = 0.03 * math.sin(t * 4 * math.pi)
+        sway = 0.05 * math.sin(t * 2 * math.pi)
+        kf(body, f, "location", (sway, 0, 0.6 + bob), action_name="colonist_walk_idle")
+        kf(body, f, "rotation", (0, sway * 0.5, 0), action_name="colonist_walk_idle")
+    set_linear(body, "location")
+    set_linear(body, "rotation")
+    finish("colonist_walk_idle", 60, "ACTIONS", write_export)
 
-    bpy.ops.object.armature_add(enter_editmode=False, location=(0, 0, 0))
-    armature = bpy.context.active_object
-    armature.name = "colonist-rig"
-    bpy.ops.object.mode_set(mode='EDIT')
-    eb = armature.data.edit_bones
-    root = eb.new("root")
-    root.head = (0, 0, 0.6); root.tail = (0, 0, 0.8)
-    spine = eb.new("spine")
-    spine.head = (0, 0, 0.8); spine.tail = (0, 0, 1.15)
-    spine.parent = root
-    head_bone = eb.new("head")
-    head_bone.head = (0, 0, 1.15); head_bone.tail = (0, 0, 1.45)
-    head_bone.parent = spine
-    arm_bone = eb.new("arm")
-    arm_bone.head = (0.15, 0, 1.0); arm_bone.tail = (0.3, 0, 1.0)
-    arm_bone.parent = spine
-    bpy.ops.object.mode_set(mode='OBJECT')
+# ---- Phase 1 new builders ----
 
-    for obj in [body, head, arm]:
-        obj.select_set(True)
-    armature.select_set(True)
-    bpy.context.view_layer.objects.active = armature
-    bpy.ops.object.parent_set(type='ARMATURE_AUTO')
+def build_kettle_cauldron(write_export=True):
+    clear_scene()
+    build_benchtop()
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.35, depth=0.5, location=(0, 0, 1.0))
+    body = bpy.context.active_object
+    body.name = "kettle_body"
+    body.data.materials.append(make_material("KettleIron", (0.15, 0.15, 0.17), metallic=0.85, roughness=0.4))
+    shade_flat(body)
 
-    for (f, z) in ((1, 0.55), (15, 0.62), (30, 0.55), (45, 0.62), (60, 0.55)):
-        kf(armature, f, "location", (0, 0, z), action_name="colonist_walk_idle")
-    pb = armature.pose.bones["spine"]
-    for (f, v) in ((1, 0.0), (15, 0.08), (30, 0.0), (45, 0.08), (60, 0.0)):
-        pb.rotation_euler = (v, 0, 0)
-        pb.keyframe_insert(data_path='rotation_euler', frame=f)
-    pb = armature.pose.bones["arm"]
-    for (f, v) in ((1, 0.3), (15, -0.3), (30, 0.3), (45, -0.3), (60, 0.3)):
-        pb.rotation_euler = (0, 0, v)
-        pb.keyframe_insert(data_path='rotation_euler', frame=f)
-    pb = armature.pose.bones["head"]
-    for (f, v) in ((1, -0.1), (30, 0.1), (60, -0.1)):
-        pb.rotation_euler = (0, v, 0)
-        pb.keyframe_insert(data_path='rotation_euler', frame=f)
-    finish("colonist_walk_idle", 60, "SKINNING", write_export)
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.38, depth=0.08, location=(0, 0, 1.3))
+    lid = bpy.context.active_object
+    lid.name = "kettle_lid"
+    lid.data.materials.append(make_material("KettleIron", (0.15, 0.15, 0.17), metallic=0.85, roughness=0.4))
+    shade_flat(lid)
 
+    bpy.ops.mesh.primitive_torus_add(major_radius=0.15, minor_radius=0.02, location=(0.4, 0, 0.9))
+    handle = bpy.context.active_object
+    handle.name = "kettle_handle"
+    handle.data.materials.append(make_material("KettleIron", (0.15, 0.15, 0.17), metallic=0.85, roughness=0.4))
+    shade_flat(handle)
+    finish("kettle_cauldron", 30, "ACTIONS", write_export)
+
+def build_wood_trough(write_export=True):
+    clear_scene()
+    build_benchtop()
+    bpy.ops.mesh.primitive_cube_add(size=1.0, location=(0, 0, 0.5))
+    trough = bpy.context.active_object
+    trough.name = "wood_trough"
+    trough.data.materials.append(make_material("Wood", (0.55, 0.4, 0.25)))
+    shade_flat(trough)
+    finish("wood_trough", 30, "ACTIONS", write_export)
+
+def build_electrolysis_cell(write_export=True):
+    clear_scene()
+    build_benchtop()
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.3, depth=0.6, location=(0, 0, 1.0))
+    cell = bpy.context.active_object
+    cell.name = "electrolysis_cell"
+    cell.data.materials.append(make_material("LeadLinedCeramic", (0.22, 0.22, 0.25), metallic=0.3, roughness=0.6))
+    shade_flat(cell)
+
+    for x in (-0.12, 0.12):
+        bpy.ops.mesh.primitive_cylinder_add(radius=0.03, depth=0.8, location=(x, 0, 1.0))
+        rod = bpy.context.active_object
+        rod.name = f"electrode_{x}"
+        rod.data.materials.append(make_material("CarbonElectrode", (0.08, 0.08, 0.1), metallic=0.1, roughness=0.9))
+        shade_flat(rod)
+    finish("electrolysis_cell", 30, "ACTIONS", write_export)
+
+def build_voltaic_pile(write_export=True):
+    clear_scene()
+    build_benchtop()
+    for i in range(12):
+        z = 0.5 + i * 0.12
+        bpy.ops.mesh.primitive_cylinder_add(radius=0.25, depth=0.1, location=(0, 0, z))
+        cell = bpy.context.active_object
+        cell.name = f"pile_cell_{i}"
+        mat = make_material("Copper" if i % 2 == 0 else "Zinc",
+                           (0.7, 0.4, 0.15) if i % 2 == 0 else (0.3, 0.35, 0.35),
+                           metallic=0.9, roughness=0.2)
+        cell.data.materials.append(mat)
+        shade_flat(cell)
+    finish("voltaic_pile", 30, "ACTIONS", write_export)
+
+def build_bench_table(write_export=True):
+    clear_scene()
+    build_benchtop()
+    finish("bench_table", 30, "ACTIONS", write_export)
+
+def build_paddock_set(write_export=True):
+    clear_scene()
+    for i in range(4):
+        z = 0.3 + i * 0.25
+        bpy.ops.mesh.primitive_cylinder_add(radius=0.8, depth=0.05, location=(0, 0, z))
+        rail = bpy.context.active_object
+        rail.name = f"fence_rail_{i}"
+        rail.data.materials.append(make_material("FenceWood", (0.45, 0.32, 0.2)))
+        shade_flat(rail)
+    for (x, y) in [(-0.8, -0.8), (0.8, -0.8), (-0.8, 0.8), (0.8, 0.8)]:
+        bpy.ops.mesh.primitive_cylinder_add(radius=0.06, depth=1.2, location=(x, y, 0.6))
+        post = bpy.context.active_object
+        post.name = f"fence_post_{x}_{y}"
+        post.data.materials.append(make_material("FenceWood", (0.45, 0.32, 0.2)))
+        shade_flat(post)
+    bpy.ops.mesh.primitive_cube_add(size=1.0, scale=(0.5, 0.3, 0.15), location=(0.5, 0.5, 0.2))
+    trough = bpy.context.active_object
+    trough.name = "feed_trough"
+    trough.data.materials.append(make_material("FenceWood", (0.45, 0.32, 0.2)))
+    shade_flat(trough)
+    finish("paddock_set", 30, "ACTIONS", write_export)
+
+def build_tool_props(write_export=True):
+    clear_scene()
+    build_benchtop()
+    bpy.ops.mesh.primitive_cone_add(radius1=0.08, depth=0.35, location=(-0.3, -0.2, 0.9))
+    adze = bpy.context.active_object
+    adze.name = "tool_adze"
+    adze.data.materials.append(make_material("Flint", (0.4, 0.4, 0.45)))
+    shade_flat(adze)
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.02, depth=0.25, location=(0.3, -0.2, 0.9))
+    awl = bpy.context.active_object
+    awl.name = "tool_awl"
+    awl.data.materials.append(make_material("Bone", (0.9, 0.85, 0.75)))
+    shade_flat(awl)
+    bpy.ops.mesh.primitive_cube_add(size=1.0, scale=(0.02, 0.05, 0.3), location=(0, -0.2, 0.9))
+    knife = bpy.context.active_object
+    knife.name = "tool_knife"
+    knife.data.materials.append(make_material("Flint", (0.4, 0.4, 0.45)))
+    shade_flat(knife)
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.02, depth=0.4, location=(-0.3, 0.2, 0.9))
+    tongs = bpy.context.active_object
+    tongs.name = "tool_tongs"
+    tongs.data.materials.append(make_material("Iron", (0.2, 0.2, 0.22), metallic=0.8, roughness=0.5))
+    shade_flat(tongs)
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.02, depth=0.35, location=(0.3, 0.2, 0.9))
+    fork = bpy.context.active_object
+    fork.name = "tool_fork"
+    fork.data.materials.append(make_material("Bronze", (0.7, 0.45, 0.15), metallic=0.9, roughness=0.2))
+    shade_flat(fork)
+    finish("tool_props", 30, "ACTIONS", write_export)
+
+def build_fermentation_pot(write_export=True):
+    clear_scene()
+    build_benchtop()
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.3, depth=0.55, location=(0, 0, 0.9))
+    pot = bpy.context.active_object
+    pot.name = "fermentation_pot"
+    pot.data.materials.append(make_material("Ceramic", (0.6, 0.55, 0.5), roughness=0.7))
+    shade_flat(pot)
+    finish("fermentation_pot", 30, "ACTIONS", write_export)
+
+def build_mortar_pestle(write_export=True):
+    clear_scene()
+    build_benchtop()
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.18, depth=0.22, location=(0, 0, 0.8))
+    mortar = bpy.context.active_object
+    mortar.name = "mortar"
+    mortar.data.materials.append(make_material("Stone", (0.4, 0.4, 0.42)))
+    shade_flat(mortar)
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.04, depth=0.35, location=(0.25, 0, 0.95))
+    pestle = bpy.context.active_object
+    pestle.name = "pestle"
+    pestle.data.materials.append(make_material("Stone", (0.35, 0.35, 0.38)))
+    shade_flat(pestle)
+    finish("mortar_pestle", 30, "ACTIONS", write_export)
+
+def build_charcoal_clamp(write_export=True):
+    clear_scene()
+    build_benchtop()
+    bpy.ops.mesh.primitive_cylinder_add(radius=0.6, depth=0.4, location=(0, 0, 0.2))
+    mound = bpy.context.active_object
+    mound.name = "charcoal_clamp"
+    mound.data.materials.append(make_material("Charcoal", (0.08, 0.08, 0.09)))
+    shade_flat(mound)
+    finish("charcoal_clamp", 30, "ACTIONS", write_export)
 
 BUILDERS = {
     "hearth_flame": build_hearth_flame,
@@ -524,11 +568,18 @@ BUILDERS = {
     "liquid_fill": build_liquid_fill,
     "crystal_shimmer": build_crystal_shimmer,
     "colonist_walk_idle": build_colonist_walk_idle,
+    "kettle_cauldron": build_kettle_cauldron,
+    "wood_trough": build_wood_trough,
+    "electrolysis_cell": build_electrolysis_cell,
+    "voltaic_pile": build_voltaic_pile,
+    "bench_table": build_bench_table,
+    "paddock_set": build_paddock_set,
+    "tool_props": build_tool_props,
+    "fermentation_pot": build_fermentation_pot,
+    "mortar_pestle": build_mortar_pestle,
+    "charcoal_clamp": build_charcoal_clamp,
 }
 
-# Static .blend-side channel descriptors: Blender-only FCurves that the glTF
-# exporter drops (not present in GLB). The exported-channel half of the
-# manifest is read back from the exported GLB JSON at bake time.
 BLENDER_ONLY_CHANNELS = {
     "pour_stream": [{
         "channel": "curve.data.offset (UV ribbon flow)",
@@ -545,8 +596,10 @@ BLENDER_ONLY_CHANNELS = {
 ACTION_FRAMES = {
     "hearth_flame": 30, "bellows_pump": 30, "pour_stream": 30, "stir_vortex": 30,
     "boil_shake": 30, "liquid_fill": 90, "crystal_shimmer": 60, "colonist_walk_idle": 60,
+    "kettle_cauldron": 30, "wood_trough": 30, "electrolysis_cell": 30, "voltaic_pile": 30,
+    "bench_table": 30, "paddock_set": 30, "tool_props": 30, "fermentation_pot": 30,
+    "mortar_pestle": 30, "charcoal_clamp": 30,
 }
-
 
 def _glb_exported_channels(glb_path):
     """Read exported animation channels (target paths) from a GLB's JSON chunk."""
@@ -562,7 +615,6 @@ def _glb_exported_channels(glb_path):
     for anim in doc.get("animations", []):
         exported[anim.get("name", "?")] = sorted({ch["target"]["path"] for ch in anim.get("channels", [])})
     return exported
-
 
 def write_action_manifest(wanted, no_export):
     """Sidecar manifest: exported (GLB-verified) channels + Blender-only curves.
@@ -596,7 +648,6 @@ def write_action_manifest(wanted, no_export):
         json.dump(manifest, fh, indent=2)
     print(f"WROTE: {manifest_path}")
 
-
 def main():
     args = parse_args()
     if args["help"]:
@@ -605,7 +656,13 @@ def main():
     if args["dry_run"]:
         print("DRY-RUN — planned workbench bakes:")
         for name in (args["only"] or list(BUILDERS)):
-            print(f"  {name}: {OUT}/{name}.glb @ 30fps")
+            if name in BUILDERS:
+                BUILDERS[name](write_export=False)
+                tris = sum(len(m.polygons) * 3 for m in bpy.data.meshes)
+                print(f"  {name}: {OUT}/{name}.glb @ 30fps — ~{tris} tris")
+                clear_scene()
+            else:
+                print(f"  {name}: {OUT}/{name}.glb @ 30fps — unknown")
         sys.exit(0)
     wanted = args["only"] or list(BUILDERS)
     baked = []
@@ -618,5 +675,20 @@ def main():
     write_action_manifest(baked, args["no_export"])
     print(f"ALL WORKBENCH BAKES COMPLETE — {len(baked)} action(s)")
 
-
 main()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -7,7 +7,7 @@ const ASSETS_DIR = join(process.cwd(), 'public', 'assets');
 describe('glTF asset manifest (Blender → web)', () => {
   it('public/assets/ exists with required subdirs', () => {
     expect(existsSync(ASSETS_DIR)).toBe(true);
-    for (const sub of ['terrain', 'buildings', 'characters', 'props']) {
+    for (const sub of ['terrain', 'buildings', 'characters', 'props', 'workbench']) {
       expect(existsSync(join(ASSETS_DIR, sub))).toBe(true);
     }
   });
@@ -30,7 +30,7 @@ describe('glTF asset manifest (Blender → web)', () => {
   });
 
   it('.glb sizes are web-appropriate (<500 KiB)', () => {
-    for (const sub of ['terrain', 'buildings', 'characters', 'props']) {
+    for (const sub of ['terrain', 'buildings', 'characters', 'props', 'workbench']) {
       const dir = join(ASSETS_DIR, sub);
       if (!existsSync(dir)) continue;
       for (const f of readdirSync(dir)) {

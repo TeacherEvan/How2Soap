@@ -23,6 +23,7 @@
 import { MiniGl, mat4Perspective, mat4LookAt, mat4Model, type GlMeshBuffers } from './miniGl';
 import { MESHES } from './lowPolyMeshes';
 import { expDecay, stepSpringSubstepped } from './kinetic';
+import { BAKED_CLIPS, type AnimationClip } from './bakedClips';
 import { liquidVolumeL, type VesselState } from '../../engine/chemistry';
 import type { KettleDriveState } from '../SoapKettleMiniGame';
 
@@ -34,6 +35,56 @@ export interface Bench3DOptions {
 const BOILOVER_C = 105;
 /** uTime value whose cosine is 0 → pose factor 0.5 (reduced-motion midpoint freeze). */
 const FROZEN_TIME = Math.PI / 2;
+
+/**
+ * AnimationPlayer — samples baked per-vertex Float32Array frames from BAKED_CLIPS.
+ * Runs on dt in seconds; freezes at FROZEN_TIME under prefers-reduced-motion.
+ */
+class AnimationPlayer {
+  private clip: AnimationClip | null = null;
+  private timeSec = 0;
+  private frame = 0;
+  private reduced = false;
+
+  constructor(reducedMotion: boolean) {
+    this.reduced = reducedMotion;
+  }
+
+  setClip(name: string): void {
+    this.clip = BAKED_CLIPS[name] ?? null;
+    this.timeSec = 0;
+    this.frame = 0;
+  }
+
+  setReducedMotion(reduced: boolean): void {
+    this.reduced = reduced;
+  }
+
+  /** Advance by dt seconds; returns current frame's Float32Array or null. */
+  advance(dt: number): Float32Array | null {
+    if (!this.clip) return null;
+    if (this.reduced) {
+      this.timeSec = FROZEN_TIME;
+    } else {
+      this.timeSec += dt;
+    }
+    const frameFloat = this.timeSec * this.clip.fps;
+    const frameCount = this.clip.frames.length;
+    this.frame = this.clip.loop
+      ? Math.floor(frameFloat) % frameCount
+      : Math.min(Math.floor(frameFloat), frameCount - 1);
+    return this.clip.frames[this.frame];
+  }
+
+  getCurrentFrame(): Float32Array | null {
+    if (!this.clip) return null;
+    return this.clip.frames[this.frame];
+  }
+
+  get fps(): number {
+    return this.clip?.fps ?? 0;
+  }
+}
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
@@ -64,6 +115,7 @@ export class LabBench3DCanvas {
   private canvas: HTMLCanvasElement;
   private buffers: Map<string, GlMeshBuffers> = new Map();
   private feedback: FeedbackBuffers | null = null;
+  private animationPlayers: Map<string, AnimationPlayer> = new Map();
 
   private lastVessels: VesselState[] = [];
   private lastSelectedId = -1;
@@ -114,6 +166,7 @@ export class LabBench3DCanvas {
     this.miniGl = new MiniGl(this.canvas);
     this.initMeshes();
     this.initFeedbackBuffers();
+    this.initAnimationPlayers();
 
     // Reduced-motion freeze (matchMedia precedent from app/splash.ts).
     if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
@@ -138,6 +191,22 @@ export class LabBench3DCanvas {
 
   private onReducedMotionChange(): void {
     this.reducedMotion = this.mediaQuery?.matches ?? false;
+    // Propagate to animation players
+    for (const player of this.animationPlayers.values()) {
+      player.setReducedMotion(this.reducedMotion);
+    }
+  }
+
+  private initAnimationPlayers(): void {
+    this.animationPlayers = new Map<string, AnimationPlayer>([
+      ['hearth_flame', new AnimationPlayer(this.reducedMotion)],
+      ['bellows_pump', new AnimationPlayer(this.reducedMotion)],
+      ['boil_shake', new AnimationPlayer(this.reducedMotion)],
+      ['stir_vortex', new AnimationPlayer(this.reducedMotion)],
+      ['pour_stream', new AnimationPlayer(this.reducedMotion)],
+      ['liquid_fill', new AnimationPlayer(this.reducedMotion)],
+      ['crystal_shimmer', new AnimationPlayer(this.reducedMotion)],
+    ]);
   }
 
   private initMeshes(): void {
@@ -237,6 +306,11 @@ export class LabBench3DCanvas {
     }
     const timeSec = this.animTimeSec;
 
+    // Advance all animation players
+    for (const player of this.animationPlayers.values()) {
+      player.advance(dt);
+    }
+
     const gl = this.miniGl.gl;
     const u = this.miniGl.uniforms;
 
@@ -277,16 +351,27 @@ export class LabBench3DCanvas {
       glowById.set(vessel.id, next);
     }
 
-    // Draw hearth / brazier under active vessels — amber envelope, not a bare sin.
+    // Hearth flame animation (baked clip: hearth_flame) — drives brazier squash/glow
+    const flamePlayer = this.animationPlayers.get('hearth_flame');
+    const flameFrame = flamePlayer?.getCurrentFrame();
+    let flameSquash = 1.0;
+    let flameIntensity = 1.0;
+    if (flameFrame && flameFrame.length >= 3) {
+      // Frame data: per-vertex offsets; use first vertex Y for squash, Z for intensity
+      flameSquash = 1.0 + flameFrame[1] * 0.3; // Y offset → vertical squash
+      flameIntensity = 1.0 + Math.abs(flameFrame[2]) * 0.5; // Z offset → emission
+    }
+
+    // Draw hearth / brazier under active vessels — amber envelope with baked flame animation.
     const brazierBuf = this.buffers.get('HEARTH_BRAZIER');
     if (brazierBuf) {
       gl.bindVertexArray(brazierBuf.vao);
-      const mHearth = mat4Model(0, -0.6, 0, 2.8, 0.5, 1.2);
+      const mHearth = mat4Model(0, -0.6, 0, 2.8, 0.5 * flameSquash, 1.2);
       gl.uniformMatrix4fv(u.uModel, false, mHearth);
       let glow = 0;
       for (const v of vessels) glow = Math.max(glow, glowById.get(v.id) ?? 0);
       // Flicker rides on the decayed envelope (frozen automatically via timeSec).
-      const flicker = 0.85 + 0.15 * Math.sin(timeSec * 4.5);
+      const flicker = 0.85 + 0.15 * Math.sin(timeSec * 4.5) * flameIntensity;
       gl.uniform1f(u.uPoseWeight, 0);
       gl.uniform4f(
         u.uColor,
@@ -298,9 +383,29 @@ export class LabBench3DCanvas {
       gl.drawElements(gl.TRIANGLES, brazierBuf.indexCount, gl.UNSIGNED_SHORT, 0);
     }
 
+    // Bellows pump animation (baked clip: bellows_pump) — could attach to a UI element
+    // For now, we just advance the player; visual hook would be a bellows mesh near hearth.
+    this.animationPlayers.get('bellows_pump')?.advance(dt);
+
     // Render each vessel on the bench
     const bucketBuf = this.buffers.get('WOOD_BUCKET');
     const crucibleBuf = this.buffers.get('CERAMIC_CRUCIBLE');
+
+    // Liquid fill animation (baked clip: liquid_fill) — 90 frames at 30fps = 3s fill cycle
+    const fillPlayer = this.animationPlayers.get('liquid_fill');
+
+    // Stir vortex animation (baked clip: stir_vortex)
+    const stirPlayer = this.animationPlayers.get('stir_vortex');
+
+    // Boil shake animation (baked clip: boil_shake)
+    const boilPlayer = this.animationPlayers.get('boil_shake');
+
+    // Pour stream animation (baked clip: pour_stream) — includes UV flow in blender_only_channels
+    const pourPlayer = this.animationPlayers.get('pour_stream');
+
+    // Crystal shimmer animation (baked clip: crystal_shimmer) — emission pulse
+    // Just advance the player; no current vessel type uses it
+    this.animationPlayers.get('crystal_shimmer')?.advance(dt);
 
     vessels.forEach((vessel, idx) => {
       const buf = vessel.material === 'WOOD' ? bucketBuf : crucibleBuf;
@@ -311,8 +416,7 @@ export class LabBench3DCanvas {
       const isSelected = vessel.id === selectedId;
       const k = kettleFor();
 
-      // Liquid-fill morph: moles → litres via liquidVolumeL; the kettle pour
-      // total is the fill signal when a KettleState is attached (M1 Task 9).
+      // Liquid-fill morph: combine expDecay-smoothed fill with baked liquid_fill clip
       const liquidL = liquidVolumeL(vessel);
       let fillTarget = vessel.capacityL > 0 ? clamp(liquidL / vessel.capacityL, 0, 1) : 0;
       if (k !== null) {
@@ -323,6 +427,13 @@ export class LabBench3DCanvas {
       const fill = expDecay(prevFill, fillTarget, 5, dt);
       this.smoothedFill.set(vessel.id, fill);
 
+      // Sample baked liquid_fill clip for additional vertex morph detail
+      const fillFrame = fillPlayer?.getCurrentFrame();
+      let fillMorph = 1.0;
+      if (fillFrame && fillFrame.length >= 3) {
+        fillMorph = 1.0 + fillFrame[1] * 0.15; // Y offset as subtle fill ripple
+      }
+
       // Stir vortex weight = tracePct/100 while STIRRING, else 0.
       const vortexTarget = k !== null && k.phase === 'STIRRING'
         ? clamp(k.tracePct / 100, 0, 1)
@@ -330,6 +441,13 @@ export class LabBench3DCanvas {
       const prevVortex = this.smoothedVortex.get(vessel.id) ?? 0;
       const vortex = expDecay(prevVortex, vortexTarget, 4, dt);
       this.smoothedVortex.set(vessel.id, vortex);
+
+      // Sample baked stir_vortex clip for spoon rotation / vortex scale
+      const stirFrame = stirPlayer?.getCurrentFrame();
+      let stirScale = 1.0;
+      if (stirFrame && stirFrame.length >= 3) {
+        stirScale = 1.0 + stirFrame[0] * 0.1; // X as scale modulation
+      }
 
       // Boilover shake envelope: spring toward (T-105°C)/25 above 105°C.
       const temperatureC = k !== null ? k.temperatureC : vessel.temperatureK - 273.15;
@@ -344,9 +462,17 @@ export class LabBench3DCanvas {
         ? 0
         : stepped.pos * Math.sin(timeSec * 40) * 0.06;
 
+      // Sample baked boil_shake clip for additional boil motion
+      const boilFrame = boilPlayer?.getCurrentFrame();
+      let boilJitterX = 0, boilJitterY = 0;
+      if (boilFrame && boilFrame.length >= 6) {
+        boilJitterX = boilFrame[0] * 0.02;
+        boilJitterY = boilFrame[1] * 0.03;
+      }
+
       const yaw = this.reducedMotion ? vortex * (Math.PI / 4) : vortex * timeSec * 1.5;
-      const scaleY = 0.8 + 0.25 * fill;
-      const m = mat4ModelRotY(xPos + jitter, 0, 0, 1.0, scaleY, 1.0, yaw);
+      const scaleY = (0.8 + 0.25 * fill) * fillMorph * stirScale;
+      const m = mat4ModelRotY(xPos + jitter + boilJitterX, boilJitterY, 0, 1.0, scaleY, 1.0, yaw);
       gl.uniformMatrix4fv(u.uModel, false, m);
       gl.uniform1f(u.uPoseWeight, vortex);
 
@@ -373,22 +499,37 @@ export class LabBench3DCanvas {
       gl.uniform4f(u.uColor, r, g, b, 1.0);
       gl.drawElements(gl.TRIANGLES, buf.indexCount, gl.UNSIGNED_SHORT, 0);
 
+      // Crystal shimmer for biome crystals (if any vessel is a crystal)
+      // VesselMaterialKey doesn't include CRYSTAL; this is a placeholder for future biome crystal vessels
+      // For now, we just advance the crystal animation player
+      this.animationPlayers.get('crystal_shimmer')?.advance(dt);
+
       // Procedural feedback quads (sprite-free).
       if (this.feedback) {
         const { pourStream, boilBubble } = this.feedback;
 
         // Pour stream: visible while POURING, length from lye+fat fill.
+        // Enhance with baked pour_stream clip (UV flow from blender_only_channels)
         const pourTarget = k !== null && k.phase === 'POURING'
           ? clamp((k.lyeVolume + k.fatVolume) / 200, 0, 1)
           : 0;
         const prevPour = this.smoothedPour.get(vessel.id) ?? 0;
         const pour = expDecay(prevPour, pourTarget, 6, dt);
         this.smoothedPour.set(vessel.id, pour);
+
+        const pourFrame = pourPlayer?.getCurrentFrame();
+        let pourUVOffset = 0;
+        if (pourFrame && pourFrame.length >= 3) {
+          // blender_only_channels: curve.data.offset (UV ribbon flow) sampled at frames 1, 15, 30
+          // Value goes 0.0 → 0.55 → 0.0 over 30 frames
+          pourUVOffset = pourFrame[2] * 0.5; // Z as UV scroll proxy
+        }
+
         if (pour > 0.02) {
           gl.bindVertexArray(pourStream.vao);
-          const mPour = mat4Model(xPos + jitter, 1.05, 0, 1.0, 0.4 + pour * 0.6, 1.0);
+          const mPour = mat4Model(xPos + jitter + boilJitterX, 1.05, 0, 1.0, 0.4 + pour * 0.6, 1.0);
           gl.uniformMatrix4fv(u.uModel, false, mPour);
-          gl.uniform1f(u.uPoseWeight, 0);
+          gl.uniform1f(u.uPoseWeight, pourUVOffset); // Reuse uPoseWeight for UV flow
           // Lye-blue when lye is flowing, fat-amber when fat is flowing.
           const flowingLye = k !== null && k.lyeVolume >= k.fatVolume;
           gl.uniform4f(
@@ -405,7 +546,7 @@ export class LabBench3DCanvas {
         if (isBoiling && stepped.pos > 0.02) {
           const bounce = this.reducedMotion ? 0 : Math.sin(timeSec * 12) * 0.05;
           gl.bindVertexArray(boilBubble.vao);
-          const mBubble = mat4Model(xPos + jitter, 1.35 + bounce, 0, 1.0 + stepped.pos, 1.0, 1.0);
+          const mBubble = mat4Model(xPos + jitter + boilJitterX, 1.35 + bounce + boilJitterY, 0, 1.0 + stepped.pos, 1.0, 1.0);
           gl.uniformMatrix4fv(u.uModel, false, mBubble);
           gl.uniform1f(u.uPoseWeight, 0);
           gl.uniform4f(u.uColor, 1.0, 0.95, 0.85, 0.9);

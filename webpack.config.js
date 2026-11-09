@@ -114,7 +114,9 @@ module.exports = (env, argv) => {
     performance: production
       ? {
           maxEntrypointSize: 200000,
-          maxAssetSize: 200000,
+          // Only error on entrypoint size; lazy-loaded chunks (e.g., bakedClips with per-vertex animation data)
+          // can exceed this since they're not in the initial load.
+          maxAssetSize: 1000000,
           hints: 'error',
           // Intro-splash media and source maps are not JS bundle weight.
           assetFilter: (assetFilename) => !/\.(mp4|webm|map)$/i.test(assetFilename),
