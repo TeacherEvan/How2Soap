@@ -11,6 +11,26 @@ import {
   hasFabricated,
 } from '../fabricationModel';
 import type { WindowSpec } from '../WindowManager';
+import { itemIcon, ICONS } from '../icons';
+import { ITEM_BY_ID } from '../../data/items';
+
+const TOOL_SLOT_ICONS: Record<string, string> = {
+  CUTTING_SKINNING: 'blade',
+  CHOPPING_CARVING: 'adze',
+  PERCUSSION_MINING: 'hammerstone',
+  THERMAL_HANDLING: 'tuyere',
+  STITCHING_MEDICAL: 'awl',
+  EATING_UTENSIL: 'fork',
+};
+
+const TOOL_SLOT_LABELS: Record<string, string> = {
+  CUTTING_SKINNING: 'Cutting / Skinning',
+  CHOPPING_CARVING: 'Chopping / Carving',
+  PERCUSSION_MINING: 'Percussion Mining',
+  THERMAL_HANDLING: 'Thermal Handling',
+  STITCHING_MEDICAL: 'Stitching / Awl',
+  EATING_UTENSIL: 'Eating Utensil',
+};
 
 export const spec: WindowSpec = {
   id: 'fabrication',
@@ -56,10 +76,15 @@ export const spec: WindowSpec = {
       } else {
         const rendered: string[] = [];
         counts.forEach((qty, itemId) => {
+          const itemDef = ITEM_BY_ID[itemId];
+          const iconKey = itemDef?.icon && ICONS[itemDef.icon] ? itemDef.icon : (ICONS[itemId.toLowerCase()] ? itemId.toLowerCase() : 'unknown');
+          const categoryClass = itemDef?.category ? `category-${itemDef.category}` : 'category-misc';
+          const iconHtml = itemIcon(iconKey, 16);
           rendered.push(`
-            <span style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; padding: 2px 6px; font-size: 0.78rem; display: inline-flex; align-items: center; gap: 4px;">
-              <span>${itemId}</span>
-              <strong style="color: #5aa5ff;">×${qty}</strong>
+            <span class="pack-item-chip ${categoryClass}" title="${itemDef?.name ?? itemId}: ${itemDef?.desc ?? ''}">
+              <span class="prop-thumb" aria-hidden="true">${iconHtml}</span>
+              <span class="item-name">${itemId}</span>
+              <strong class="item-qty">×${qty}</strong>
             </span>
           `);
         });
@@ -108,11 +133,23 @@ export const spec: WindowSpec = {
           const a = assess(recipe.id);
           const dot = a.feasible ? 'ok' : a.missing.length ? 'miss' : 'warn';
           const fabricated = hasFabricated(recipe.id, state.progression.fabricatedRecipes ?? []);
+          const toolSlotKey = recipe.requiredToolSlot;
+          const toolIconKey = toolSlotKey ? TOOL_SLOT_ICONS[toolSlotKey] ?? 'unknown' : null;
+          const toolBadgeHtml = toolIconKey
+            ? `<span class="recipe-tool-badge" title="Requires ${TOOL_SLOT_LABELS[toolSlotKey!] ?? toolSlotKey}" aria-hidden="true">${itemIcon(toolIconKey, 14)}</span>`
+            : '';
+          const benchBadgeHtml = recipe.inputs.some((i) => i.itemId === 'WOODEN_BUCKET' || i.itemId === 'WOODEN_TROUGH' || i.itemId === 'FIRED_CERAMIC_VESSEL')
+            ? `<span class="recipe-station-badge" title="Station Apparatus Required" aria-hidden="true">${itemIcon('pot', 14)}</span>`
+            : '';
+
           return `
             <button class="fab-item${recipe.id === selectedId ? ' selected' : ''}" role="option"
               aria-selected="${recipe.id === selectedId}"
               data-recipe="${recipe.id}" title="${recipe.description}">
-              <span class="fab-item-name"><span class="fab-dot ${dot}" aria-hidden="true"></span>${fabricated ? '✓ ' : ''}${recipe.name}</span>
+              <div class="fab-item-header">
+                <span class="fab-item-name"><span class="fab-dot ${dot}" aria-hidden="true"></span>${fabricated ? '✓ ' : ''}${recipe.name}</span>
+                <span class="fab-item-badges">${toolBadgeHtml}${benchBadgeHtml}</span>
+              </div>
               <span class="fab-item-cost">${recipe.energyCostKcal} kcal · ${recipe.workTicks} h · ${recipe.outputs.map((o) => o.label).join(', ')}</span>
             </button>`;
         })
@@ -151,7 +188,35 @@ export const spec: WindowSpec = {
       const reasonsBlock = a.reasons.filter((r) => !r.startsWith('Missing:')).map((r) => `<p class="fab-missing">⚠ ${r}</p>`).join('');
       const statusBlock = a.feasible ? `<p class="fab-ok">✓ Ready to fabricate${fabricated ? ' (already fabricated before)' : ''}.</p>` : '';
 
+      const primaryOutput = recipe.outputs[0]?.itemId;
+      const primaryItemDef = primaryOutput ? ITEM_BY_ID[primaryOutput] : undefined;
+      const primaryIconKey = primaryItemDef?.icon && ICONS[primaryItemDef.icon]
+        ? primaryItemDef.icon
+        : (primaryOutput && ICONS[primaryOutput.toLowerCase()] ? primaryOutput.toLowerCase() : 'unknown');
+
+      const toolSlot = recipe.requiredToolSlot;
+      const toolReqText = toolSlot ? `Requires: ${TOOL_SLOT_LABELS[toolSlot] ?? toolSlot}` : 'Hand work (no dedicated tool slot)';
+      const benchReqText = a.vesselInputsNeeded.length ? `Bench vessel: ${a.vesselInputsNeeded.join(', ')}` : 'Camp workbench surface';
+
+      const previewDressing = `
+        <div class="fab-detail-preview-card" aria-hidden="true">
+          <div class="preview-hero-stage">
+            <div class="preview-vessel-halo"></div>
+            <div class="preview-hero-icon">${itemIcon(primaryIconKey, 48)}</div>
+          </div>
+          <div class="preview-hero-info">
+            <span class="preview-hero-title">${primaryItemDef?.name ?? recipe.outputs[0]?.label ?? recipe.name}</span>
+            <div class="preview-hero-badges">
+              <span class="preview-badge ${a.feasible ? 'ready' : 'blocked'}">${a.feasible ? '⚡ Ready' : '⏳ Constrained'}</span>
+              <span class="preview-badge slot-badge">${toolReqText}</span>
+              <span class="preview-badge bench-badge">${benchReqText}</span>
+            </div>
+          </div>
+        </div>
+      `;
+
       detail.innerHTML = `
+        ${previewDressing}
         <h3>${recipe.name} ${fabricated ? '<span class="fab-ok">✓</span>' : ''}</h3>
         <p class="sub">${recipe.description}</p>
         <h4>Requires</h4>
@@ -161,7 +226,7 @@ export const spec: WindowSpec = {
         <dl class="dossier-kv">
           <dt>Energy</dt><dd>≈ ${a.energyCostKcal.toFixed(0)} kcal${apprenticeMult > 1 ? ` (apprentice ×${apprenticeMult.toFixed(2)})` : ''}</dd>
           <dt>Time</dt><dd>≈ ${recipe.workTicks} h of work</dd>
-          ${recipe.requiredToolSlot ? `<dt>Tool</dt><dd>Slot ${recipe.requiredToolSlot}</dd>` : ''}
+          ${recipe.requiredToolSlot ? `<dt>Tool</dt><dd>Slot ${recipe.requiredToolSlot} (${TOOL_SLOT_LABELS[recipe.requiredToolSlot] ?? recipe.requiredToolSlot})</dd>` : ''}
           ${a.vesselInputsNeeded.length ? `<dt>Bench</dt><dd>${a.vesselInputsNeeded.join(', ')} (worker-validated)</dd>` : ''}
         </dl>
         ${reasonsBlock}

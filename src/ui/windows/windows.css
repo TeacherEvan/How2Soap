@@ -136,9 +136,14 @@
 .fab-tier-chip.active { border-color: #d4a020; color: #ecdfc8; background: rgba(212,160,32,0.12); }
 .fab-item { border: 1px solid #22303a; border-left: 3px solid #d4a02055; background: #141b22; border-radius: 8px; padding: 0.4rem 0.55rem; cursor: pointer; text-align: left; }
 .fab-item.selected { border-left-color: #f5b042; background: #1a2430; }
-.fab-item .fab-item-name { display: block; font-size: 0.8rem; color: #ecdfc8; }
-.fab-item .fab-item-cost { display: block; font-size: 0.68rem; color: var(--muted); }
-.fab-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 0.35rem; }
+.fab-item:focus-visible { outline: 2px solid #5aa5ff; outline-offset: 2px; }
+.fab-item-header { display: flex; justify-content: space-between; align-items: center; gap: 0.4rem; }
+.fab-item .fab-item-name { display: flex; align-items: center; font-size: 0.8rem; color: #ecdfc8; flex: 1; min-width: 0; }
+.fab-item .fab-item-cost { display: block; font-size: 0.68rem; color: var(--muted); margin-top: 0.2rem; }
+.fab-item-badges { display: inline-flex; align-items: center; gap: 0.25rem; flex-shrink: 0; }
+.recipe-tool-badge, .recipe-station-badge { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 4px; background: rgba(0, 0, 0, 0.4); border: 1px solid rgba(223, 168, 59, 0.25); color: #f0e6d2; }
+.recipe-tool-badge svg, .recipe-station-badge svg { display: block; }
+.fab-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 0.35rem; flex-shrink: 0; }
 .fab-dot.ok { background: #7fc98b; }
 .fab-dot.warn { background: #e0a458; }
 .fab-dot.miss { background: #d96c6c; }
@@ -150,6 +155,139 @@
 .fab-mat .lack { color: #e08787; }
 .fab-execute { min-height: 40px; width: 100%; margin-top: 0.75rem; background: linear-gradient(180deg, #d4a020, #b07e14); border: none; color: #201505; font-weight: 700; border-radius: 8px; font-size: 0.9rem; cursor: pointer; }
 .fab-execute:disabled { opacity: 0.35; cursor: not-allowed; }
+.fab-execute:focus-visible { outline: 2px solid #5aa5ff; outline-offset: 2px; }
+
+/* Pack item chips & prop thumbnails */
+.pack-item-chip {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  padding: 3px 7px;
+  font-size: 0.78rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  user-select: none;
+  transition: background 120ms ease, border-color 120ms ease, transform 120ms ease;
+}
+.pack-item-chip:hover {
+  background: rgba(255, 255, 255, 0.09);
+  border-color: rgba(223, 168, 59, 0.35);
+  transform: translateY(-1px);
+}
+.pack-item-chip .prop-thumb {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  flex-shrink: 0;
+  color: #d8c29d;
+}
+.pack-item-chip .item-name {
+  color: #ecdfc8;
+  font-weight: 500;
+}
+.pack-item-chip .item-qty {
+  color: #5aa5ff;
+}
+
+/* Category-colored borders / glow accents */
+.pack-item-chip.category-tool .prop-thumb { border-color: rgba(223, 168, 59, 0.4); color: #f5b042; }
+.pack-item-chip.category-container .prop-thumb { border-color: rgba(90, 165, 255, 0.4); color: #5aa5ff; }
+.pack-item-chip.category-food .prop-thumb { border-color: rgba(127, 201, 139, 0.4); color: #7fc98b; }
+.pack-item-chip.category-medicine .prop-thumb { border-color: rgba(217, 108, 108, 0.4); color: #d96c6c; }
+.pack-item-chip.category-material .prop-thumb { border-color: rgba(180, 150, 120, 0.4); color: #c4b5a0; }
+
+/* Fabrication Detail Preview Card */
+.fab-detail-preview-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  background: radial-gradient(circle at 20% 50%, rgba(223, 168, 59, 0.12) 0%, rgba(16, 21, 27, 0.6) 100%);
+  border: 1px solid rgba(223, 168, 59, 0.28);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 0.85rem;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 4px 12px rgba(0, 0, 0, 0.35);
+}
+.preview-hero-stage {
+  position: relative;
+  width: 56px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(10, 14, 19, 0.7);
+  border: 1px solid rgba(223, 168, 59, 0.3);
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+.preview-vessel-halo {
+  position: absolute;
+  inset: 2px;
+  border-radius: 6px;
+  background: radial-gradient(circle, rgba(223, 168, 59, 0.2) 0%, transparent 70%);
+  pointer-events: none;
+}
+.preview-hero-icon {
+  position: relative;
+  z-index: 1;
+  color: #f1dbb1;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.6));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.preview-hero-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  flex: 1;
+  min-width: 0;
+}
+.preview-hero-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #f5eedc;
+  letter-spacing: 0.02em;
+}
+.preview-hero-badges {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+.preview-badge {
+  font-size: 0.7rem;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #c9d4dc;
+}
+.preview-badge.ready {
+  background: rgba(127, 201, 139, 0.15);
+  border-color: rgba(127, 201, 139, 0.4);
+  color: #7fc98b;
+  font-weight: 600;
+}
+.preview-badge.blocked {
+  background: rgba(224, 135, 135, 0.15);
+  border-color: rgba(224, 135, 135, 0.4);
+  color: #e08787;
+  font-weight: 600;
+}
+.preview-badge.slot-badge {
+  border-color: rgba(223, 168, 59, 0.3);
+  color: #e5c386;
+}
+.preview-badge.bench-badge {
+  border-color: rgba(90, 165, 255, 0.3);
+  color: #8bbfff;
+}
 
 /* Biome window — search + chips + dossier */
 .biome-win-layout { display: grid; grid-template-columns: 320px 1fr; gap: 0.75rem; }
@@ -194,6 +332,21 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .window, .window-backdrop { animation: none; }
+  .pack-item-chip, .tab-hero-badge { transition: none; transform: none !important; }
+}
+
+@media (forced-colors: active) {
+  .pack-item-chip, .recipe-tool-badge, .recipe-station-badge, .preview-hero-stage, .tab-hero-badge {
+    forced-color-adjust: none;
+    border: 1px solid ButtonText !important;
+  }
+  .pack-item-chip .prop-thumb, .recipe-tool-badge, .recipe-station-badge, .tab-hero-badge {
+    background: ButtonFace !important;
+    color: ButtonText !important;
+  }
+  .pack-item-chip:focus-visible, .fab-item:focus-visible, .fab-execute:focus-visible {
+    outline: 2px solid Highlight !important;
+  }
 }
 
 

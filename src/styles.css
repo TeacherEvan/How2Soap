@@ -790,6 +790,36 @@ td {
   padding: 0.4rem 0.8rem;
   border-radius: 4px;
   cursor: pointer;
+  min-height: 28px;
+  min-width: 24px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.tab-hero-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(223, 168, 59, 0.25);
+  color: #f5b042;
+  flex-shrink: 0;
+  transition: transform 120ms ease, border-color 120ms ease;
+}
+
+.tab-btn:hover .tab-hero-badge {
+  border-color: rgba(223, 168, 59, 0.6);
+  transform: translateY(-1px);
+}
+
+.tab-btn.active .tab-hero-badge {
+  background: rgba(223, 168, 59, 0.2);
+  border-color: #f5b042;
+  color: #fff;
 }
 
 .tab-btn.active {

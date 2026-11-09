@@ -9,6 +9,7 @@
  */
 
 import { FABRICATION_RECIPES } from '../engine/fabrication';
+import { itemIcon } from './icons';
 
 export type WorkbenchTab = 'REACTIONS' | 'FABRICATION' | 'PADDOCKS' | 'JOURNAL' | 'STRATEGY';
 
@@ -25,18 +26,19 @@ export function renderWorkbenchTabs(
   props: WorkbenchProps,
 ): void {
   const tabs = [
-    { key: 'REACTIONS' as WorkbenchTab, label: '🔬 Chemical Workbench' },
-    { key: 'FABRICATION' as WorkbenchTab, label: '🔨 Fabrication Bench' },
-    { key: 'PADDOCKS' as WorkbenchTab, label: '🌾 Animal Paddocks' },
-    { key: 'STRATEGY' as WorkbenchTab, label: '🗺️ Strategy & Labor' },
-    { key: 'JOURNAL' as WorkbenchTab, label: '📖 Journal & Missions' },
+    { key: 'REACTIONS' as WorkbenchTab, label: '🔬 Chemical Workbench', heroIcon: 'flask' },
+    { key: 'FABRICATION' as WorkbenchTab, label: '🔨 Fabrication Bench', heroIcon: 'adze' },
+    { key: 'PADDOCKS' as WorkbenchTab, label: '🌾 Animal Paddocks', heroIcon: 'trough' },
+    { key: 'STRATEGY' as WorkbenchTab, label: '🗺️ Strategy & Labor', heroIcon: 'backpack' },
+    { key: 'JOURNAL' as WorkbenchTab, label: '📖 Journal & Missions', heroIcon: 'willow' },
   ];
 
   container.innerHTML = `
     <div class="workbench-tabs-nav">
       ${tabs.map((tab) => `
         <button class="tab-btn ${props.currentTab === tab.key ? 'active' : ''}" data-tab="${tab.key}">
-          ${tab.label}
+          <span class="tab-hero-badge" aria-hidden="true">${itemIcon(tab.heroIcon, 16)}</span>
+          <span class="tab-text">${tab.label}</span>
         </button>
       `).join('')}
     </div>

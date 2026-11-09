@@ -40,4 +40,36 @@ describe('glTF asset manifest (Blender → web)', () => {
       }
     }
   });
+
+  it('workbench actions manifest exists and defines required Blender-only channels', () => {
+    const manifestPath = join(process.cwd(), 'blender', 'templates', 'workbench_actions.json');
+    expect(existsSync(manifestPath), 'workbench_actions.json missing').toBe(true);
+    const manifest = JSON.parse(readFileSync(manifestPath, 'utf-8'));
+    expect(manifest.format).toBe('workbench_actions/1');
+
+    const actions = manifest.actions;
+    expect(actions).toBeDefined();
+
+    // Verify critical workbench actions are declared
+    const expectedActions = [
+      'hearth_flame',
+      'bellows_pump',
+      'pour_stream',
+      'stir_vortex',
+      'boil_shake',
+      'liquid_fill',
+      'crystal_shimmer',
+      'colonist_walk_idle',
+    ];
+    for (const actionName of expectedActions) {
+      expect(actions[actionName], `Missing action ${actionName}`).toBeDefined();
+      expect(actions[actionName].glb).toBeDefined();
+      expect(actions[actionName].frames).toBeGreaterThan(0);
+      expect(actions[actionName].fps).toBeGreaterThan(0);
+    }
+
+    // Verify non-empty blender_only_channels for pour_stream and crystal_shimmer
+    expect(actions.pour_stream.blender_only_channels.length).toBeGreaterThan(0);
+    expect(actions.crystal_shimmer.blender_only_channels.length).toBeGreaterThan(0);
+  });
 });
