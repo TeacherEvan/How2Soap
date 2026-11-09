@@ -43,3 +43,63 @@ export const MESHES: Record<string, MeshGeometry> = {
     indices: new Uint16Array([0, 6, 1, 1, 6, 2, 2, 6, 3, 3, 6, 4, 1, 3, 5, 4, 6, 5, 5, 6, 0, 5, 0, 1, 1, 2, 3, 3, 4, 5]),
   },
 };
+
+/**
+ * M1 Task 10 — procedural loop references for map feedback (Canvas2D side).
+ * StrategyMapCanvas is Canvas2D, not WebGL: miniGl has no sampler, so these
+ * clips are sampled via mapMath pose helpers for timing metadata (fps/loop)
+ * while strokes stay procedural. Frames are tiny pose-weight tracks
+ * (bob, lean, sway, glow) — same AnimationClip shape as the GL path.
+ */
+export const CLIPS: Record<string, AnimationClip> = {
+  COLONIST_IDLE: {
+    fps: 6,
+    loop: true,
+    frames: [
+      new Float32Array([0, 0, 0.5]),
+      new Float32Array([0.5, 0, 0.5]),
+      new Float32Array([0, 0, 0.5]),
+      new Float32Array([-0.5, 0, 0.5]),
+    ],
+  },
+  COLONIST_WALK: {
+    fps: 8,
+    loop: true,
+    frames: [
+      new Float32Array([1, 0.4, 1]),
+      new Float32Array([0, 0.8, 1]),
+      new Float32Array([-1, 0.4, 1]),
+      new Float32Array([0, 0.8, 1]),
+    ],
+  },
+  COLONIST_HARVEST: {
+    fps: 6,
+    loop: true,
+    frames: [
+      new Float32Array([0, 0, 1]),
+      new Float32Array([0.3, 1, 0.8]),
+      new Float32Array([0, 0, 1]),
+      new Float32Array([-0.3, -0.4, 0.8]),
+    ],
+  },
+  BIOME_SWAY: {
+    fps: 4,
+    loop: true,
+    frames: [
+      new Float32Array([0, 0]),
+      new Float32Array([1, 0.5]),
+      new Float32Array([0, 0]),
+      new Float32Array([-1, 0.5]),
+    ],
+  },
+  HEARTH_GLOW: {
+    fps: 6,
+    loop: true,
+    frames: [
+      new Float32Array([0.85]),
+      new Float32Array([1]),
+      new Float32Array([0.9]),
+      new Float32Array([0.95]),
+    ],
+  },
+};

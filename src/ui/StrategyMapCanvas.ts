@@ -9,6 +9,26 @@
  * - Desire path wear rendered as roads for wear > 96.
  * - Fog of War rendering (unrevealed hexes dimmed/hidden).
  * - Command Dock UI: Roster List, Recruitment Drawer, Job & Wage selectors, Stimulant bar.
+ *
+ * M1 Task 10 — map feedback drive (ColonyState + minuteOfDay driven loops):
+ * - Colonist walk/idle/harvest per archetype tint (getArchetypeColor) with
+ *   stimulant surge gait (+20-55%) / crash slump (-5-25%) via expDecay pose blend.
+ * - Biome sway 2-4px (tree/bush/water/crystal) vertex-offset loops.
+ * - Hearth smoke/glow scaled by computeDiurnalLighting.hearthRadiusPx.
+ * - Desire-path fade by wear (alpha from computeDesirePathAlpha) + road >96.
+ * - Hotspot TimingRingStrike shrink + fog sweep as pooled sprites.
+ * Pooled sprite draws are capped at MAX_SPRITE_DRAWS (200); reduced-motion
+ * freezes loops at FROZEN_TIME; DPR is clamped to [1, 2].
+ *
+ * Sprite atlas choice (bundle-safe, measured): src/assets/sprites/*.png
+ * (flame 160KB, fume 127KB, bubbles 83KB, ember 73KB) are NOT imported here.
+ * StrategyMap is Canvas2D on a lazy chunk; main entrypoint is ~45KB (200KB
+ * budget has headroom), so asset/resource imports would not bloat JS — but
+ * four extra media files plus a Canvas2D sheet-crop path cost far more than
+ * they return for top-down tokens/glow. Mirroring LabBench3DCanvas Task 9's
+ * sprite-free precedent, hearth smoke, fog wisps, and ring pulses are
+ * procedural pooled arcs shaded with fillStyles (zero asset fetches, O(1)
+ * per sprite). Revisit only if node-measured pixels beat procedural cost.
  */
 
 import {
@@ -36,9 +56,19 @@ import {
   getBiomeColor,
   getRoadWearColor,
   getUnrevealedColor,
+  MAX_SPRITE_DRAWS,
+  FROZEN_TIME,
+  clampDpr,
+  blendPose,
+  getBiomeSwayOffset,
+  getColonistPose,
+  getHearthPulse,
+  getFogSweep,
+  getTimingRingRadius,
   type ViewportState,
   type DiurnalLighting,
 } from './mapMath';
+import { CLIPS } from './gl/lowPolyMeshes';
 
 export {
   worldToScreen,
@@ -49,6 +79,15 @@ export {
   getBiomeColor,
   getRoadWearColor,
   getUnrevealedColor,
+  MAX_SPRITE_DRAWS,
+  FROZEN_TIME,
+  clampDpr,
+  blendPose,
+  getBiomeSwayOffset,
+  getColonistPose,
+  getHearthPulse,
+  getFogSweep,
+  getTimingRingRadius,
 };
 export type { ViewportState, DiurnalLighting };
 
@@ -114,6 +153,20 @@ export class StrategyMapCanvas {
   public activeTimingRing: TimingRingStrike | null = null;
   private lastHotspotSpawnMs = 0;
 
+  /** M1 Task 10 — feedback drive timing (seconds, frame-rate independent). */
+  private animTimeSec = 0;
+  private lastRenderMs: number | null = null;
+  private reducedMotion = false;
+  private mediaQuery: MediaQueryList | null = null;
+  private readonly onMediaChange = (): void => {
+    this.onReducedMotionChange();
+  };
+  /** expDecay-smoothed pose channels keyed by colonist id (bob, lean, scale). */
+  private smoothedPose = new Map<string, { bob: number; lean: number; scale: number }>();
+  /** Pooled sprite budget (smoke, fog, ring, gait accents) — capped at 200. */
+  private drawCount = 0;
+  public lastSpriteDrawCount = 0;
+
   constructor(container: HTMLElement, options: StrategyMapCanvasOptions = {}) {
     this.container = container;
     this.options = options;
@@ -155,7 +208,33 @@ export class StrategyMapCanvas {
     this.initEventListeners();
     this.initRecruitmentDrawer();
     this.renderDock();
+
+    // Reduced-motion freeze (matchMedia precedent from app/splash.ts + LabBench3DCanvas).
+    if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
+      try {
+        this.mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+        this.reducedMotion = this.mediaQuery.matches;
+        if (typeof this.mediaQuery.addEventListener === 'function') {
+          this.mediaQuery.addEventListener('change', this.onMediaChange);
+        }
+      } catch {
+        /* matchMedia unavailable — animate normally */
+      }
+    }
+
     this.startRenderLoop();
+  }
+
+  private onReducedMotionChange(): void {
+    this.reducedMotion = this.mediaQuery?.matches ?? false;
+  }
+
+  private canDrawSprite(): boolean {
+    return this.drawCount < MAX_SPRITE_DRAWS;
+  }
+
+  private countSprite(n = 1): void {
+    this.drawCount += n;
   }
 
   public update(colony: ColonyState, minuteOfDay: number): void {
@@ -168,7 +247,8 @@ export class StrategyMapCanvas {
     if (!this.canvas) return;
     const rect = this.canvas.getBoundingClientRect();
     if (rect.width > 0 && rect.height > 0) {
-      const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
+      const rawDpr = typeof window !== 'undefined' ? (window.devicePixelRatio || 1) : 1;
+      const dpr = clampDpr(rawDpr);
       this.canvas.width = Math.round(rect.width * dpr);
       this.canvas.height = Math.round(rect.height * dpr);
       this.canvas.style.width = `${rect.width}px`;
@@ -205,6 +285,14 @@ export class StrategyMapCanvas {
     if (this.animFrameId !== null) {
       cancelAnimationFrame(this.animFrameId);
       this.animFrameId = null;
+    }
+    if (this.mediaQuery && typeof this.mediaQuery.removeEventListener === 'function') {
+      try {
+        this.mediaQuery.removeEventListener('change', this.onMediaChange);
+      } catch {
+        /* mock environments may not implement full MediaQueryList */
+      }
+      this.mediaQuery = null;
     }
     if (this.abortController) {
       this.abortController.abort();
@@ -328,18 +416,42 @@ export class StrategyMapCanvas {
   }
 
   private startRenderLoop(): void {
-    const loop = () => {
+    const loop = (nowMs?: number) => {
       if (!this.container.classList.contains('hidden') && this.container.offsetParent !== null) {
-        this.renderCanvas();
+        const stamp = typeof nowMs === 'number' && Number.isFinite(nowMs)
+          ? nowMs
+          : (typeof performance !== 'undefined' ? performance.now() : Date.now());
+        this.renderCanvas(stamp);
       }
       this.animFrameId = requestAnimationFrame(loop);
     };
     this.animFrameId = requestAnimationFrame(loop);
   }
 
-  public renderCanvas(): void {
+  /** Pooled sprite pool sizes (fixed, no per-frame allocation). */
+  private static readonly SMOKE_POOL_SIZE = 10;
+  private static readonly FOG_POOL_SIZE = 6;
+
+  public renderCanvas(nowMs: number = typeof performance !== 'undefined' ? performance.now() : Date.now()): void {
     const { ctx, viewport, minuteOfDay } = this;
     const { width, height } = viewport;
+
+    // M1 Task 10 — frame-rate independent drive timing; reduced-motion freezes.
+    this.drawCount = 0;
+    const dt = this.lastRenderMs === null
+      ? 0
+      : Math.max(0, (nowMs - this.lastRenderMs) / 1000);
+    this.lastRenderMs = nowMs;
+    if (this.reducedMotion) {
+      this.animTimeSec = FROZEN_TIME;
+    } else {
+      this.animTimeSec += dt;
+    }
+    const timeSec = this.animTimeSec;
+    const smoothDt = this.reducedMotion ? 0 : dt;
+    // Wall clock for hotspot/ring logic (startMs is Date.now() in handleNodeClick).
+    // nowMs above is the rAF/performance timestamp for frame dt only.
+    const wallNowMs = Date.now();
 
     ctx.save();
     ctx.fillStyle = '#12151c';
@@ -390,41 +502,62 @@ export class StrategyMapCanvas {
       ctx.fillText(`${r}m`, origin.x + screenRadius + 4, origin.y - 2);
     }
 
-    // Biome resource nodes
-    const nowMs = Date.now();
-    if (nowMs - this.lastHotspotSpawnMs > 45000) {
-      this.lastHotspotSpawnMs = nowMs;
+    // Pooled fog sweep (procedural wisps drifting over the survey).
+    for (let i = 0; i < StrategyMapCanvas.FOG_POOL_SIZE; i++) {
+      if (!this.canDrawSprite()) break;
+      const fog = getFogSweep(timeSec, width, i);
+      if (fog.alpha <= 0.01) continue;
+      const fogY = height * (0.2 + (i % 3) * 0.18);
+      ctx.save();
+      ctx.globalAlpha = fog.alpha;
+      ctx.fillStyle = '#dce6ec';
+      ctx.beginPath();
+      ctx.arc(fog.x, fogY, 28 + (i % 3) * 8, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+      this.countSprite();
+    }
+
+    // Biome resource nodes (2-4px vertex-offset sway loops)
+    if (wallNowMs - this.lastHotspotSpawnMs > 45000) {
+      this.lastHotspotSpawnMs = wallNowMs;
       const allSpecies = BIOME_DAG.flatMap((c) => c.species);
       const chosen = allSpecies[Math.floor(Math.random() * allSpecies.length)];
       if (chosen && !this.activeHotspots.some((h) => h.speciesId === chosen.id)) {
         this.activeHotspots.push({
-          id: `hotspot_${nowMs}`,
+          id: `hotspot_${wallNowMs}`,
           speciesId: chosen.id,
           name: chosen.name,
-          expiresAtMs: nowMs + 30000,
+          expiresAtMs: wallNowMs + 30000,
         });
       }
     }
-    this.activeHotspots = this.activeHotspots.filter((h) => h.expiresAtMs > nowMs);
+    this.activeHotspots = this.activeHotspots.filter((h) => h.expiresAtMs > wallNowMs);
 
     for (const cat of BIOME_DAG) {
       for (const sp of cat.species) {
         const pos = getSpeciesWorldPosition(sp);
+        // Deterministic phase seed from world position (no per-frame RNG).
+        const swaySeed = (pos.x * 0.37 + pos.y * 0.61) % 10;
+        const sway = getBiomeSwayOffset(timeSec, cat.key, swaySeed);
         const s = worldToScreen(pos.x, pos.y, viewport);
+        const sx = s.x + sway.dx;
+        const sy = s.y + sway.dy;
         const isHotspot = this.activeHotspots.some((h) => h.speciesId === sp.id);
 
         if (isHotspot) {
           ctx.beginPath();
-          ctx.arc(s.x, s.y, 14, 0, Math.PI * 2);
+          ctx.arc(sx, sy, 14, 0, Math.PI * 2);
           ctx.fillStyle = 'rgba(255, 215, 0, 0.35)';
           ctx.fill();
           ctx.strokeStyle = '#ffd700';
           ctx.lineWidth = 2;
           ctx.stroke();
+          this.countSprite();
         }
 
         ctx.beginPath();
-        ctx.arc(s.x, s.y, 6, 0, Math.PI * 2);
+        ctx.arc(sx, sy, 6, 0, Math.PI * 2);
         ctx.fillStyle = isHotspot
           ? '#ffd700'
           : cat.key === 'TREES'
@@ -441,18 +574,22 @@ export class StrategyMapCanvas {
 
         ctx.fillStyle = isHotspot ? '#ffe57f' : '#dce6ec';
         ctx.font = isHotspot ? 'bold 10px serif' : '10px serif';
-        ctx.fillText(isHotspot ? `★ ${sp.name} (3x!)` : sp.name, s.x + 8, s.y + 3);
+        ctx.fillText(isHotspot ? `★ ${sp.name} (3x!)` : sp.name, sx + 8, sy + 3);
       }
     }
 
-    // Active timing ring strike
+    // Active timing ring strike (shrink via getTimingRingRadius, pooled pulse)
     if (this.activeTimingRing) {
-      const elapsed = nowMs - this.activeTimingRing.startMs;
+      const elapsed = wallNowMs - this.activeTimingRing.startMs;
       if (elapsed > this.activeTimingRing.durationMs) {
         this.activeTimingRing = null;
       } else {
         const progress = elapsed / this.activeTimingRing.durationMs;
-        const currentRadius = this.activeTimingRing.outerRadius - progress * (this.activeTimingRing.outerRadius - this.activeTimingRing.innerRadius);
+        const currentRadius = getTimingRingRadius(
+          progress,
+          this.activeTimingRing.outerRadius,
+          this.activeTimingRing.innerRadius,
+        );
         const ringPos = worldToScreen(this.activeTimingRing.worldX, this.activeTimingRing.worldY, viewport);
 
         ctx.beginPath();
@@ -462,11 +599,26 @@ export class StrategyMapCanvas {
         ctx.stroke();
 
         ctx.beginPath();
-        ctx.arc(ringPos.x, ringPos.y, Math.max(1, currentRadius), 0, Math.PI * 2);
+        ctx.arc(ringPos.x, ringPos.y, currentRadius, 0, Math.PI * 2);
         const inPerfectZone = progress >= 0.70 && progress <= 0.98;
         ctx.strokeStyle = inPerfectZone ? '#4caf50' : '#ffd700';
         ctx.lineWidth = inPerfectZone ? 3 : 2;
         ctx.stroke();
+
+        // Pooled highlight pulse riding the shrink (frozen under reduced-motion).
+        if (this.canDrawSprite()) {
+          const pulse = 0.5 + 0.5 * Math.sin((this.reducedMotion ? FROZEN_TIME : timeSec) * Math.PI * 2);
+          const pulseR = this.activeTimingRing.innerRadius + pulse * (currentRadius - this.activeTimingRing.innerRadius);
+          ctx.save();
+          ctx.globalAlpha = 0.25 * (1 - progress);
+          ctx.strokeStyle = '#fff';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.arc(ringPos.x, ringPos.y, Math.max(1, pulseR), 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.restore();
+          this.countSprite(2);
+        }
 
         ctx.fillStyle = '#fff';
         ctx.font = 'bold 9px sans-serif';
@@ -474,23 +626,43 @@ export class StrategyMapCanvas {
       }
     }
 
-    // Camp Hearth at (0, 0)
+    // Camp Hearth at (0, 0) — smoke/glow scaled by diurnal hearthRadiusPx.
     const diurnal = computeDiurnalLighting(minuteOfDay);
+    const hearthClip = CLIPS.HEARTH_GLOW;
+    const hearthTime = timeSec * (hearthClip ? hearthClip.fps / 6 : 1);
+    const hearth = getHearthPulse(this.reducedMotion ? FROZEN_TIME : hearthTime, diurnal.hearthRadiusPx);
     const hearthGrad = ctx.createRadialGradient(
       origin.x,
       origin.y,
       4,
       origin.x,
       origin.y,
-      diurnal.hearthRadiusPx,
+      hearth.radiusPx,
     );
-    hearthGrad.addColorStop(0, 'rgba(255, 170, 50, 0.85)');
-    hearthGrad.addColorStop(0.3, 'rgba(230, 90, 20, 0.45)');
+    hearthGrad.addColorStop(0, `rgba(255, 170, 50, ${(0.85 * hearth.glowAlpha).toFixed(3)})`);
+    hearthGrad.addColorStop(0.3, `rgba(230, 90, 20, ${(0.45 * hearth.glowAlpha).toFixed(3)})`);
     hearthGrad.addColorStop(1, 'rgba(230, 90, 20, 0)');
     ctx.fillStyle = hearthGrad;
     ctx.beginPath();
-    ctx.arc(origin.x, origin.y, diurnal.hearthRadiusPx, 0, Math.PI * 2);
+    ctx.arc(origin.x, origin.y, hearth.radiusPx, 0, Math.PI * 2);
     ctx.fill();
+
+    // Pooled hearth smoke (procedural arcs rising above the glow).
+    for (let i = 0; i < StrategyMapCanvas.SMOKE_POOL_SIZE; i++) {
+      if (!this.canDrawSprite()) break;
+      const loopFrac = (timeSec * 0.08 + i * 0.13) % 1;
+      const rise = loopFrac * hearth.smokePx;
+      const drift = Math.sin(timeSec * 0.9 + i * 1.7) * 8 * loopFrac;
+      const puffR = 3 + loopFrac * 9;
+      ctx.save();
+      ctx.globalAlpha = (1 - loopFrac) * 0.32 * hearth.glowAlpha;
+      ctx.fillStyle = '#dce6ec';
+      ctx.beginPath();
+      ctx.arc(origin.x + drift, origin.y - rise - 6, puffR, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+      this.countSprite();
+    }
 
     ctx.beginPath();
     ctx.arc(origin.x, origin.y, 5, 0, Math.PI * 2);
@@ -504,8 +676,11 @@ export class StrategyMapCanvas {
     ctx.font = 'bold 10px serif';
     ctx.fillText('Camp Hearth', origin.x + 8, origin.y + 3);
 
-    // Colonists tokens & Job path polyline
+    // Colonists tokens & Job path polyline (walk/idle/harvest gait + pose blend)
     if (this.colonyState?.colonists) {
+      const walkClip = CLIPS.COLONIST_WALK;
+      const harvestClip = CLIPS.COLONIST_HARVEST;
+      const idleClip = CLIPS.COLONIST_IDLE;
       for (const c of this.colonyState.colonists) {
         const s = worldToScreen(c.position.x, c.position.y, viewport);
 
@@ -523,21 +698,46 @@ export class StrategyMapCanvas {
           ctx.setLineDash([]);
         }
 
+        // Sample the status clip for phase scale, then blend via expDecay.
+        const stimPhase = c.activeStimulant ? (c.activeStimulant.phase as 'BOOST' | 'CRASH') : null;
+        const stimMult = c.activeStimulant ? c.activeStimulant.speedMultiplier : 1;
+        const clipScale = c.status === 'TRAVELING' || c.status === 'RETURNING'
+          ? (walkClip.fps / 8)
+          : c.status === 'GATHERING'
+            ? (harvestClip.fps / 6)
+            : (idleClip.fps / 6);
+        const target = getColonistPose(c.status, stimPhase, stimMult, timeSec * clipScale);
+        const prev = this.smoothedPose.get(c.id) ?? { bob: 0, lean: 0, scale: 1 };
+        // Reduced-motion snaps to the frozen-time posed frame (no blend drift).
+        const smoothed = this.reducedMotion
+          ? { bob: target.bobPx, lean: target.leanPx, scale: target.radiusScale }
+          : {
+            bob: blendPose(prev.bob, target.bobPx, 8, smoothDt),
+            lean: blendPose(prev.lean, target.leanPx, 8, smoothDt),
+            scale: blendPose(prev.scale, target.radiusScale, 8, smoothDt),
+          };
+        this.smoothedPose.set(c.id, smoothed);
+
         const color = getArchetypeColor(c.archetype);
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, Math.min(1, target.alpha));
         ctx.beginPath();
-        ctx.arc(s.x, s.y, 7, 0, Math.PI * 2);
+        ctx.arc(s.x + smoothed.lean, s.y + smoothed.bob, Math.max(3, 7 * smoothed.scale), 0, Math.PI * 2);
         ctx.fillStyle = color;
         ctx.fill();
         ctx.strokeStyle = c.status === 'STRIKE' ? '#d96c6c' : '#ffffff';
         ctx.lineWidth = c.status === 'STRIKE' ? 2 : 1;
         ctx.stroke();
+        ctx.restore();
+        this.countSprite();
 
         ctx.fillStyle = '#ffffff';
         ctx.font = '9px monospace';
-        ctx.fillText(c.name, s.x + 9, s.y + 3);
+        ctx.fillText(c.name, s.x + smoothed.lean + 9, s.y + smoothed.bob + 3);
       }
     }
 
+    this.lastSpriteDrawCount = this.drawCount;
     ctx.restore();
   }
 
@@ -583,6 +783,16 @@ export class StrategyMapCanvas {
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
       ctx.lineWidth = 1;
       ctx.stroke();
+
+      // Desire-path fade by wear (alpha from computeDesirePathAlpha) + road >96.
+      const pathAlpha = computeDesirePathAlpha(tile.roadWear);
+      if (pathAlpha > 0) {
+        ctx.save();
+        ctx.globalAlpha = pathAlpha;
+        ctx.fillStyle = getRoadWearColor();
+        ctx.fill();
+        ctx.restore();
+      }
 
       if (tile.roadWear > 96) {
         ctx.beginPath();
