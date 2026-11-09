@@ -39,7 +39,7 @@ function renderCommissionsContent(container: HTMLElement): void {
                           <span style="color: #5aa5ff; font-weight: 600; font-size: 0.85rem;">+${comm.renownReward} Renown</span>
                         </div>
                         <div class="comm-prog-bar" role="progressbar" aria-valuenow="${comm.progress}" aria-valuemin="0" aria-valuemax="${comm.target}" style="height: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden; margin-bottom: 0.3rem;">
-                          <div style="height: 100%; width: ${pct}%; background: ${canClaim ? '#48bb78' : '#3182ce'}; transition: width 140ms ease;"></div>
+                          <div style="height: 100%; transform-origin: left; transform: scaleX(${pct / 100}); background: ${canClaim ? '#48bb78' : '#3182ce'}; transition: transform 140ms ease;"></div>
                         </div>
                         <div style="font-size: 0.78rem; color: var(--muted);">
                           Progress: ${comm.progress} / ${comm.target} (${pct}%)

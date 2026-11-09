@@ -33,6 +33,9 @@ import {
   computeDiurnalLighting,
   computeDesirePathAlpha,
   getArchetypeColor,
+  getBiomeColor,
+  getRoadWearColor,
+  getUnrevealedColor,
   type ViewportState,
   type DiurnalLighting,
 } from './mapMath';
@@ -43,6 +46,9 @@ export {
   computeDiurnalLighting,
   computeDesirePathAlpha,
   getArchetypeColor,
+  getBiomeColor,
+  getRoadWearColor,
+  getUnrevealedColor,
 };
 export type { ViewportState, DiurnalLighting };
 
@@ -102,6 +108,7 @@ export class StrategyMapCanvas {
   private panStartY = 0;
   private showReliefUnderlay = true;
   private reliefImage: HTMLImageElement | null = null;
+  private noisePattern: CanvasPattern | null = null;
 
   public activeHotspots: MapHotspot[] = [];
   public activeTimingRing: TimingRingStrike | null = null;
@@ -123,7 +130,7 @@ export class StrategyMapCanvas {
           <button class="map-btn" data-action="toggle-relief" title="Toggle 3D Relief">⛰</button>
         </div>
       </div>
-      <aside class="strategy-command-dock" aria-label="Strategy Map & Labor Command Dock">
+      <aside class="strategy-dock" aria-label="Strategy Map & Labor Command Dock">
         <header class="dock-header">
           <h3>Labor Roster</h3>
           <span class="roster-count">0</span> Hands
@@ -138,7 +145,7 @@ export class StrategyMapCanvas {
 
     this.canvas = this.container.querySelector<HTMLCanvasElement>('.strategy-canvas')!;
     this.ctx = this.canvas.getContext('2d')!;
-    this.dockContainer = this.container.querySelector<HTMLElement>('.strategy-command-dock')!;
+    this.dockContainer = this.container.querySelector<HTMLElement>('.strategy-dock')!;
 
     if (typeof Image !== 'undefined') {
       this.reliefImage = new Image();
@@ -173,6 +180,26 @@ export class StrategyMapCanvas {
   }
 
   private abortController: AbortController | null = new AbortController();
+
+  private createNoisePattern(ctx: CanvasRenderingContext2D): CanvasPattern {
+    // Create 64x64 noise pattern for 1.5% anti-banding dither
+    const size = 64;
+    const noiseCanvas = document.createElement('canvas');
+    noiseCanvas.width = size;
+    noiseCanvas.height = size;
+    const noiseCtx = noiseCanvas.getContext('2d')!;
+    const imageData = noiseCtx.createImageData(size, size);
+    const data = imageData.data;
+    for (let i = 0; i < data.length; i += 4) {
+      const val = Math.random() * 255;
+      data[i] = val;     // R
+      data[i + 1] = val; // G
+      data[i + 2] = val; // B
+      data[i + 3] = 255; // A
+    }
+    noiseCtx.putImageData(imageData, 0, 0);
+    return ctx.createPattern(noiseCanvas, 'repeat')!;
+  }
 
   public destroy(): void {
     if (this.animFrameId !== null) {
@@ -333,6 +360,13 @@ export class StrategyMapCanvas {
         reliefRadius * 2,
         reliefRadius * 2,
       );
+      // Anti-banding 1.5% noise dither
+      if (!this.noisePattern) {
+        this.noisePattern = this.createNoisePattern(ctx);
+      }
+      ctx.globalAlpha = 0.015;
+      ctx.fillStyle = this.noisePattern;
+      ctx.fillRect(origin.x - reliefRadius, origin.y - reliefRadius, reliefRadius * 2, reliefRadius * 2);
       ctx.restore();
     }
 
@@ -537,24 +571,14 @@ export class StrategyMapCanvas {
       }
 
       if (!tile.revealed) {
-        ctx.fillStyle = 'rgba(10, 12, 16, 0.85)';
+        ctx.fillStyle = getUnrevealedColor();
         ctx.fill();
         ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)';
         ctx.stroke();
         continue;
       }
 
-      let fill = 'rgba(34, 49, 43, 0.55)';
-      if (tile.biome === 'HEARTH') fill = 'rgba(180, 110, 40, 0.45)';
-      else if (tile.biome === 'ROCKS_MINERALS') fill = 'rgba(92, 75, 59, 0.55)';
-      else if (tile.biome === 'MUSHROOMS_FLORA') fill = 'rgba(74, 52, 84, 0.55)';
-      else if (tile.biome === 'ANIMALS') fill = 'rgba(95, 68, 45, 0.55)';
-      else if (tile.biome === 'WATER') fill = 'rgba(30, 60, 95, 0.65)';
-      else if (tile.biome === 'SALT_FLAT') fill = 'rgba(140, 140, 150, 0.5)';
-      else if (tile.biome === 'BRINE_POND') fill = 'rgba(40, 95, 115, 0.6)';
-      else if (tile.biome === 'ANCIENT_RUIN') fill = 'rgba(130, 90, 140, 0.65)';
-
-      ctx.fillStyle = fill;
+      ctx.fillStyle = getBiomeColor(tile.biome);
       ctx.fill();
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
       ctx.lineWidth = 1;
@@ -563,7 +587,7 @@ export class StrategyMapCanvas {
       if (tile.roadWear > 96) {
         ctx.beginPath();
         ctx.arc(s.x, s.y, hexSize * 0.4, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(224, 164, 88, 0.4)';
+        ctx.fillStyle = getRoadWearColor();
         ctx.fill();
       }
     }

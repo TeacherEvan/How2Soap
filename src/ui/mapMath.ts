@@ -105,18 +105,60 @@ export function computeDesirePathAlpha(wear: number): number {
 
 /**
  * Returns distinct archetype token color for map visualization.
+ * Uses perceptual oklch colors matching CSS tokens.
  */
 export function getArchetypeColor(archetype: ColonistArchetype): string {
   switch (archetype) {
     case 'FORAGER':
-      return '#7fc98b'; // Leaf green
+      return 'oklch(0.70 0.150 160)'; // Leaf green — nominal status
     case 'MINER':
-      return '#e0a458'; // Copper/amber ochre
+      return 'oklch(0.68 0.190 260)'; // Brass/amber — primary accent
     case 'HERBALIST':
-      return '#5fb3a1'; // Sage / teal
+      return 'oklch(0.65 0.120 180)'; // Sage/teal — accent-2
     case 'APPRENTICE_CHEMIST':
-      return '#9c88ff'; // Violet / amethyst
+      return 'oklch(0.60 0.180 280)'; // Violet/amethyst
     default:
-      return '#dce6ec';
+      return 'oklch(0.98 0.002 265)'; // Telemetry text
   }
+}
+
+/**
+ * Returns biome fill color as oklch string for canvas rendering.
+ * Matches CSS custom properties for perceptual consistency.
+ */
+export function getBiomeColor(biome: string): string {
+  switch (biome) {
+    case 'HEARTH':
+      return 'oklch(0.45 0.120 35)';
+    case 'ROCKS_MINERALS':
+      return 'oklch(0.28 0.040 265)';
+    case 'MUSHROOMS_FLORA':
+      return 'oklch(0.30 0.060 300)';
+    case 'ANIMALS':
+      return 'oklch(0.26 0.045 40)';
+    case 'WATER':
+      return 'oklch(0.20 0.030 240)';
+    case 'SALT_FLAT':
+      return 'oklch(0.42 0.010 265)';
+    case 'BRINE_POND':
+      return 'oklch(0.18 0.035 250)';
+    case 'ANCIENT_RUIN':
+      return 'oklch(0.32 0.050 310)';
+    default:
+      return 'oklch(0.05 0.000 0)';
+  }
+}
+
+/**
+ * Returns road wear color for desire paths.
+ */
+export function getRoadWearColor(): string {
+  return 'oklch(0.68 0.190 260 / 0.4)';
+}
+
+/**
+ * Returns unrevealed (fog of war) biome color.
+ */
+export function getUnrevealedColor(): string {
+  return 'oklch(0.05 0.000 0)';
 }
