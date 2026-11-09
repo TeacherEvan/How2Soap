@@ -10,6 +10,12 @@ export interface MeshGeometry {
   readonly indices: Uint16Array;
 }
 
+export interface AnimationClip {
+  fps: number;
+  loop: boolean;
+  frames: Float32Array[];
+}
+
 export const MESHES: Record<string, MeshGeometry> = {
   WOOD_BUCKET: {
     positions: new Float32Array([0.0, 0.6, -0.5, 0.0, 0.6, 0.5, 0.3, 0.52, -0.5, 0.3, 0.52, 0.5, 0.52, 0.3, -0.5, 0.52, 0.3, 0.5, 0.6, 0.0, -0.5, 0.6, 0.0, 0.5, 0.52, -0.3, -0.5, 0.52, -0.3, 0.5, 0.3, -0.52, -0.5, 0.3, -0.52, 0.5, 0.0, -0.6, -0.5, 0.0, -0.6, 0.5, -0.3, -0.52, -0.5, -0.3, -0.52, 0.5, -0.52, -0.3, -0.5, -0.52, -0.3, 0.5, -0.6, 0.0, -0.5, -0.6, 0.0, 0.5, -0.52, 0.3, -0.5, -0.52, 0.3, 0.5, -0.3, 0.52, -0.5, -0.3, 0.52, 0.5]),

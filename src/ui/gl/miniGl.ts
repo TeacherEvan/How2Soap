@@ -9,26 +9,34 @@ export interface UniformLocations {
   uModel: WebGLUniformLocation | null;
   uColor: WebGLUniformLocation | null;
   uLightDir: WebGLUniformLocation | null;
+  uTime: WebGLUniformLocation | null;
+  uPoseWeight: WebGLUniformLocation | null;
 }
 
 export interface GlMeshBuffers {
   vao: WebGLVertexArrayObject;
   indexCount: number;
+  animation?: Float32Array;
+  animationBuffer?: WebGLBuffer | null;
 }
 
 const VS_SRC = `#version 300 es
 layout(location = 0) in vec3 aPosition;
 layout(location = 1) in vec3 aNormal;
+layout(location = 2) in vec3 aAnimOffset;
 
 uniform mat4 uProjection;
 uniform mat4 uView;
 uniform mat4 uModel;
+uniform float uTime;
+uniform float uPoseWeight;
 
 out vec3 vNormal;
 out vec3 vWorldPos;
 
 void main() {
-  vec4 worldPos = uModel * vec4(aPosition, 1.0);
+  vec3 pos = aPosition + aAnimOffset * (uPoseWeight * (0.5 + 0.5 * cos(uTime)));
+  vec4 worldPos = uModel * vec4(pos, 1.0);
   vWorldPos = worldPos.xyz;
   vNormal = mat3(uModel) * aNormal;
   gl_Position = uProjection * uView * worldPos;
@@ -84,6 +92,8 @@ export class MiniGl {
       uModel: gl.getUniformLocation(prog, 'uModel'),
       uColor: gl.getUniformLocation(prog, 'uColor'),
       uLightDir: gl.getUniformLocation(prog, 'uLightDir'),
+      uTime: gl.getUniformLocation(prog, 'uTime'),
+      uPoseWeight: gl.getUniformLocation(prog, 'uPoseWeight'),
     };
   }
 
@@ -97,7 +107,12 @@ export class MiniGl {
     return s;
   }
 
-  public createMeshBuffers(positions: Float32Array, normals: Float32Array, indices: Uint16Array): GlMeshBuffers {
+  public createMeshBuffers(
+    positions: Float32Array,
+    normals: Float32Array,
+    indices: Uint16Array,
+    animation?: Float32Array,
+  ): GlMeshBuffers {
     const gl = this.gl;
     const vao = gl.createVertexArray()!;
     gl.bindVertexArray(vao);
@@ -116,13 +131,25 @@ export class MiniGl {
     gl.enableVertexAttribArray(1);
     gl.vertexAttribPointer(1, 3, gl.FLOAT, false, 0, 0);
 
+    // Animation offset buffer (location 2). Static default is zero-filled so
+    // uPoseWeight = 0 renders bit-identical to the unanimated pipeline.
+    const animData = new Float32Array(positions.length);
+    if (animation) {
+      animData.set(animation.subarray(0, positions.length));
+    }
+    const aBuf = gl.createBuffer()!;
+    gl.bindBuffer(gl.ARRAY_BUFFER, aBuf);
+    gl.bufferData(gl.ARRAY_BUFFER, animData, gl.STATIC_DRAW);
+    gl.enableVertexAttribArray(2);
+    gl.vertexAttribPointer(2, 3, gl.FLOAT, false, 0, 0);
+
     // Index buffer
     const iBuf = gl.createBuffer()!;
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, iBuf);
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
 
     gl.bindVertexArray(null);
-    return { vao, indexCount: indices.length };
+    return { vao, indexCount: indices.length, animation: animData, animationBuffer: aBuf };
   }
 }
 
