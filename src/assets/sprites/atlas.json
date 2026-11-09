@@ -1,0 +1,56 @@
+{
+  "format": "PNG RGBA, Eevee, transparent film, transform-only pose bake",
+  "origin": "row 0 = BOTTOM row (Blender origin); row_from_top = rows - 1 - row",
+  "cell_px": 256,
+  "cell_world": 1.6,
+  "sheets": {
+    "flame": {
+      "file": "flame.png",
+      "cols": 4,
+      "rows": 4,
+      "frames": 16,
+      "fps": 30,
+      "atlas_px": [
+        1024,
+        1024
+      ],
+      "loop": true
+    },
+    "ember": {
+      "file": "ember.png",
+      "cols": 4,
+      "rows": 1,
+      "frames": 4,
+      "fps": 12,
+      "atlas_px": [
+        1024,
+        256
+      ],
+      "loop": false
+    },
+    "fume": {
+      "file": "fume.png",
+      "cols": 4,
+      "rows": 1,
+      "frames": 4,
+      "fps": 12,
+      "atlas_px": [
+        1024,
+        256
+      ],
+      "loop": false
+    },
+    "bubbles": {
+      "file": "bubbles.png",
+      "cols": 4,
+      "rows": 1,
+      "frames": 4,
+      "fps": 12,
+      "atlas_px": [
+        1024,
+        256
+      ],
+      "loop": false
+    }
+  }
+}
