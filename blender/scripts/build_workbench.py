@@ -164,15 +164,20 @@ def finish(action_name, frames, export_mode, write_export):
     if write_export:
         os.makedirs(OUT, exist_ok=True)
         out_path = os.path.join(OUT, f"{action_name}.glb")
-        bpy.ops.export_scene.gltf(
+        export_kwargs = dict(
             filepath=out_path,
             export_format='GLB',
             export_animations=True,
             export_animation_mode=export_mode,
             export_apply=True,
             export_yup=True,
-            export_colors=True,
         )
+        props = bpy.ops.export_scene.gltf.get_rna_type().properties
+        if "export_vertex_color" in props:
+            export_kwargs["export_vertex_color"] = "MATERIAL"
+        elif "export_colors" in props:
+            export_kwargs["export_colors"] = True
+        bpy.ops.export_scene.gltf(**export_kwargs)
         print(f"EXPORTED: {out_path}")
 
 def build_benchtop():

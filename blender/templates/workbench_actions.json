@@ -37,8 +37,7 @@
       "exported_channels": {
         "pour_stream": [
           "rotation",
-          "scale",
-          "translation"
+          "scale"
         ]
       },
       "blender_only_channels": [
@@ -63,11 +62,11 @@
       "frames": 30,
       "fps": 30,
       "exported_channels": {
-        "stir_vortex_spoon": [
-          "rotation"
-        ],
         "stir_vortex": [
           "scale"
+        ],
+        "stir_vortex_spoon": [
+          "rotation"
         ]
       },
       "blender_only_channels": []
@@ -77,11 +76,11 @@
       "frames": 30,
       "fps": 30,
       "exported_channels": {
-        "boil_shake_liquid": [
-          "scale"
-        ],
         "boil_shake": [
           "translation"
+        ],
+        "boil_shake_liquid": [
+          "scale"
         ]
       },
       "blender_only_channels": []
@@ -136,10 +135,79 @@
       "exported_channels": {
         "colonist_walk_idle": [
           "rotation",
-          "scale",
           "translation"
         ]
       },
+      "blender_only_channels": []
+    },
+    "kettle_cauldron": {
+      "glb": "public/assets/workbench/kettle_cauldron.glb",
+      "frames": 30,
+      "fps": 30,
+      "exported_channels": {},
+      "blender_only_channels": []
+    },
+    "wood_trough": {
+      "glb": "public/assets/workbench/wood_trough.glb",
+      "frames": 30,
+      "fps": 30,
+      "exported_channels": {},
+      "blender_only_channels": []
+    },
+    "electrolysis_cell": {
+      "glb": "public/assets/workbench/electrolysis_cell.glb",
+      "frames": 30,
+      "fps": 30,
+      "exported_channels": {},
+      "blender_only_channels": []
+    },
+    "voltaic_pile": {
+      "glb": "public/assets/workbench/voltaic_pile.glb",
+      "frames": 30,
+      "fps": 30,
+      "exported_channels": {},
+      "blender_only_channels": []
+    },
+    "bench_table": {
+      "glb": "public/assets/workbench/bench_table.glb",
+      "frames": 30,
+      "fps": 30,
+      "exported_channels": {},
+      "blender_only_channels": []
+    },
+    "paddock_set": {
+      "glb": "public/assets/workbench/paddock_set.glb",
+      "frames": 30,
+      "fps": 30,
+      "exported_channels": {},
+      "blender_only_channels": []
+    },
+    "tool_props": {
+      "glb": "public/assets/workbench/tool_props.glb",
+      "frames": 30,
+      "fps": 30,
+      "exported_channels": {},
+      "blender_only_channels": []
+    },
+    "fermentation_pot": {
+      "glb": "public/assets/workbench/fermentation_pot.glb",
+      "frames": 30,
+      "fps": 30,
+      "exported_channels": {},
+      "blender_only_channels": []
+    },
+    "mortar_pestle": {
+      "glb": "public/assets/workbench/mortar_pestle.glb",
+      "frames": 30,
+      "fps": 30,
+      "exported_channels": {},
+      "blender_only_channels": []
+    },
+    "charcoal_clamp": {
+      "glb": "public/assets/workbench/charcoal_clamp.glb",
+      "frames": 30,
+      "fps": 30,
+      "exported_channels": {},
       "blender_only_channels": []
     }
   }
