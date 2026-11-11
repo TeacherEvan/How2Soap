@@ -1,0 +1,63 @@
+{
+  "room_bounds": [
+    2.0,
+    2.0,
+    30.0,
+    30.0
+  ],
+  "door_pos": [
+    16.0,
+    2.2,
+    1.5
+  ],
+  "props": [
+    {
+      "id": "hearth_camp_center",
+      "width": 4.4,
+      "depth": 4.4,
+      "wall_snap": false
+    },
+    {
+      "id": "apothecary_workshop",
+      "width": 3.4,
+      "depth": 2.6,
+      "wall_snap": true
+    },
+    {
+      "id": "mine_shaft_headframe",
+      "width": 3.0,
+      "depth": 3.0,
+      "wall_snap": true
+    },
+    {
+      "id": "colonist_dwelling",
+      "width": 3.2,
+      "depth": 2.6,
+      "wall_snap": true
+    },
+    {
+      "id": "domestication_paddock",
+      "width": 3.6,
+      "depth": 3.6,
+      "wall_snap": true
+    },
+    {
+      "id": "oak_hardwood_grove",
+      "width": 4.2,
+      "depth": 4.2,
+      "wall_snap": true
+    },
+    {
+      "id": "halite_crystal_peaks",
+      "width": 3.8,
+      "depth": 3.8,
+      "wall_snap": true
+    },
+    {
+      "id": "copper_malachite_hills",
+      "width": 3.8,
+      "depth": 3.8,
+      "wall_snap": true
+    }
+  ]
+}

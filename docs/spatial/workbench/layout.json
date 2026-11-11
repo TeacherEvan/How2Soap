@@ -1,0 +1,97 @@
+{
+  "final_energy": 42.5069,
+  "collision_free": true,
+  "a_star_walkway_valid": true,
+  "placements": [
+    {
+      "id": "bench_table_central",
+      "position": [
+        5.222,
+        1.478,
+        0.0
+      ],
+      "rotation_z_rad": 3.1416
+    },
+    {
+      "id": "hearth_brazier",
+      "position": [
+        1.426,
+        0.625,
+        0.0
+      ],
+      "rotation_z_rad": 1.5708
+    },
+    {
+      "id": "bellows_pump",
+      "position": [
+        6.625,
+        4.036,
+        0.0
+      ],
+      "rotation_z_rad": 3.1416
+    },
+    {
+      "id": "electrolysis_cell",
+      "position": [
+        3.422,
+        0.625,
+        0.0
+      ],
+      "rotation_z_rad": 1.5708
+    },
+    {
+      "id": "voltaic_pile",
+      "position": [
+        0.55,
+        4.258,
+        0.0
+      ],
+      "rotation_z_rad": 0.0
+    },
+    {
+      "id": "kettle_cauldron",
+      "position": [
+        2.97,
+        3.562,
+        0.0
+      ],
+      "rotation_z_rad": 0.0
+    },
+    {
+      "id": "wood_trough",
+      "position": [
+        0.85,
+        3.415,
+        0.0
+      ],
+      "rotation_z_rad": 0.0
+    },
+    {
+      "id": "fermentation_pot",
+      "position": [
+        4.383,
+        3.8,
+        0.0
+      ],
+      "rotation_z_rad": 4.7124
+    },
+    {
+      "id": "mortar_pestle",
+      "position": [
+        2.859,
+        0.525,
+        0.0
+      ],
+      "rotation_z_rad": 1.5708
+    },
+    {
+      "id": "drying_rack",
+      "position": [
+        0.9,
+        1.903,
+        0.0
+      ],
+      "rotation_z_rad": 0.0
+    }
+  ]
+}

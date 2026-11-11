@@ -1,0 +1,79 @@
+{
+  "final_energy": 543.138,
+  "collision_free": true,
+  "a_star_walkway_valid": true,
+  "placements": [
+    {
+      "id": "hearth_camp_center",
+      "position": [
+        22.46,
+        4.2,
+        0.0
+      ],
+      "rotation_z_rad": 1.5708
+    },
+    {
+      "id": "apothecary_workshop",
+      "position": [
+        10.55,
+        5.218,
+        0.0
+      ],
+      "rotation_z_rad": 1.5708
+    },
+    {
+      "id": "mine_shaft_headframe",
+      "position": [
+        17.359,
+        28.5,
+        0.0
+      ],
+      "rotation_z_rad": 4.7124
+    },
+    {
+      "id": "colonist_dwelling",
+      "position": [
+        15.9,
+        5.3,
+        0.0
+      ],
+      "rotation_z_rad": 1.5708
+    },
+    {
+      "id": "domestication_paddock",
+      "position": [
+        8.96,
+        16.156,
+        0.0
+      ],
+      "rotation_z_rad": 0.0
+    },
+    {
+      "id": "oak_hardwood_grove",
+      "position": [
+        18.854,
+        21.82,
+        0.0
+      ],
+      "rotation_z_rad": 4.7124
+    },
+    {
+      "id": "halite_crystal_peaks",
+      "position": [
+        6.068,
+        21.809,
+        0.0
+      ],
+      "rotation_z_rad": 0.0
+    },
+    {
+      "id": "copper_malachite_hills",
+      "position": [
+        22.576,
+        8.3,
+        0.0
+      ],
+      "rotation_z_rad": 1.5708
+    }
+  ]
+}

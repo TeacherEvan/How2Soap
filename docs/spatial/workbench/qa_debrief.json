@@ -1,0 +1,16 @@
+{
+  "status": "APPROVED",
+  "telemetry": {
+    "vertex_count": 252,
+    "non_manifold_edges": 0,
+    "silhouette_iou": 1.0,
+    "measured_bounds_m": {
+      "width": 7.2,
+      "depth": 5.4,
+      "height": 3.5
+    }
+  },
+  "diagnostic_renders": {},
+  "violations": [],
+  "fix_directives": []
+}

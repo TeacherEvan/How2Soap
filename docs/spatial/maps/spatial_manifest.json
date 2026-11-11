@@ -1,0 +1,40 @@
+{
+  "image_resolution": [
+    2048,
+    2048
+  ],
+  "camera_telemetry": {
+    "focal_length_px": 2048.00,
+    "horizontal_fov_deg": 53.13,
+    "vanishing_points": {
+      "vp_x": [
+        6144.0,
+        1024.0
+      ],
+      "vp_y": [
+        -4096.0,
+        1024.0
+      ],
+      "vp_z": [
+        1024.0,
+        12288.0
+      ]
+    }
+  },
+  "metric_dimensions_m": {
+    "width_x": 32.00,
+    "depth_y": 32.00,
+    "height_z": 4.80,
+    "estimated_stories": 1,
+    "roof_pitch_deg": 0.0,
+    "wall_thickness_ext": 0.40,
+    "wall_thickness_int": 0.20
+  },
+  "pbr_palette_srgb": [
+    "#d9a438",
+    "#1f2b33",
+    "#ff4d0d",
+    "#2e7338",
+    "#ccd9f2"
+  ]
+}

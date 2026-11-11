@@ -1,0 +1,109 @@
+{
+  "occupancy_classification": "BUSINESS_COMMERCIAL",
+  "confidence_score": 0.96,
+  "workshop_domain": "ALCHEMICAL_CHEMISTRY_AND_FABRICATION",
+  "lighting_spec": {
+    "kelvin": 3200,
+    "lux_target": 650,
+    "fixture_type": "astrolabe_brass_lantern_and_hearth_radiance"
+  },
+  "circulation_rules": {
+    "min_aisle_width_m": 1.5,
+    "door_clear_arc_m": 0.95,
+    "ada_turn_radius_m": 1.52
+  },
+  "zones": [
+    {
+      "zone_id": "reaction_and_electrochemistry_zone",
+      "area_ratio": 0.55,
+      "furniture_manifest": [
+        {
+          "id": "bench_table_central",
+          "type": "heavy_timber_workbench",
+          "width": 2.6,
+          "depth": 1.4,
+          "height": 0.85,
+          "wall_snap": false
+        },
+        {
+          "id": "hearth_brazier",
+          "type": "thermal_hearth_brazier",
+          "width": 0.65,
+          "depth": 0.65,
+          "height": 0.95,
+          "wall_snap": true
+        },
+        {
+          "id": "bellows_pump",
+          "type": "mechanical_draft_bellows",
+          "width": 0.55,
+          "depth": 0.35,
+          "height": 0.45,
+          "wall_snap": true
+        },
+        {
+          "id": "electrolysis_cell",
+          "type": "lead_lined_electrolyzer",
+          "width": 0.65,
+          "depth": 0.65,
+          "height": 0.75,
+          "wall_snap": true
+        },
+        {
+          "id": "voltaic_pile",
+          "type": "twelve_cell_voltaic_tower",
+          "width": 0.5,
+          "depth": 0.5,
+          "height": 1.44,
+          "wall_snap": true
+        }
+      ]
+    },
+    {
+      "zone_id": "saponification_and_craft_zone",
+      "area_ratio": 0.45,
+      "furniture_manifest": [
+        {
+          "id": "kettle_cauldron",
+          "type": "cast_iron_soap_cauldron",
+          "width": 0.75,
+          "depth": 0.75,
+          "height": 0.95,
+          "wall_snap": false
+        },
+        {
+          "id": "wood_trough",
+          "type": "tanning_and_dehairing_trough",
+          "width": 1.1,
+          "depth": 0.6,
+          "height": 0.55,
+          "wall_snap": true
+        },
+        {
+          "id": "fermentation_pot",
+          "type": "oil_and_tallow_pot",
+          "width": 0.6,
+          "depth": 0.6,
+          "height": 0.75,
+          "wall_snap": true
+        },
+        {
+          "id": "mortar_pestle",
+          "type": "stone_milling_station",
+          "width": 0.45,
+          "depth": 0.45,
+          "height": 0.5,
+          "wall_snap": true
+        },
+        {
+          "id": "drying_rack",
+          "type": "cured_soap_aging_rack",
+          "width": 1.2,
+          "depth": 0.5,
+          "height": 1.8,
+          "wall_snap": true
+        }
+      ]
+    }
+  ]
+}

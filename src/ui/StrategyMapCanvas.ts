@@ -148,6 +148,7 @@ export class StrategyMapCanvas {
   private showReliefUnderlay = true;
   private reliefImage: HTMLImageElement | null = null;
   private noisePattern: CanvasPattern | null = null;
+  private strategy3DController: { update: (c: ColonyState, m: number) => void; resize: () => void; dispose: () => void } | null = null;
 
   public activeHotspots: MapHotspot[] = [];
   public activeTimingRing: TimingRingStrike | null = null;
@@ -181,6 +182,7 @@ export class StrategyMapCanvas {
           <button class="map-btn" data-action="zoom-out" title="Zoom Out (-)">−</button>
           <button class="map-btn" data-action="center" title="Center Hearth (Space)">⌂</button>
           <button class="map-btn" data-action="toggle-relief" title="Toggle 3D Relief">⛰</button>
+          <button class="map-btn" data-action="toggle-3d" title="Toggle 3D Astrolabe View (🪐)">🪐</button>
         </div>
       </div>
       <aside class="strategy-dock" aria-label="Strategy Map & Labor Command Dock">
@@ -240,10 +242,12 @@ export class StrategyMapCanvas {
   public update(colony: ColonyState, minuteOfDay: number): void {
     this.colonyState = colony;
     this.minuteOfDay = minuteOfDay;
+    this.strategy3DController?.update(colony, minuteOfDay);
     this.renderDock();
   }
 
   public resizeCanvas(): void {
+    this.strategy3DController?.resize();
     if (!this.canvas) return;
     const rect = this.canvas.getBoundingClientRect();
     if (rect.width > 0 && rect.height > 0) {
@@ -282,6 +286,10 @@ export class StrategyMapCanvas {
   }
 
   public destroy(): void {
+    if (this.strategy3DController) {
+      this.strategy3DController.dispose();
+      this.strategy3DController = null;
+    }
     if (this.animFrameId !== null) {
       cancelAnimationFrame(this.animFrameId);
       this.animFrameId = null;
@@ -374,8 +382,50 @@ export class StrategyMapCanvas {
           this.viewport.panY = 0;
         }
         if (action === 'toggle-relief') this.showReliefUnderlay = !this.showReliefUnderlay;
+        if (action === 'toggle-3d') void this.toggle3DView();
       }, { signal });
     });
+  }
+
+  public async toggle3DView(): Promise<void> {
+    const wrapper = this.container.querySelector<HTMLElement>('.strategy-canvas-wrapper');
+    if (!wrapper) return;
+
+    if (this.strategy3DController) {
+      this.strategy3DController.dispose();
+      this.strategy3DController = null;
+      this.canvas.style.display = 'block';
+      return;
+    }
+
+    let host = wrapper.querySelector<HTMLElement>('.strategy-3d-container');
+    if (!host) {
+      host = document.createElement('div');
+      host.className = 'strategy-3d-container';
+      wrapper.appendChild(host);
+    }
+    host.style.display = 'block';
+    this.canvas.style.display = 'none';
+
+    try {
+      const { mountStrategy3D } = await import('./gl/Surgical3DView');
+      this.strategy3DController = mountStrategy3D(host, {
+        onClose: () => {
+          this.strategy3DController?.dispose();
+          this.strategy3DController = null;
+          if (host) host.style.display = 'none';
+          this.canvas.style.display = 'block';
+        },
+      });
+
+      if (this.colonyState) {
+        this.strategy3DController.update(this.colonyState, this.minuteOfDay);
+      }
+    } catch (err) {
+      console.warn('Failed to load 3D Astrolabe View:', err);
+      if (host) host.style.display = 'none';
+      this.canvas.style.display = 'block';
+    }
   }
 
   private handleNodeClick(screenX: number, screenY: number): void {

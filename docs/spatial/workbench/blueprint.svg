@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 740" width="920" height="740">
+  <defs>
+    <pattern id="grid" width="100" height="100" patternUnits="userSpaceOnUse">
+      <path d="M 100 0 L 0 0 0 100" fill="none" stroke="#e0e0e0" stroke-width="1"/>
+    </pattern>
+  </defs>
+  <rect width="100%" height="100%" fill="#ffffff"/>
+  <rect width="100%" height="100%" fill="url(#grid)"/>
+  <!-- Exterior Wall Footprint -->
+  <rect id="outer_footprint" x="100.00" y="100.00" width="720.00" height="540.00" fill="#f4f4f6" stroke="#111111" stroke-width="24.00"/>
+  <!-- Interior Usable Boundary -->
+  <rect id="inner_boundary" x="124.00" y="124.00" width="672.00" height="492.00" fill="#fafafa" stroke="#888888" stroke-width="1" stroke-dasharray="4,4"/>
+  <!-- South Entrance Doorway (0.90m) -->
+  <rect id="entrance_threshold" x="415.00" y="628.00" width="90.00" height="24.00" fill="#ffffff" stroke="none"/>
+  <!-- Door Swing Arc (0.95m clearance) -->
+  <path id="entrance_door_arc" d="M 415.00 640.00 A 90.0 90.0 0 0 1 505.00 550.00" fill="none" stroke="#0066cc" stroke-width="2" stroke-dasharray="6,4"/>
+  <line x1="415.00" y1="640.00" x2="415.00" y2="550.00" stroke="#0066cc" stroke-width="2"/>
+  <!-- Dimensions Legend -->
+  <text x="100.00" y="80.00" font-family="monospace" font-size="24" fill="#333333">7.20m</text>
+  <text x="840.00" y="370.00" font-family="monospace" font-size="24" fill="#333333" transform="rotate(90 840.0 370.0)">5.40m</text>
+</svg>

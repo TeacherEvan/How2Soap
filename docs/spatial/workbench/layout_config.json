@@ -1,0 +1,75 @@
+{
+  "room_bounds": [
+    0.30,
+    0.30,
+    6.90,
+    5.10
+  ],
+  "door_pos": [
+    3.60,
+    5.05,
+    0.95
+  ],
+  "props": [
+    {
+      "id": "bench_table_central",
+      "width": 2.4,
+      "depth": 1.3,
+      "wall_snap": false
+    },
+    {
+      "id": "hearth_brazier",
+      "width": 0.65,
+      "depth": 0.65,
+      "wall_snap": true
+    },
+    {
+      "id": "bellows_pump",
+      "width": 0.55,
+      "depth": 0.35,
+      "wall_snap": true
+    },
+    {
+      "id": "electrolysis_cell",
+      "width": 0.65,
+      "depth": 0.65,
+      "wall_snap": true
+    },
+    {
+      "id": "voltaic_pile",
+      "width": 0.5,
+      "depth": 0.5,
+      "wall_snap": true
+    },
+    {
+      "id": "kettle_cauldron",
+      "width": 0.75,
+      "depth": 0.75,
+      "wall_snap": false
+    },
+    {
+      "id": "wood_trough",
+      "width": 1.1,
+      "depth": 0.6,
+      "wall_snap": true
+    },
+    {
+      "id": "fermentation_pot",
+      "width": 0.6,
+      "depth": 0.6,
+      "wall_snap": true
+    },
+    {
+      "id": "mortar_pestle",
+      "width": 0.45,
+      "depth": 0.45,
+      "wall_snap": true
+    },
+    {
+      "id": "drying_rack",
+      "width": 1.2,
+      "depth": 0.5,
+      "wall_snap": true
+    }
+  ]
+}

@@ -61,7 +61,10 @@ export function renderFabricationTab(
       <div class="view-header">
         <h3>Mechanical Tool-Shaping &amp; Leathercrafting</h3>
         <p class="sub">Craft primitive stone implements, dugout troughs, and tan leather.</p>
-        <button id="btn-open-soap-kettle" class="btn-dock" style="margin-top: 8px; background: #8c6d3f; color: #fff;">🧼 Open Soap Kettle Station</button>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px;">
+          <button id="btn-open-soap-kettle" class="btn-dock" style="background: #8c6d3f; color: #fff;">🧼 Open Soap Kettle Station</button>
+          <button id="btn-open-3d-workshop" class="btn-dock" style="background: #2e4d6e; color: #fff;">🔬 Open 3D Workshop Studio</button>
+        </div>
       </div>
 
       <div class="recipes-grid">
@@ -100,6 +103,26 @@ export function renderFabricationTab(
         },
         () => {},
       );
+    });
+  });
+
+  container.querySelector<HTMLButtonElement>('#btn-open-3d-workshop')?.addEventListener('click', () => {
+    import('./gl/Surgical3DView').then(({ mountWorkbench3D }) => {
+      const modal = document.createElement('div');
+      modal.className = 'modal-workbench-3d';
+      modal.innerHTML = '<div class="modal-workbench-3d-content"></div>';
+      document.body.appendChild(modal);
+
+      const content = modal.querySelector<HTMLElement>('.modal-workbench-3d-content')!;
+      const ctrl = mountWorkbench3D(content, {
+        onClose: () => {
+          ctrl.dispose();
+          modal.remove();
+        },
+        onSelectRecipe: (recipeId) => {
+          onExecuteRecipe(recipeId);
+        },
+      });
     });
   });
 
