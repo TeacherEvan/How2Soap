@@ -1,104 +1,131 @@
-# AGENTS.md — Top-Down Strategy & Colony Labor System
+# AGENTS.md — How2Soap Runtime Invariants & Developer Commands
 
-This document outlines the architectural boundaries, contracts, invariants, and testing standards for human and autonomous AI agents working in this repository.
-
----
-
-## 1. System Invariants & Non-Negotiable Budgets
-
-1. **Low-Context Runtime Dependencies**:
-   - `package.json` must have only `three` in `"dependencies"` (lazy-loaded via dynamic import). All other code runs on pure browser APIs (HTML5 Canvas, Web Audio API, Web Workers, `SharedArrayBuffer`).
-   - Core simulation (<200 KiB entrypoint) has zero runtime deps — Three.js is isolated in a lazy view chunk.
-   - The single allowed runtime dep is `three@0.160.0` (pinned), loaded only when the 3D strategy view opens.
-2. **`SharedArrayBuffer` Memory Layout**:
-   - `SAB_BYTE_LENGTH` is strictly **`67648`** bytes ([src/engine/memoryLayout.ts](file:///home/leandi-duplessis/github/workspaces/How%20to%20make%20soap/src/engine/memoryLayout.ts)).
-   - Enforced by `tests/memoryLayout.test.ts`. Do not expand or alter this constant. High-level simulation entities (colonists, candidates, desire-path wear grids) are communicated via structured `postMessage` (`COLONY_SYNC`), not inside the raw SAB.
-3. **Webpack Production Bundle Size**:
-   - Entrypoint budget is `< 200,000` bytes (`webpack.config.js` `performance.maxEntrypointSize`).
-   - Verified via `npm run build`.
-4. **Clean TypeScript Compilation**:
-   - `npx tsc --noEmit` must always pass with 0 errors.
+This file contains hard-earned context that agents typically miss. If it's obvious from filenames or standard tooling, it's not here.
 
 ---
 
-## 2. Colony Engine Architecture (`src/engine/colony.ts`)
+## ⚡ Non-Negotiable Budgets (enforced in CI)
 
-- **Colonist Archetypes**:
-  - `FORAGER`: Rapid harvesting of flora, berries, and timber.
-  - `MINER`: High mechanical advantage for hard ores (halite, copper, tin, zinc).
-  - `HERBALIST`: Efficient apothecary harvesting (willow bark, mint, herbs).
-  - `APPRENTICE_CHEMIST`: Camp workbench labor, vessel tending, and potion synthesis.
-- **Desire Paths**:
-  - `32×32` `Uint8Array(1024)` wear grid mapping `[-1600m, +1600m]`.
-  - Traversing cells increments wear; natural overgrowth slowly decays unused trails.
-  - Movement speed scales up to `+20%` along worn paths ($M_{\text{trail}} = 1.0 + 0.20 \times (\text{wear} / 255)$).
-- **Craig Reynolds Boids Steering**:
-  - Colonists navigate between camp hearth `(0, 0)` and assigned biome nodes.
-  - Separation steering maintains minimum pairwise distances ($d \ge 3.5\text{ m}$) so workers fan out realistically rather than stacking on identical coordinates.
-- **Multi-Commodity Wage Ledger & Morale**:
-  - Commodities: `Food` (Cooked/Dried Meat, Berries), `Metals` (Copper, Tin, Bronze), `Medicines & Soap` (`BAR_SOAP`, Antiseptics), and `Chemical Stimulants` (`WILLOW_TEA`, `MINT_TONIC`, `NITROUS_TONIC`).
-  - Daily payroll processed at tick rollover.
-  - Morale $< 20$ triggers strike state (`STRIKE`), halting work until bonus or back-pay is provided.
-- **Stimulant Pharmacokinetics**:
-  - Two-phase pharmacokinetic model:
-    1. **Boost Phase**: Work & travel speed increased (+20% to +55%), fatigue dampened.
-    2. **Crash Phase**: Speed penalty (-5% to -25%) and morale dip upon timer expiration.
+| Constraint | Value | Verified By |
+|------------|-------|-------------|
+| **Runtime deps** | `three@0.160.0` only (lazy-loaded) | `package.json` |
+| **SAB byte length** | `67648` bytes exactly | `tests/memoryLayout.test.ts` |
+| **Entrypoint bundle** | `< 200,000` bytes | `webpack.config.js` + `npm run build` |
+| **TypeScript** | Strict, zero errors | `npx tsc --noEmit` |
+
+> **Do not** add runtime deps. Do not change `SAB_BYTE_LENGTH`. The layout arithmetic in `src/engine/memoryLayout.ts` is the source of truth (64 + 2048 + 65536 = 67648).
 
 ---
 
-## 3. Top-Down Strategy Canvas & UI (`src/ui/StrategyMapCanvas.ts`)
-
-- **Alchemical Cartography**:
-  - Styled as a dark slate and brass astrolabe survey map (`#12151c`). Concentric range rings at 100m, 300m, 600m, 1200m, 1600m.
-  - Concentric hearth glow at `(0, 0)` and dynamic diurnal lighting based on time of day (daylight at noon, amber twilight at dusk/dawn, slate-blue darkness at midnight).
-- **Command Dock**:
-  - Tavern recruitment drawer, active colonist roster cards, stimulant administration buttons, and wage contract policy selectors.
-  - Canvas viewport supports pan, zoom, keyboard navigation (`+`/`-`, `WASD`/arrows, `Space` to center hearth).
-
----
-
-## 4. Web Audio & Spatial Stereo Synthesis (`src/ui/audio.ts`)
-
-- Procedural Web Audio engine with 0 sound asset files.
-- **Spatial Panning**:
-  - `worldXToPan(worldX: number, maxDistanceMeters = 1600): number`
-  - Clamps world coordinates to stereo panning `[-1.0, 1.0]`.
-  - Connects sound sources through `StereoPannerNode` where available with graceful fallback.
-- **Procedural Sound Cues**:
-  - `recruitHorn(worldX?)`: Brassy fifth chord fanfare (220Hz / 330Hz / 440Hz).
-  - `wageClink(worldX?)`: Metallic coin resonance (1760Hz / 2637Hz / 3520Hz).
-  - `stimulantShimmer()`: High rising arpeggio (587Hz to 1480Hz).
-  - `strikeBell(worldX?)`: Dissonant tolling bell with low-frequency beating (130Hz & 138.59Hz).
-
----
-
-## 5. Accessibility & WCAG 2.2 Compliance (`src/styles.css`)
-
-- **Target Size (SC 2.5.8)**:
-  - All interactive buttons (`.btn-harvest`, `.btn-slot-action`, `.recruit-btn`, `.btn-dock`, `.recruitment-card`, modal checkboxes) enforce a minimum bounding box of **`24×24 CSS px`**.
-- **Story & Dialogue Overlays (SC 2.4.11)**:
-  - `.story-overlay` has fixed positioning (`position: fixed; inset: 0; z-index: 1000;`) with full backdrop blur.
-- **Focus Appearance (SC 2.4.13)**:
-  - High-contrast dual-ring `:focus-visible` with `outline: 2px solid #5aa5ff; outline-offset: 2px;`.
-- **Contrast & Reduced Motion**:
-  - High contrast mode support (`body.high-contrast`, `@media (prefers-contrast: more)`, `@media (forced-colors: active)`).
-  - `@media (prefers-reduced-motion: reduce)` disables animations and particle transitions.
-- **ARIA Progress Bar**:
-  - `#hud-renown` dynamically reflects progress via `aria-valuenow="0..100"`.
-
----
-
-## 6. Verification Commands
-
-Before submitting any code changes, ensure all verification gates succeed:
+## 🏃 Developer Commands (exact)
 
 ```bash
-# Run unit test suite
-npx vitest run
+# Dev server (COOP/COEP headers enabled for SharedArrayBuffer)
+npm start          # or: npm run dev
 
-# Run TypeScript compilation check
+# Type-check (must pass before commit)
 npx tsc --noEmit
 
-# Production build and asset bundle budget check (< 200 KiB)
+# Unit tests (93 suites, 469 tests)
+npm test           # or: npx vitest run
+
+# Production build (bundle budget check)
 npm run build
 ```
+
+**Order matters**: `typecheck → test → build` — all three must pass.
+
+---
+
+## 🧠 Architecture Notes (not obvious from files)
+
+### Entry & Threading
+- **Entrypoint**: `src/main.ts` (~360 LOC) — only wiring, COOP/COEP detection, and boot.
+- **Web Worker**: `src/engine/sim.worker.ts` runs at 10 Hz deterministic loop. Communicates via `postMessage` with `SharedArrayBuffer` (SeqLock at `syncFlags[0]`).
+- **Main thread UI**: 60 FPS, reads snapshots via `SharedWorldView.readSnapshot()`.
+- **Three.js** is lazy-loaded only when 3D views open (`src/ui/gl/Surgical3DView.ts`, `StrategyMapCanvas.ts` → `vendors` chunk).
+
+### Memory Layout (zero-copy)
+```
+0–63        syncFlags: Int32Array(16)  [0]=SeqLock, [1]=world tick
+64–2111     vesselTelemetry: 32×8 Float64 (temp, pH, pressure, volume, maxTemp, maxPressure, heaterW, flags)
+2112–67647  vesselMoles: 32×256 Float64  (species amounts per vessel)
+```
+- **Never** put high-level entities (colonists, desire paths) in SAB. They use `COLONY_SYNC` postMessage.
+- `MAX_VESSELS = 32`, `MAX_SPECIES = 256` are hard constants.
+
+### Chem/Physics Engine (pure TS, zero deps)
+- `src/engine/chemistry.ts` — calorimetry, phase-clamping boiling, electroneutrality pH, Faraday electrolysis.
+- `src/engine/metabolism.ts` — dual-compartment human model (blood glucose + adipose), pathology (sepsis, hypothermia).
+- `src/engine/fabrication.ts` — Mohs hardness, mechanical recipes, tool system.
+- Species registry: `src/data/speciesRegistry.ts` (38 species with thermodynamic properties).
+- Reaction rules: `src/data/reactionRules.ts` (Arrhenius kinetics, precipitation, electrolysis).
+
+### Campaign Layer (hex map, settlements, politics)
+- Hex axial coordinates in `src/engine/campaign/hexMap.ts`.
+- Settlements, influence, patrons, built works, districts, missions — all under `src/engine/campaign/`.
+- **Dormant systems** (not yet wired): `src/engine/campaign/dormant/` — incubations, harbours, deep mine, codex exchange, etc.
+
+### UI & Accessibility
+- **Canvas 2D**: `StrategyMapCanvas.ts` (top-down), `WorkbenchCanvas.ts` (multi-tab).
+- **Web Audio**: `src/ui/audio.ts` — 100% synthesized, 0 asset files.
+- **WCAG 2.2 AA**: Target size ≥ 24×24 CSS px (`.btn-harvest`, `.recruit-btn`, etc.), focus-visible rings, reduced-motion, high-contrast support in `src/styles.css`.
+
+---
+
+## 🔧 Common Gotchas
+
+| Issue | Cause | Fix |
+|-------|-------|-----|
+| `SharedArrayBuffer` unavailable | Missing COOP/COEP headers | Dev server sets them via `webpack.config.js`; Vercel via `vercel.json` |
+| Bundle exceeds 200 KiB | Accidental eager import of `three` | Keep Three.js in lazy chunks only (`import()` in view components) |
+| TypeScript "noUnusedLocals" errors | Unused imports/variables | Delete or prefix with `_` |
+| Worker silent failures | Unknown command not handled | `workerMessages.ts` dispatch is exhaustive; new commands must be added there |
+| `readSnapshot` throws | SeqLock contention (odd counter) | Retry logic in `SharedWorldView.readSnapshot(maxAttempts=32)` |
+
+---
+
+## 📁 Key Files to Know
+
+```
+src/main.ts                    # Boot & wiring only
+src/engine/memoryLayout.ts     # SAB layout + SeqLock (SOURCE OF TRUTH)
+src/engine/sim.worker.ts       # 10 Hz simulation loop
+src/engine/chemistry.ts        # Core physics/chem solvers
+src/app/workerMessages.ts      # Worker→UI command dispatch (exhaustive)
+src/ui/StrategyMapCanvas.ts    # Top-down canvas + command dock
+src/ui/WorkbenchCanvas.ts      # Reaction/fabrication/journal tabs
+src/styles.css                 # Dark theme, WCAG, responsive
+webpack.config.js              # Chunk splitting, COOP/COEP, bundle budgets
+vercel.json                    # Production isolation headers
+```
+
+---
+
+## 🧪 Test Conventions
+
+- **No integration test server** — all tests are pure Vitest unit tests.
+- **Determinism**: `tests/rng.test.ts` verifies seeded RNG stream.
+- **Worker protocol**: `tests/workerDispatch.test.ts` asserts exact message shapes.
+- **Bundle lazy imports**: `tests/bundle-lazy-imports.test.ts` ensures Three.js stays out of entrypoint.
+- **Memory layout**: `tests/memoryLayout.test.ts` is the contract for `SAB_BYTE_LENGTH`.
+
+---
+
+## 📌 If You Change These, Update The Other
+
+| Change | Must Also Update |
+|--------|------------------|
+| `MAX_VESSELS` / `MAX_SPECIES` | `memoryLayout.ts`, `memoryLayout.test.ts`, `chemistry.ts` vessel loops |
+| `WAGE_COMMODITIES` | `colony.ts`, `StrategyMapCanvas.ts` wage selectors |
+| Worker command types | `workerMessages.ts` dispatch + `tests/workerDispatch.test.ts` |
+| `SAB_BYTE_LENGTH` | **Never change** — arithmetic is the contract |
+| Three.js version | `package.json`, `tsconfig.json` `@types/three`, `webpack.config.js` vendor chunk |
+
+---
+
+## 🚢 Deploy
+
+- **Vercel**: Push to main → auto-deploy with `vercel.json` headers.
+- **PWA**: `public/sw.js` (cache-first), `public/manifest.webmanifest`.
+- **No server** — fully static, offline-capable.
