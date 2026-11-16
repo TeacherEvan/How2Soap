@@ -40,7 +40,7 @@ module.exports = (env, argv) => {
 
   return {
     mode: production ? 'production' : 'development',
-    devtool: production ? 'source-map' : 'eval-source-map',
+    devtool: production ? 'source-map' : 'cheap-module-source-map',
     target: ['web', 'es2022'],
     entry: {
       main: './src/main.ts',

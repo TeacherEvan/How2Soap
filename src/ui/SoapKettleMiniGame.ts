@@ -11,8 +11,10 @@ export type KettlePhase = 'IDLE' | 'POURING' | 'HEATING' | 'STIRRING' | 'COMPLET
 
 export interface KettleBatchResult {
   quality: 'PERFECT' | 'STANDARD' | 'RUINED';
-  soapYield: number; // 2 for perfect, 1 for standard, 0 (scrap) for ruined
+  soapYield: number; // 2 for perfect, 1 for standard, 0 (scrap) for ruined, 3+ with precision bonus
   message: string;
+  purityPct?: number;
+  yieldMultiplier?: number;
 }
 
 export interface CouplingEffects {
@@ -67,6 +69,15 @@ export class SoapKettleMiniGame {
   public tracePct = 0; // 0..100
   public stirStrokes = 0;
   public targetStrokes = 12;
+
+  // Precision & Timing Bonus State
+  public sweetSpotHeatSeconds = 0;
+  public totalHeatSeconds = 0;
+  public rhythmStreak = 0;
+  public bestRhythmStreak = 0;
+  public perfectStirCount = 0;
+  public lastStirFeedback: 'PERFECT' | 'TOO_FAST' | 'TOO_SLOW' | 'NORMAL' = 'NORMAL';
+  private lastStirMs = 0;
 
   // Coupling effects (ES-3)
   private couplingEffects: {
@@ -145,6 +156,13 @@ export class SoapKettleMiniGame {
     this.isBoilingOver = false;
     this.tracePct = 0;
     this.stirStrokes = 0;
+    this.sweetSpotHeatSeconds = 0;
+    this.totalHeatSeconds = 0;
+    this.rhythmStreak = 0;
+    this.bestRhythmStreak = 0;
+    this.perfectStirCount = 0;
+    this.lastStirFeedback = 'NORMAL';
+    this.lastStirMs = 0;
     this.lastResult = null;
     this.lastTickMs = (typeof performance !== 'undefined' ? performance.now() : Date.now());
   }
@@ -173,9 +191,15 @@ export class SoapKettleMiniGame {
       // Boilover condition: > 105°C
       if (this.temperatureC > 105) {
         this.isBoilingOver = true;
+      } else if (this.temperatureC <= 102) {
+        this.isBoilingOver = false;
       }
 
-      // Saponification Zone: 80°C - 95°C
+      // Saponification Zone: 80°C - 98°C (Optimal Sweet Spot: 86°C - 91°C)
+      this.totalHeatSeconds += dt;
+      if (this.temperatureC >= 86 && this.temperatureC <= 91) {
+        this.sweetSpotHeatSeconds += dt;
+      }
       if (this.temperatureC >= 80 && this.temperatureC <= 98) {
         this.heatProgressPct = Math.min(100, this.heatProgressPct + 20 * dt);
       }
@@ -205,13 +229,56 @@ export class SoapKettleMiniGame {
     }
   }
 
-  public stirStroke(): void {
+  public stirStroke(nowMs: number = (typeof performance !== 'undefined' ? performance.now() : Date.now())): void {
     if (this.phase !== 'STIRRING') return;
+
+    if (this.lastStirMs > 0) {
+      const intervalMs = nowMs - this.lastStirMs;
+      if (intervalMs >= 280 && intervalMs <= 650) {
+        this.rhythmStreak++;
+        this.perfectStirCount++;
+        this.bestRhythmStreak = Math.max(this.bestRhythmStreak, this.rhythmStreak);
+        this.lastStirFeedback = 'PERFECT';
+      } else if (intervalMs < 280) {
+        this.rhythmStreak = 0;
+        this.lastStirFeedback = 'TOO_FAST';
+      } else {
+        this.rhythmStreak = 0;
+        this.lastStirFeedback = 'TOO_SLOW';
+      }
+    } else {
+      this.lastStirFeedback = 'NORMAL';
+    }
+    this.lastStirMs = nowMs;
+
     this.stirStrokes++;
     this.tracePct = Math.min(100, (this.stirStrokes / this.targetStrokes) * 100);
     if (this.tracePct >= 100) {
       this.finishBatch();
     }
+  }
+
+  public getPrecisionFeedback(): {
+    thermalInSweetSpot: boolean;
+    thermalPct: number;
+    rhythmStreak: number;
+    lastStirFeedback: 'PERFECT' | 'TOO_FAST' | 'TOO_SLOW' | 'NORMAL';
+    purityPct: number;
+  } {
+    const thermalPct = this.totalHeatSeconds > 0
+      ? Math.round((this.sweetSpotHeatSeconds / this.totalHeatSeconds) * 100)
+      : 0;
+    const rhythmRatio = this.targetStrokes > 1
+      ? Math.min(1, this.perfectStirCount / Math.max(1, this.targetStrokes - 1))
+      : 0;
+    const purityPct = Math.round(50 + thermalPct * 0.25 + rhythmRatio * 25);
+    return {
+      thermalInSweetSpot: this.temperatureC >= 86 && this.temperatureC <= 91,
+      thermalPct,
+      rhythmStreak: this.rhythmStreak,
+      lastStirFeedback: this.lastStirFeedback,
+      purityPct: Math.min(100, purityPct),
+    };
   }
 
   public finishBatch(): KettleBatchResult {
@@ -224,8 +291,8 @@ export class SoapKettleMiniGame {
     // Apply crash clumsiness: Phase-1 tolerance reduction (-4%)
     const crashClumsiness = this.couplingEffects.crashClumsiness;
     const phase1ToleranceReduction = crashClumsiness?.phase1ToleranceReduction ?? 0;
-    const minLyeRatio = 0.45 - phase1ToleranceReduction / 100;
-    const maxLyeRatio = 0.55 + phase1ToleranceReduction / 100;
+    const minLyeRatio = Math.min(0.49, 0.45 + phase1ToleranceReduction / 100);
+    const maxLyeRatio = Math.max(0.51, 0.55 - phase1ToleranceReduction / 100);
     
     const ratioAccurate = lyeRatio >= minLyeRatio && lyeRatio <= maxLyeRatio;
     const boiledOver = this.isBoilingOver;
@@ -241,9 +308,14 @@ export class SoapKettleMiniGame {
       spoiled = this.spoilageRng() < unrestSpoilage.spoilageChance;
     }
 
+    let purityPct = 0;
+    let yieldMultiplier = 1;
+
     if (boiledOver || !ratioAccurate || spoiled) {
       quality = 'RUINED';
       soapYield = 0;
+      purityPct = 0;
+      yieldMultiplier = 0;
       if (spoiled) {
         message = 'Ruined Batch: Unrest in the colony caused spoilage!';
       } else if (boiledOver) {
@@ -253,11 +325,26 @@ export class SoapKettleMiniGame {
       }
     } else if (ratioAccurate && !boiledOver && this.stirStrokes >= this.targetStrokes) {
       quality = 'PERFECT';
-      soapYield = 2; // +1 Bonus Soap Bar
-      message = '★ Perfect Trace Batch! Yields +1 Bonus Soap Bar!';
+      const feedback = this.getPrecisionFeedback();
+      purityPct = feedback.purityPct;
+      const thermalBonus = feedback.thermalPct >= 50 || this.sweetSpotHeatSeconds >= 2.5;
+      const rhythmBonus = this.bestRhythmStreak >= 5;
+      if (thermalBonus && rhythmBonus) {
+        yieldMultiplier = 2;
+        soapYield = 4;
+        message = `★ Masterwork Trace (${purityPct}% Purity)! 2× Precision Yield (4 Soap Bars)!`;
+      } else if (thermalBonus || rhythmBonus) {
+        yieldMultiplier = 1.5;
+        soapYield = 3;
+        message = `★ Precision Trace (${purityPct}% Purity)! 1.5× Sweet-Spot Yield (3 Soap Bars)!`;
+      } else {
+        yieldMultiplier = 1;
+        soapYield = 2; // +1 Bonus Soap Bar
+        message = '★ Perfect Trace Batch! Yields +1 Bonus Soap Bar!';
+      }
     }
 
-    const res: KettleBatchResult = { quality, soapYield, message };
+    const res: KettleBatchResult = { quality, soapYield, message, purityPct, yieldMultiplier };
     this.lastResult = res;
     if (this.onBatchComplete) this.onBatchComplete(res);
     return res;

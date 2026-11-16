@@ -41,7 +41,7 @@ import { BIOME_DAG } from '../data/biomeNodes';
 import { ITEM_BY_ID } from '../data/items';
 import { FABRICATION_RECIPES, RECIPE_EFFECTS, METALLURGY_TOOLS, resolveToolItem } from './fabrication';
 import { satisfyVesselInputs, applyVesselConsumption, type VesselInputResult, VESSEL_INPUTS } from './vesselInputs';
-import { SIM_STEP_SECONDS, WORKER_HZ } from './time';
+import { SIM_STEP_SECONDS, WALL_TICK_MS, WORKER_HZ } from './time';
 import { SPECIES, SPECIES_BY_INDEX } from '../data/speciesRegistry';
 import { escalateConditions } from './conditions';
 import {
@@ -706,7 +706,7 @@ function handleCommand(command: Command): void {
       couplingEffects = computeCouplingEffects(couplingConfig, colony);
 
       syncWorldToShared(world, view);
-      if (timer === null) timer = setInterval(tick, 1000 / WORKER_HZ);
+      if (timer === null) timer = setInterval(tick, WALL_TICK_MS);
       ctx.postMessage({ type: 'READY', rngSeed });
       postPlayerAndInventory();
       postColonySync();
@@ -798,7 +798,7 @@ function handleCommand(command: Command): void {
       blacksmith = sanitizeBlacksmith(save.blacksmith);
 
       syncWorldToShared(world, view);
-      if (timer === null) timer = setInterval(tick, 1000 / WORKER_HZ);
+      if (timer === null) timer = setInterval(tick, WALL_TICK_MS);
       ctx.postMessage({ type: 'READY', rngSeed });
       postVessels();
       postPlayerAndInventory();

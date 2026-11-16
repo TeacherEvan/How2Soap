@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SAB_BYTE_LENGTH } from '../src/engine/memoryLayout';
+import { WALL_TICK_MS } from '../src/engine/time';
 
 interface FakeWorker {
   posted: Array<Record<string, any>>;
@@ -35,11 +36,11 @@ describe('request sync — unchanged payloads are not re-posted every tick', () 
     send({ type: 'INIT', sab: new SharedArrayBuffer(SAB_BYTE_LENGTH) });
 
     // The first tick publishes the initial slot set once.
-    vi.advanceTimersByTime(100);
+    vi.advanceTimersByTime(WALL_TICK_MS);
     expect(requestSyncs(posted)).toHaveLength(1);
 
     posted.length = 0;
-    vi.advanceTimersByTime(300);
+    vi.advanceTimersByTime(WALL_TICK_MS * 3);
 
     expect(requestSyncs(posted)).toHaveLength(0);
   });
@@ -47,12 +48,12 @@ describe('request sync — unchanged payloads are not re-posted every tick', () 
   it('re-posts when the slot payload actually changes', async () => {
     const { posted, send } = await bootWorker();
     send({ type: 'INIT', sab: new SharedArrayBuffer(SAB_BYTE_LENGTH) });
-    vi.advanceTimersByTime(100);
+    vi.advanceTimersByTime(WALL_TICK_MS);
     const initialPayload = JSON.stringify(requestSyncs(posted)[0]?.slots);
     posted.length = 0;
 
     // The first town request spawns at tick 5; the payload must be re-posted.
-    vi.advanceTimersByTime(900);
+    vi.advanceTimersByTime(WALL_TICK_MS * 5);
 
     const requests = requestSyncs(posted);
     expect(requests).toHaveLength(1);

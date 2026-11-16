@@ -141,6 +141,7 @@ export class StrategyMapCanvas {
   };
 
   private isDragging = false;
+  private hasDragged = false;
   private dragStartX = 0;
   private dragStartY = 0;
   private panStartX = 0;
@@ -314,6 +315,7 @@ export class StrategyMapCanvas {
 
     canvas.addEventListener('pointerdown', (e: PointerEvent) => {
       this.isDragging = true;
+      this.hasDragged = false;
       this.dragStartX = e.clientX;
       this.dragStartY = e.clientY;
       this.panStartX = this.viewport.panX;
@@ -327,8 +329,13 @@ export class StrategyMapCanvas {
 
     canvas.addEventListener('pointermove', (e: PointerEvent) => {
       if (!this.isDragging) return;
-      this.viewport.panX = this.panStartX + (e.clientX - this.dragStartX);
-      this.viewport.panY = this.panStartY + (e.clientY - this.dragStartY);
+      const dx = e.clientX - this.dragStartX;
+      const dy = e.clientY - this.dragStartY;
+      if (!this.hasDragged && Math.hypot(dx, dy) > 5) {
+        this.hasDragged = true;
+      }
+      this.viewport.panX = this.panStartX + dx;
+      this.viewport.panY = this.panStartY + dy;
     }, { signal });
 
     const endDrag = (e: PointerEvent) => {
@@ -366,6 +373,10 @@ export class StrategyMapCanvas {
     }, { passive: false, signal });
 
     canvas.addEventListener('click', (e) => {
+      if (this.hasDragged) {
+        this.hasDragged = false;
+        return;
+      }
       const rect = canvas.getBoundingClientRect();
       const screenX = e.clientX - rect.left;
       const screenY = e.clientY - rect.top;
@@ -385,6 +396,51 @@ export class StrategyMapCanvas {
         if (action === 'toggle-3d') void this.toggle3DView();
       }, { signal });
     });
+
+    window.addEventListener('keydown', (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      const tag = target?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target?.isContentEditable) {
+        return;
+      }
+
+      const panStep = 40;
+      switch (e.key) {
+        case '+':
+        case '=':
+          this.viewport.zoom = Math.min(1.5, this.viewport.zoom * 1.25);
+          break;
+        case '-':
+        case '_':
+          this.viewport.zoom = Math.max(0.08, this.viewport.zoom * 0.8);
+          break;
+        case 'w':
+        case 'W':
+        case 'ArrowUp':
+          this.viewport.panY += panStep;
+          break;
+        case 's':
+        case 'S':
+        case 'ArrowDown':
+          this.viewport.panY -= panStep;
+          break;
+        case 'a':
+        case 'A':
+        case 'ArrowLeft':
+          this.viewport.panX += panStep;
+          break;
+        case 'd':
+        case 'D':
+        case 'ArrowRight':
+          this.viewport.panX -= panStep;
+          break;
+        case ' ':
+          e.preventDefault();
+          this.viewport.panX = 0;
+          this.viewport.panY = 0;
+          break;
+      }
+    }, { signal });
   }
 
   public async toggle3DView(): Promise<void> {
@@ -897,7 +953,7 @@ export class StrategyMapCanvas {
 
     // Quick digest of colonist status, jobs, wages, morale to prevent full rebuilds when unchanged
     const digest = this.colonyState.colonists
-      .map(c => `${c.id}:${c.status}:${c.assignedJob?.speciesId}:${c.morale}`)
+      .map(c => `${c.id}:${c.status}:${c.assignedJob?.speciesId}:${c.assignedJob?.partId}:${c.morale}:${c.wageContract}:${c.activeStimulant?.phase}`)
       .join('|');
     if (digest === this.lastColonistsDigest) return;
     this.lastColonistsDigest = digest;
@@ -959,8 +1015,8 @@ export class StrategyMapCanvas {
 
           <div class="colonist-controls">
             <div class="control-row">
-              <label>Job:</label>
-              <select data-job-colonist="${escapeHtml(c.id)}" class="select-job" aria-label="Assign Job">
+              <label for="job-${escapeHtml(c.id)}">Job:</label>
+              <select id="job-${escapeHtml(c.id)}" name="job-${escapeHtml(c.id)}" data-job-colonist="${escapeHtml(c.id)}" class="select-job" aria-label="Assign Job">
                 <option value="">-- Idle at Camp --</option>
                 ${jobOptions
                   .map(
@@ -975,8 +1031,8 @@ export class StrategyMapCanvas {
             </div>
 
             <div class="control-row">
-              <label>Wage:</label>
-              <select data-wage-colonist="${escapeHtml(c.id)}" class="select-wage" aria-label="Wage Commodity">
+              <label for="wage-${escapeHtml(c.id)}">Wage:</label>
+              <select id="wage-${escapeHtml(c.id)}" name="wage-${escapeHtml(c.id)}" data-wage-colonist="${escapeHtml(c.id)}" class="select-wage" aria-label="Wage Commodity">
                 ${wageCommodities
                   .map(
                     (comm) => `

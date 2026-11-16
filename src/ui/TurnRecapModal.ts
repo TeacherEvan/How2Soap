@@ -18,6 +18,22 @@ export interface TurnRecapData {
   vigorDelta?: number;
 }
 
+const REQUEST_EXPIRED_PREFIX = '⌛ Request expired: ';
+
+/**
+ * Deduplicate identical request-expiration messages per turn recap so each
+ * expired request title appears at most once in Omens or Losses.
+ */
+export function deduplicateRecapEvents<T extends { message: string }>(events: T[]): T[] {
+  const seenExpired = new Set<string>();
+  return events.filter((e) => {
+    if (!e.message.startsWith(REQUEST_EXPIRED_PREFIX)) return true;
+    if (seenExpired.has(e.message)) return false;
+    seenExpired.add(e.message);
+    return true;
+  });
+}
+
 export function openTurnRecapModal(data: TurnRecapData, onDismiss?: () => void): void {
   const existing = document.getElementById('turn-recap-overlay');
   if (existing) existing.remove();
@@ -26,10 +42,11 @@ export function openTurnRecapModal(data: TurnRecapData, onDismiss?: () => void):
   overlay.id = 'turn-recap-overlay';
   overlay.className = 'story-overlay turn-recap-overlay';
 
-  const omens = data.events.filter((e) => e.message.includes('Crisis') || e.message.includes('strike') || e.message.includes('Omen'));
-  const deeds = data.events.filter((e) => e.message.includes('Skimmed') || e.message.includes('Delivered') || e.message.includes('Finished') || e.message.includes('Formed'));
-  const losses = data.events.filter((e) => e.message.includes('expired') || e.message.includes('failed') || e.message.includes('wasting'));
-  const other = data.events.filter((e) => !omens.includes(e) && !deeds.includes(e) && !losses.includes(e));
+  const events = deduplicateRecapEvents(data.events);
+  const omens = events.filter((e) => e.message.includes('Crisis') || e.message.includes('strike') || e.message.includes('Omen'));
+  const deeds = events.filter((e) => e.message.includes('Skimmed') || e.message.includes('Delivered') || e.message.includes('Finished') || e.message.includes('Formed'));
+  const losses = events.filter((e) => e.message.includes('expired') || e.message.includes('failed') || e.message.includes('wasting'));
+  const other = events.filter((e) => !omens.includes(e) && !deeds.includes(e) && !losses.includes(e));
 
   const renderEventList = (items: Array<{ message: string }>, emptyText: string) => {
     if (items.length === 0) return `<p style="font-size: 0.85rem; color: var(--muted); font-style: italic;">${emptyText}</p>`;
