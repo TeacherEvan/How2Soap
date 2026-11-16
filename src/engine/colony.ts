@@ -303,7 +303,9 @@ function processPayroll(
       }
     }
 
-    if (foundCount >= dailyAmount && dailyAmount > 0) {
+    if (dailyAmount <= 0) {
+      paid = true;
+    } else if (foundCount >= dailyAmount) {
       const removed = removeItemFromContainer(campStorage, commodity, dailyAmount);
       if (removed) {
         paid = true;
@@ -399,9 +401,8 @@ function updateColonistJobAndMovement(
     const targetPos = getSpeciesWorldPosition(colonist.assignedJob.speciesId);
     const arrived = moveTowards(state, colonist, targetPos, effectiveSpeed * deltaMinutes);
 
-    recordFootstep(state, colonist.position.x, colonist.position.y);
-
     if (arrived) {
+      recordFootstep(state, colonist.position.x, colonist.position.y);
       colonist.status = 'GATHERING';
     }
   } else if (colonist.status === 'GATHERING') {
@@ -447,9 +448,8 @@ function updateColonistJobAndMovement(
     const hearthPos = { x: 0, y: 0 };
     const arrived = moveTowards(state, colonist, hearthPos, effectiveSpeed * deltaMinutes);
 
-    recordFootstep(state, colonist.position.x, colonist.position.y);
-
     if (arrived) {
+      recordFootstep(state, colonist.position.x, colonist.position.y);
       // Deposit carried yields into camp storage
       for (const yieldItem of colonist.carriedYields) {
         const slot: InventorySlot = {
@@ -462,6 +462,9 @@ function updateColonistJobAndMovement(
       }
       colonist.carriedYields = [];
       // Loop gathering trips continuously until unassigned
+      if (colonist.assignedJob) {
+        colonist.assignedJob.workDone = 0;
+      }
       colonist.status = 'TRAVELING';
     }
   }

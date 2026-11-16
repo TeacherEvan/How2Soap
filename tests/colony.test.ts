@@ -296,6 +296,38 @@ describe('Colony Engine (Task 2)', () => {
       const logItem = inv.campCache.slots.find(s => s && s.itemId === 'LOG_WHITE_OAK');
       expect(logItem).toBeDefined();
       expect(logItem!.count).toBeGreaterThan(0);
+      expect(c1.assignedJob?.workDone).toBe(0);
+    });
+
+    it('does not dock morale or trigger STRIKE for zero-wage contracts', () => {
+      const state = createInitialColonyState();
+      const inv = createInventoryState();
+      const c1 = recruitColonist(state, 'Volunteer', 'FORAGER', { commodity: 'BAR_SOAP', dailyAmount: 0 }, 0);
+      const initialMorale = c1.morale;
+
+      // Trigger midnight payroll rollover (tick = 1440)
+      stepColony(state, 1.0, 1440, inv.campCache, BIOME_DAG);
+
+      expect(c1.morale).toBe(initialMorale);
+      expect(c1.status).toBe('IDLE');
+      expect(state.ledger.length).toBe(1);
+      expect(state.ledger[0].paid).toBe(true);
+    });
+
+    it('records footstep wear once per non-arriving step (no double-counting at destination)', () => {
+      const state = createInitialColonyState();
+      const inv = createInventoryState();
+      const c1 = recruitColonist(state, 'Walker', 'FORAGER', { commodity: 'BAR_SOAP', dailyAmount: 0 }, 0);
+
+      assignColonistJob(c1, 'TREE_WHITE_OAK', 'OAK_HEARTWOOD_LOG');
+      // Take one small step that does not arrive at the target
+      stepColony(state, 0.01, 1, inv.campCache, BIOME_DAG);
+
+      expect(c1.status).toBe('TRAVELING');
+      const gridPos = worldToGrid(c1.position.x, c1.position.y);
+      const cellIdx = gridPos.row * GRID_SIZE + gridPos.col;
+      // Single footstep increments wear by 8 (not 16)
+      expect(state.desirePathGrid[cellIdx]).toBe(8);
     });
   });
 });
